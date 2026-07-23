@@ -17,3 +17,9 @@ pytest==8.3.5
 email-validator==2.3.0
 opencv-python-headless==4.10.0.84
 numpy>=1.26
+# mediapipe(운동열 필터, backend/app/services/muscle_heat.py — worker가 sys.path로 import)의
+# 실제 의존성. mediapipe 패키지 자체는 --no-deps로 별도 설치한다 (backend/requirements.txt 참고).
+absl-py
+flatbuffers
+matplotlib
+sounddevice

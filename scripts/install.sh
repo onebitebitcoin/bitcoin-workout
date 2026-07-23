@@ -55,6 +55,8 @@ fi
 source .venv/bin/activate
 pip install --quiet --upgrade pip
 pip install --quiet -r requirements.txt
+# opencv-contrib-python(GUI 포함) 충돌 방지 — requirements.txt 주석 참고
+pip install --quiet --no-deps mediapipe==0.10.35
 echo "[Backend] 의존성 설치 완료 (Python $(python3 --version))"
 deactivate
 
@@ -68,6 +70,7 @@ fi
 source .venv/bin/activate
 pip install --quiet --upgrade pip
 pip install --quiet -r requirements.txt
+pip install --quiet --no-deps mediapipe==0.10.35
 echo "[Worker] 의존성 설치 완료"
 deactivate
 
