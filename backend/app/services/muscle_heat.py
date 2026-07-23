@@ -317,12 +317,20 @@ class _RenderState:
         return self.heat
 
 
+_PREVIEW_CONVERGE_STEPS = 12  # EMA가 정적 부하의 정상상태(steady state)에 도달하는 데 필요한 반복 수
+
+
 def heat_preview_frame(frame: np.ndarray, weak_cartoon: bool) -> np.ndarray:
     """단일 프레임 미리보기.
 
-    이전 프레임이 없어 각속도·이동속도 신호가 0이므로 정적 부하 휴리스틱
-    (오버헤드 지지·깊은 무릎 굽힘)만 반영된다. 실제 영상에서는 움직일수록
-    열이 진해진다 — 프론트 힌트 텍스트로 이 한계를 안내한다.
+    각속도·이동속도 신호가 없어(프레임 1장) 정적 부하 휴리스틱(오버헤드 지지·깊은 무릎
+    굽힘)만 반영된다. 실제 영상에서는 움직일수록 열이 진해진다 — 프론트 힌트 텍스트로
+    이 한계를 안내한다.
+
+    같은 포즈 결과로 `_RenderState`를 여러 스텝 돌려 EMA를 정상상태로 수렴시킨다 —
+    "이 자세를 계속 유지하면"의 정확한 극한값이며, 1회 호출로는 잔열 누적(`ALPHA`,
+    `DECAY`, per-캡슐 EMA)이 시작 단계라 열이 오버레이 하한(`lo=0.12`)을 못 넘어 아예
+    안 보이는 문제를 해결한다.
     """
     h, w = frame.shape[:2]
     ph = max(2, int(round(PW * h / w)))
@@ -335,7 +343,9 @@ def heat_preview_frame(frame: np.ndarray, weak_cartoon: bool) -> np.ndarray:
     finally:
         landmarker.close()
 
-    heat = _RenderState(ph).step(small, result)
+    state = _RenderState(ph)
+    for _ in range(_PREVIEW_CONVERGE_STEPS):
+        heat = state.step(small, result)
     base = light_cartoonize(frame) if weak_cartoon else frame
     heat_full = cv2.resize(heat, (w, h), interpolation=cv2.INTER_LINEAR)
     return _overlay(base, heat_full)

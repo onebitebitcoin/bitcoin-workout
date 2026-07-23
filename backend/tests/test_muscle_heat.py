@@ -10,6 +10,8 @@ import numpy as np
 import pytest
 
 from app.services.muscle_heat import (
+    PW,
+    _RenderState,
     heat_preview_frame,
     light_cartoonize,
     render_heat_video,
@@ -38,6 +40,62 @@ class TestLightCartoonize:
         out = light_cartoonize(frame)
         center = out[120, 160]
         assert center[2] > center[0]  # 빨강 채널 우세 유지
+
+
+class _FakeLandmark:
+    def __init__(self, x: float, y: float, visibility: float = 0.9):
+        self.x = x
+        self.y = y
+        self.visibility = visibility
+
+
+class _FakePoseResult:
+    """`_RenderState.step`이 읽는 속성만 흉내낸 mediapipe 결과 스텁 — 실제 사진 없이
+    포즈 좌표를 직접 지정해 정적 부하(오버헤드 지지) 로직을 단위 테스트한다."""
+
+    def __init__(self, landmarks: dict[int, _FakeLandmark]):
+        self.pose_landmarks = [landmarks]
+        self.segmentation_masks = None
+
+
+def _overhead_pose() -> _FakePoseResult:
+    """팔꿈치가 어깨보다 위 = 오버헤드 지지 자세. 무릎은 편 상태(하체 정적부하 미발동).
+
+    `_RenderState.step`은 랜드마크 0..32 전체를 딕셔너리에서 조회하므로, 사용하지
+    않는 나머지 관절도 화면 중앙 낮은 신뢰도 좌표로 채워 KeyError를 막는다.
+    """
+    coords = {
+        0: (0.50, 0.15), 7: (0.47, 0.14), 8: (0.53, 0.14),
+        11: (0.40, 0.35), 12: (0.60, 0.35),
+        13: (0.35, 0.15), 14: (0.65, 0.15),
+        15: (0.45, 0.05), 16: (0.55, 0.05),
+        23: (0.42, 0.65), 24: (0.58, 0.65),
+        25: (0.42, 0.85), 26: (0.58, 0.85),
+        27: (0.42, 0.98), 28: (0.58, 0.98),
+    }
+    landmarks = {i: _FakeLandmark(0.5, 0.5, visibility=0.0) for i in range(33)}
+    landmarks.update({i: _FakeLandmark(x, y) for i, (x, y) in coords.items()})
+    return _FakePoseResult(landmarks)
+
+
+class TestRenderStateConvergence:
+    """단일 프레임 프리뷰(`heat_preview_frame`)가 오버레이 하한(lo=0.12)을 못 넘어
+    열이 아예 안 보이던 버그의 회귀 테스트. 같은 정적 자세를 유지하면 EMA가
+    수렴해 열이 보여야 한다."""
+
+    def test_single_step_stays_below_overlay_threshold(self):
+        state = _RenderState(ph=200)
+        dummy = np.zeros((200, PW, 3), np.uint8)
+        heat = state.step(dummy, _overhead_pose())
+        assert heat.max() < 0.12  # 수렴 전: 오버레이에서 안 보임 (수정 전 버그 상태)
+
+    def test_repeated_steps_converge_above_overlay_threshold(self):
+        state = _RenderState(ph=200)
+        dummy = np.zeros((200, PW, 3), np.uint8)
+        heat = None
+        for _ in range(12):
+            heat = state.step(dummy, _overhead_pose())
+        assert heat.max() > 0.12  # 수렴 후: 오버레이에서 보임
 
 
 class TestHeatPreviewFrame:
