@@ -153,10 +153,18 @@
     "title": "Preview"
   },
   "filter": {
-    "title": "Cartoon filter",
-    "hint": "Turns your video and photos into a cartoon look. Faces and backgrounds are softly simplified.",
+    "title": "Video effects",
     "previewLoading": "Generating preview...",
     "previewFailed": "Couldn't load the preview. The filter will still be applied.",
-    "previewLabel": "Cartoon preview"
+    "cartoon": {
+      "title": "Cartoon filter",
+      "hint": "Turns your video and photos into a cartoon look. Faces and backgrounds are softly simplified.",
+      "previewLabel": "Cartoon preview"
+    },
+    "heat": {
+      "title": "Muscle heat",
+      "hint": "Muscles working hardest glow red. It gets more intense the more you move in the actual video.",
+      "previewLabel": "Muscle heat preview"
+    }
   }
 }

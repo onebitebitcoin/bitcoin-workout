@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, type ChangeEvent, type RefObject } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type ReactNode, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ImagePlus, Film, X, GripVertical, Loader2, Wand2 } from 'lucide-react'
+import { ImagePlus, Film, X, GripVertical, Loader2, Wand2, Flame } from 'lucide-react'
 import client from '../../api/client'
+import { combineVideoFilter } from '../../utils/videoFilter'
 import {
   DndContext,
   PointerSensor,
@@ -44,6 +45,8 @@ interface Props {
   onNext: () => void
   cartoonFilter: boolean
   setCartoonFilter: (on: boolean) => void
+  heatFilter: boolean
+  setHeatFilter: (on: boolean) => void
 }
 
 /** 첫 미디어에서 프리뷰용 프레임 1장을 JPEG Blob으로 캡처 (이미지는 파일 그대로). */
@@ -111,9 +114,37 @@ function SortableCard({ item, onRemove }: { item: MediaItem; onRemove: (id: stri
   )
 }
 
+function FilterRow({
+  icon, title, hint, on, onToggle,
+}: { icon: ReactNode; title: string; hint: string; on: boolean; onToggle: () => void }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center gap-2">
+        {icon}
+        <div>
+          <p className="text-sm font-semibold text-theme-primary">{title}</p>
+          <p className="text-xs text-theme-muted mt-0.5 leading-relaxed">{hint}</p>
+        </div>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        aria-label={title}
+        onClick={onToggle}
+        className={`flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition-colors ${
+          on ? 'justify-end bg-accent' : 'justify-start bg-theme-surface2'
+        }`}
+      >
+        <span className="h-5 w-5 rounded-full bg-white shadow" />
+      </button>
+    </div>
+  )
+}
+
 export default function StepMedia({
   fileInputRef, items, onAddFiles, onRemove, onReorder, estimatedSeconds, error, onNext,
-  cartoonFilter, setCartoonFilter,
+  cartoonFilter, setCartoonFilter, heatFilter, setHeatFilter,
 }: Props) {
   const { t } = useTranslation('upload')
   const localInputRef = useRef<HTMLInputElement>(null)
@@ -123,9 +154,10 @@ export default function StepMedia({
   const [previewLoading, setPreviewLoading] = useState(false)
   const [previewError, setPreviewError] = useState(false)
   const firstItemId = items[0]?.id
+  const videoFilter = combineVideoFilter(cartoonFilter, heatFilter)
 
   useEffect(() => {
-    if (!cartoonFilter || !items[0]) {
+    if (!videoFilter || !items[0]) {
       setPreviewUrl((old) => { if (old) URL.revokeObjectURL(old); return null })
       setPreviewError(false)
       return
@@ -137,6 +169,7 @@ export default function StepMedia({
       const frame = await captureFrame(items[0])
       const form = new FormData()
       form.append('frame', frame, 'frame.jpg')
+      form.append('video_filter', videoFilter)
       const res = await client.post<Blob>('/videos/filter-preview', form, {
         responseType: 'blob', timeout: 30_000,
       })
@@ -146,7 +179,7 @@ export default function StepMedia({
       .finally(() => { if (!cancelled) setPreviewLoading(false) })
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cartoonFilter, firstItemId])
+  }, [videoFilter, firstItemId])
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -223,29 +256,25 @@ export default function StepMedia({
 
       {items.length > 0 && (
         <div className="rounded-2xl bg-theme-surface p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <Wand2 size={16} className="text-accent" />
-              <div>
-                <p className="text-sm font-semibold text-theme-primary">{t('filter.title')}</p>
-                <p className="text-xs text-theme-muted mt-0.5 leading-relaxed">{t('filter.hint')}</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={cartoonFilter}
-              aria-label={t('filter.title')}
-              onClick={() => setCartoonFilter(!cartoonFilter)}
-              className={`flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition-colors ${
-                cartoonFilter ? 'justify-end bg-accent' : 'justify-start bg-theme-surface2'
-              }`}
-            >
-              <span className="h-5 w-5 rounded-full bg-white shadow" />
-            </button>
-          </div>
+          <p className="text-sm font-semibold text-theme-primary mb-3">{t('filter.title')}</p>
 
-          {cartoonFilter && (
+          <FilterRow
+            icon={<Wand2 size={16} className="text-accent" />}
+            title={t('filter.cartoon.title')}
+            hint={t('filter.cartoon.hint')}
+            on={cartoonFilter}
+            onToggle={() => setCartoonFilter(!cartoonFilter)}
+          />
+          <div className="my-3 h-px bg-theme-border" />
+          <FilterRow
+            icon={<Flame size={16} className="text-accent" />}
+            title={t('filter.heat.title')}
+            hint={t('filter.heat.hint')}
+            on={heatFilter}
+            onToggle={() => setHeatFilter(!heatFilter)}
+          />
+
+          {videoFilter && (
             <div className="mt-3 flex flex-col items-center gap-2">
               {previewLoading && (
                 <div className="flex items-center gap-2 py-6 text-xs text-theme-muted">
@@ -256,7 +285,7 @@ export default function StepMedia({
               {!previewLoading && previewUrl && (
                 <img
                   src={previewUrl}
-                  alt={t('filter.previewLabel')}
+                  alt={t(heatFilter ? 'filter.heat.previewLabel' : 'filter.cartoon.previewLabel')}
                   className="max-h-56 max-w-full rounded-xl object-contain"
                 />
               )}
