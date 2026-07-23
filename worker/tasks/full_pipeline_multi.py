@@ -47,16 +47,15 @@ def _delete_quietly(r2, key: str) -> None:
         pass
 
 
-def _apply_cartoon_filter(r2, video_key: str) -> str | None:
-    """합성 영상에 카툰 필터를 적용해 새 R2 키를 반환. 실패 시 None (원본 유지).
+def _apply_video_filter(r2, video_key: str, video_filter: str) -> str | None:
+    """합성 영상에 필터(카툰/운동열 강조)를 적용해 새 R2 키를 반환. 실패 시 None (원본 유지).
 
-    backend와 동일한 렌더러(`app.services.cartoon`)를 사용해 미리보기 룩과 일치시킨다.
+    backend와 동일한 렌더러(`app.services.cartoon`, `app.services.muscle_heat`)를 사용해
+    미리보기 룩과 최종 결과물을 일치시킨다.
     """
     import os
     import tempfile
     import uuid as _uuid
-
-    from app.services.cartoon import cartoonize_video
 
     tmp_input = tmp_output = None
     try:
@@ -69,7 +68,14 @@ def _apply_cartoon_filter(r2, video_key: str) -> str | None:
         with open(tmp_input, "wb") as f:
             f.write(resp["Body"].read())
 
-        cartoonize_video(tmp_input, tmp_output)
+        if video_filter == "cartoon":
+            from app.services.cartoon import cartoonize_video
+
+            cartoonize_video(tmp_input, tmp_output)
+        else:
+            from app.services.muscle_heat import render_heat_video
+
+            render_heat_video(tmp_input, tmp_output, weak_cartoon=video_filter == "cartoon_heat")
 
         filtered_key = f"videos/f-{_uuid.uuid4()}.mp4"
         with open(tmp_output, "rb") as f:
@@ -77,7 +83,7 @@ def _apply_cartoon_filter(r2, video_key: str) -> str | None:
                           CacheControl="public, max-age=31536000, immutable")
         return filtered_key
     except Exception as e:
-        logger.warning("Cartoon filter failed (using original): %s", e)
+        logger.warning("Video filter(%s) failed (using original): %s", video_filter, e)
         return None
     finally:
         for tmp in [tmp_input, tmp_output]:
@@ -154,23 +160,23 @@ def run_multi_pipeline(job: dict, status_callback=None) -> dict:
         current_key = compressed_key
         logger.info("[multi-pipeline] job=%s compressed → %s", job_id, current_key)
 
-    # 4.5) video filter — 카툰 등. 실패해도 원본으로 계속 진행 (subtitle과 동일한 정책)
+    # 4.5) video filter — 카툰/운동열 강조 등. 실패해도 원본으로 계속 진행 (subtitle과 동일한 정책)
     filter_status = "skipped"
     video_filter = job.get("video_filter")
-    if video_filter == "cartoon":
+    if video_filter in ("cartoon", "heat", "cartoon_heat"):
         if status_callback:
             status_callback("filter")
         pre_filter_key = current_key
-        filtered_key = _apply_cartoon_filter(r2, current_key)
+        filtered_key = _apply_video_filter(r2, current_key, video_filter)
         if filtered_key:
             if pre_filter_key != original_video_r2_key:
                 _delete_quietly(r2, pre_filter_key)
             current_key = filtered_key
             filter_status = "completed"
-            logger.info("[multi-pipeline] job=%s cartoon filter → %s", job_id, current_key)
+            logger.info("[multi-pipeline] job=%s %s filter → %s", job_id, video_filter, current_key)
         else:
             filter_status = "failed"
-            logger.warning("[multi-pipeline] job=%s cartoon filter failed — 원본으로 진행", job_id)
+            logger.warning("[multi-pipeline] job=%s %s filter failed — 원본으로 진행", job_id, video_filter)
 
     # 5) 일일 한도 체크 (썸네일 전)
     if status_callback:

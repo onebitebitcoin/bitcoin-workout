@@ -1186,23 +1186,27 @@ def _r2_upload_and_enqueue_multi(
 
 MAX_PREVIEW_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB — canvas 캡처 프레임 1장
 PREVIEW_MAX_WIDTH = 1280
-ALLOWED_VIDEO_FILTERS = {"cartoon"}
+ALLOWED_VIDEO_FILTERS = {"cartoon", "heat", "cartoon_heat"}
 
 
 @router.post("/filter-preview")
 async def filter_preview(
     frame: UploadFile = File(...),
+    video_filter: str = Form("cartoon"),
     current_user: User = Depends(get_active_user),
 ):
-    """업로드 미리보기: 프레임 1장에 카툰 필터를 적용해 JPEG로 반환한다.
+    """업로드 미리보기: 프레임 1장에 영상 필터를 적용해 JPEG로 반환한다.
 
-    워커 파이프라인과 동일한 렌더러(`app.services.cartoon`)를 사용하므로
-    미리보기 룩과 최종 결과물이 일치한다.
+    워커 파이프라인과 동일한 렌더러(`app.services.cartoon`, `app.services.muscle_heat`)를
+    사용하므로 미리보기 룩과 최종 결과물이 일치한다. "heat"/"cartoon_heat"는 프레임 1장만
+    받으므로 움직임 신호가 없어 정적 부하(오버헤드 지지·깊은 무릎 굽힘)만 반영된다 — 실제
+    영상에서는 동작에 따라 열이 더 진해진다.
     """
     import cv2
     import numpy as np
 
-    from app.services.cartoon import adaptive_gamma, cartoon_frame
+    if video_filter not in ALLOWED_VIDEO_FILTERS:
+        raise api_error(400, E_VIDEO_FORMAT_INVALID, f"지원하지 않는 필터입니다: {video_filter}")
 
     raw = await frame.read()
     if len(raw) == 0:
@@ -1220,7 +1224,15 @@ async def filter_preview(
             img, (PREVIEW_MAX_WIDTH, int(h * PREVIEW_MAX_WIDTH / w)), interpolation=cv2.INTER_AREA
         )
 
-    out = cartoon_frame(img, adaptive_gamma(img))
+    if video_filter == "cartoon":
+        from app.services.cartoon import adaptive_gamma, cartoon_frame
+
+        out = cartoon_frame(img, adaptive_gamma(img))
+    else:
+        from app.services.muscle_heat import heat_preview_frame
+
+        out = heat_preview_frame(img, weak_cartoon=video_filter == "cartoon_heat")
+
     ok, buf = cv2.imencode(".jpg", out, [cv2.IMWRITE_JPEG_QUALITY, 88])
     if not ok:
         raise api_error(500, E_VIDEO_PROCESS_FAILED, "미리보기 생성에 실패했습니다")
@@ -1256,7 +1268,8 @@ async def upload_multi(
     """다중 미디어(영상 ≤1 + 이미지 ≤5)를 순서대로 받아 합성 파이프라인에 등록한다.
 
     items_meta: JSON 배열 `[{"kind": "image"|"video"}, ...]` — files 순서와 1:1 대응.
-    video_filter: 합성본 전체에 적용할 영상 필터 (현재 "cartoon"만 지원).
+    video_filter: 합성본 전체에 적용할 영상 필터. "cartoon"(카툰) / "heat"(운동열 강조) /
+        "cartoon_heat"(약한 카툰 위에 운동열 강조) 중 하나.
     파일 수신 즉시 job_id 반환, R2 업로드 + 처리는 백그라운드.
     """
     if video_filter is not None and video_filter not in ALLOWED_VIDEO_FILTERS:
