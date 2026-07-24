@@ -1186,7 +1186,7 @@ def _r2_upload_and_enqueue_multi(
 
 MAX_PREVIEW_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB — canvas 캡처 프레임 1장
 PREVIEW_MAX_WIDTH = 1280
-ALLOWED_VIDEO_FILTERS = {"cartoon", "heat", "cartoon_heat"}
+ALLOWED_VIDEO_FILTERS = {"cartoon", "heat", "cartoon_heat", "footsteps"}
 
 
 @router.post("/filter-preview")
@@ -1228,6 +1228,10 @@ async def filter_preview(
         from app.services.cartoon import adaptive_gamma, cartoon_frame
 
         out = cartoon_frame(img, adaptive_gamma(img))
+    elif video_filter == "footsteps":
+        from app.services.motion_fx import footsteps_preview_frame
+
+        out = footsteps_preview_frame(img)
     else:
         from app.services.muscle_heat import heat_preview_frame
 

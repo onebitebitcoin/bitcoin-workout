@@ -142,7 +142,7 @@ def test_upload_multi_unknown_filter_rejected(client: TestClient) -> None:
     assert res.status_code == 400
 
 
-@pytest.mark.parametrize("video_filter", ["heat", "cartoon_heat"])
+@pytest.mark.parametrize("video_filter", ["heat", "cartoon_heat", "footsteps"])
 @patch("app.routes.videos.reserve_job_id", return_value="multi-heat-1")
 @patch("app.routes.videos._r2_upload_and_enqueue_multi")
 def test_upload_multi_heat_filter_accepted(mock_bg, mock_reserve, client: TestClient, video_filter: str) -> None:
@@ -185,7 +185,7 @@ class TestFilterPreview:
         assert out is not None
         assert out.shape == img.shape  # 1280px 이하는 해상도 유지
 
-    @pytest.mark.parametrize("video_filter", ["heat", "cartoon_heat"])
+    @pytest.mark.parametrize("video_filter", ["heat", "cartoon_heat", "footsteps"])
     def test_returns_heat_jpeg(self, client: TestClient, video_filter: str) -> None:
         import cv2
         import numpy as np

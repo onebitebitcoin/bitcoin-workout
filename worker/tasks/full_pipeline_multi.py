@@ -72,6 +72,10 @@ def _apply_video_filter(r2, video_key: str, video_filter: str) -> str | None:
             from app.services.cartoon import cartoonize_video
 
             cartoonize_video(tmp_input, tmp_output)
+        elif video_filter == "footsteps":
+            from app.services.motion_fx import render_footsteps_video
+
+            render_footsteps_video(tmp_input, tmp_output)
         else:
             from app.services.exercise_classify import classify_exercise
             from app.services.muscle_heat import render_heat_video
@@ -171,7 +175,7 @@ def run_multi_pipeline(job: dict, status_callback=None) -> dict:
     # 4.5) video filter — 카툰/운동열 강조 등. 실패해도 원본으로 계속 진행 (subtitle과 동일한 정책)
     filter_status = "skipped"
     video_filter = job.get("video_filter")
-    if video_filter in ("cartoon", "heat", "cartoon_heat"):
+    if video_filter in ("cartoon", "heat", "cartoon_heat", "footsteps"):
         if status_callback:
             status_callback("filter")
         pre_filter_key = current_key
