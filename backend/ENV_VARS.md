@@ -21,6 +21,7 @@
 | 변수명 | 기본값 | 설명 |
 |--------|--------|------|
 | BLINK_API_KEY | (없음) | Blink Lightning 자동결제 키. 없으면 수동 정산 모드 |
+| GEMINI_API_KEY | (없음) | 운동열 필터의 종목 자동 분류용(근육군 프리셋). 없으면 프리셋 없이 렌더(정상 동작). **워커 `.env`에 설정해야 적용** — 영상당 1회 호출 |
 | GOOGLE_CLIENT_ID | (없음) | Google OAuth 클라이언트 ID. 없으면 Google 로그인 비활성 |
 | GOOGLE_CLIENT_SECRET | (없음) | Google OAuth 시크릿 |
 | REDIS_URL | (없음) | Redis 연결 URL. 없으면 ffmpeg fallback 모드 (재배포 시 잡 소실 주의) |

@@ -73,9 +73,17 @@ def _apply_video_filter(r2, video_key: str, video_filter: str) -> str | None:
 
             cartoonize_video(tmp_input, tmp_output)
         else:
+            from app.services.exercise_classify import classify_exercise
             from app.services.muscle_heat import render_heat_video
 
-            render_heat_video(tmp_input, tmp_output, weak_cartoon=video_filter == "cartoon_heat")
+            # 운동 종목을 판별해 근육군 프리셋을 적용 — 부위 오귀속(스쿼트 팔 오발화 등) 억제.
+            # 실패/키없음이면 None → 프리셋 없이 진행(기존 동작).
+            exercise = classify_exercise(tmp_input)
+            render_heat_video(
+                tmp_input, tmp_output,
+                weak_cartoon=video_filter == "cartoon_heat",
+                exercise=exercise,
+            )
 
         filtered_key = f"videos/f-{_uuid.uuid4()}.mp4"
         with open(tmp_output, "rb") as f:
