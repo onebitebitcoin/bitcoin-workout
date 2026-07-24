@@ -12,6 +12,7 @@ import pytest
 from app.services.muscle_heat import (
     PW,
     _RenderState,
+    _unrotate_norm,
     heat_preview_frame,
     light_cartoonize,
     render_heat_video,
@@ -42,27 +43,11 @@ class TestLightCartoonize:
         assert center[2] > center[0]  # 빨강 채널 우세 유지
 
 
-class _FakeLandmark:
-    def __init__(self, x: float, y: float, visibility: float = 0.9):
-        self.x = x
-        self.y = y
-        self.visibility = visibility
-
-
-class _FakePoseResult:
-    """`_RenderState.step`이 읽는 속성만 흉내낸 mediapipe 결과 스텁 — 실제 사진 없이
-    포즈 좌표를 직접 지정해 정적 부하(오버헤드 지지) 로직을 단위 테스트한다."""
-
-    def __init__(self, landmarks: dict[int, _FakeLandmark]):
-        self.pose_landmarks = [landmarks]
-        self.segmentation_masks = None
-
-
-def _overhead_pose() -> _FakePoseResult:
+def _overhead_pose(ph: int = 200, pw: int = PW):
     """팔꿈치가 어깨보다 위 = 오버헤드 지지 자세. 무릎은 편 상태(하체 정적부하 미발동).
 
-    `_RenderState.step`은 랜드마크 0..32 전체를 딕셔너리에서 조회하므로, 사용하지
-    않는 나머지 관절도 화면 중앙 낮은 신뢰도 좌표로 채워 KeyError를 막는다.
+    `_RenderState.step`은 `_PoseTracker.process()` 출력 형태인 (그리드 좌표 pts, vis, seg)
+    튜플을 받는다 — mediapipe 없이 좌표를 직접 지정해 정적 부하 로직을 단위 테스트한다.
     """
     coords = {
         0: (0.50, 0.15), 7: (0.47, 0.14), 8: (0.53, 0.14),
@@ -73,9 +58,31 @@ def _overhead_pose() -> _FakePoseResult:
         25: (0.42, 0.85), 26: (0.58, 0.85),
         27: (0.42, 0.98), 28: (0.58, 0.98),
     }
-    landmarks = {i: _FakeLandmark(0.5, 0.5, visibility=0.0) for i in range(33)}
-    landmarks.update({i: _FakeLandmark(x, y) for i, (x, y) in coords.items()})
-    return _FakePoseResult(landmarks)
+    pts = {i: (0.5 * pw, 0.5 * ph) for i in range(33)}
+    vis = {i: 0.0 for i in range(33)}
+    for i, (u, v) in coords.items():
+        pts[i] = (u * pw, v * ph)
+        vis[i] = 0.9
+    return pts, vis, None
+
+
+class TestUnrotateNorm:
+    """회전 폴백의 좌표 역매핑 검증 — 이미지 코너를 회전시켰다 되돌리면 원위치여야 한다."""
+
+    @pytest.mark.parametrize("rot_idx", [0, 1, 2, 3])
+    def test_roundtrip_via_cv2(self, rot_idx):
+        # 실제 cv2.rotate로 마커 픽셀을 회전시킨 뒤, 회전 좌표를 역매핑해 원좌표와 비교
+        rots = [None, cv2.ROTATE_90_CLOCKWISE, cv2.ROTATE_90_COUNTERCLOCKWISE, cv2.ROTATE_180]
+        h, w = 60, 100
+        for ox, oy in [(10, 5), (90, 50), (30, 40)]:
+            img = np.zeros((h, w), np.uint8)
+            img[oy, ox] = 255
+            rimg = img if rots[rot_idx] is None else cv2.rotate(img, rots[rot_idx])
+            ry, rx = np.unravel_index(rimg.argmax(), rimg.shape)
+            rh, rw = rimg.shape
+            u, v = _unrotate_norm(rx / (rw - 1), ry / (rh - 1), rot_idx)
+            assert abs(u * (w - 1) - ox) < 1.0, f"rot={rot_idx} x: {u*(w-1)} != {ox}"
+            assert abs(v * (h - 1) - oy) < 1.0, f"rot={rot_idx} y: {v*(h-1)} != {oy}"
 
 
 class TestRenderStateConvergence:

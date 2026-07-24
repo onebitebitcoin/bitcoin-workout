@@ -23,9 +23,23 @@ from mediapipe.tasks.python import vision
 
 logger = logging.getLogger(__name__)
 
-_MODEL_PATH = os.path.join(os.path.dirname(__file__), "models", "pose_landmarker_lite.task")
+_MODEL_PATH = os.path.join(os.path.dirname(__file__), "models", "pose_landmarker_full.task")
 
-PW = 360  # 포즈/히트맵 내부 처리 폭 — 원본 해상도와 무관, 속도용 (합성 시 원본 해상도로 업샘플)
+PW = 360     # 히트맵 그리드 폭 — 캡슐/블러/오버레이 연산용 (합성 시 원본 해상도로 업샘플)
+DET_W = 480  # 포즈 검출 입력 폭 — 그리드와 분리 (랜드마크는 정규화 좌표라 어느 그리드로든 매핑 가능).
+             # 프로덕션 영상 스윕에서 근접/누운 자세 검출률이 480에서 최대 (360: 실패, 640: 오히려 하락)
+_CONF = 0.35  # 검출/존재 신뢰도 — 기본 0.5에서는 근접 크롭(상체 일부만)을 못 잡는다.
+              # 사람 없는 영상의 오탐 증가는 EMA 수렴 지연 + 세그 마스크 컷이 억제 (실측 검증)
+
+# 회전 폴백: BlazePose 1단계 검출기는 서 있는 자세 위주라 플랭크/푸쉬업(수평 자세)을 놓친다.
+# 성공한 회전을 기억(sticky)하고, 실패가 이어질 때만 다른 회전을 주기적으로 프로브한다.
+_ROTS: list[int | None] = [None, cv2.ROTATE_90_CLOCKWISE, cv2.ROTATE_90_COUNTERCLOCKWISE, cv2.ROTATE_180]
+_PROBE_INTERVAL = 5  # 연속 실패 시 N프레임마다만 전체 회전 프로브 (사람 없는 영상 비용 억제)
+_STREAK_GATE = 12    # 연속 K프레임 검출돼야 열 활성화 — conf 0.35의 산발적 오탐(기구·야경에
+                     # 유령 열) 차단. 실측: 오탐 연속길이 중앙값 1~12 vs 진짜 사람 98~605.
+                     # 진짜 영상은 시작 ~0.4초만 지연되는데 EMA 수렴 시간과 겹쳐 체감 없음.
+_GAP_TOLERANCE = 2   # 이 이하의 짧은 검출 끊김은 streak 유지 — 트래킹 순간 놓침(1~2프레임)으로
+                     # 게이트가 재대기하는 것 방지. 오탐(x281)의 끊김 간격은 3~4프레임이라 안 살아남음.
 
 # 관절 각도 정의: 이름 -> (A, 꼭짓점, B). 각도 = ∠A-꼭짓점-B (MediaPipe Pose 33 랜드마크 인덱스)
 ANGLES: dict[str, tuple[int, int, int]] = {
@@ -67,9 +81,123 @@ def _make_landmarker(running_mode: vision.RunningMode) -> vision.PoseLandmarker:
     options = vision.PoseLandmarkerOptions(
         base_options=mp_python.BaseOptions(model_asset_path=_MODEL_PATH),
         running_mode=running_mode,
+        min_pose_detection_confidence=_CONF,
+        min_pose_presence_confidence=_CONF,
         output_segmentation_masks=True,
     )
     return vision.PoseLandmarker.create_from_options(options)
+
+
+def _unrotate_norm(u: float, v: float, rot_idx: int) -> tuple[float, float]:
+    """회전된 검출 이미지의 정규화 좌표 (u,v) → 원래(비회전) 프레임 정규화 좌표."""
+    if rot_idx == 1:   # 검출 입력이 90CW 회전 → 원좌표 (u, v) = (v', 1-u')
+        return v, 1.0 - u
+    if rot_idx == 2:   # 90CCW
+        return 1.0 - v, u
+    if rot_idx == 3:   # 180
+        return 1.0 - u, 1.0 - v
+    return u, v
+
+
+class _PoseTracker:
+    """회전 폴백이 있는 포즈 검출기. 성공한 회전을 기억(sticky)하고 프레임 간 재사용한다.
+
+    반환 좌표·세그 마스크는 항상 비회전 기준으로 역매핑돼 있어, 호출측(히트 그리드)은
+    회전을 몰라도 된다.
+
+    landmarker는 회전 계열별로 분리한다 — 0°/180°(원본 치수)와 90°양방향(치수 뒤집힘).
+    VIDEO 모드 landmarker 하나에 치수가 다른 프레임을 섞어 넣으면 내부 그래프 버퍼가
+    오염돼 세그 마스크 numpy_view()가 C++ FATAL(ChannelSize 1 vs 4)로 죽는다(실측) —
+    파이썬에서 잡을 수 없어 구조적으로 차단해야 한다. 90° 계열은 지연 생성이라
+    회전이 필요 없는 일반 영상에서는 추가 비용이 없다.
+    """
+
+    def __init__(self, video_mode: bool) -> None:
+        self._video_mode = video_mode
+        self._lmks: dict[str, vision.PoseLandmarker] = {}
+        self._ts: dict[str, int] = {"land": 0, "port": 0}
+        self._rot = 0          # _ROTS 인덱스
+        self._fail_streak = 0
+        self._det_streak = 0   # 연속 검출 수 — _STREAK_GATE 도달 전에는 열 비활성
+
+    @staticmethod
+    def _family(rot_idx: int) -> str:
+        return "port" if rot_idx in (1, 2) else "land"
+
+    def _detect(self, det_bgr: np.ndarray, rot_idx: int) -> vision.PoseLandmarkerResult:
+        fam = self._family(rot_idx)
+        if fam not in self._lmks:
+            self._lmks[fam] = _make_landmarker(
+                vision.RunningMode.VIDEO if self._video_mode else vision.RunningMode.IMAGE
+            )
+        code = _ROTS[rot_idx]
+        img = det_bgr if code is None else cv2.rotate(det_bgr, code)
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+        if self._video_mode:
+            self._ts[fam] += 33
+            return self._lmks[fam].detect_for_video(mp_image, self._ts[fam])
+        return self._lmks[fam].detect(mp_image)
+
+    @staticmethod
+    def _extract(
+        result: vision.PoseLandmarkerResult, rot_used: int, grid_w: int, grid_h: int,
+    ) -> tuple[dict[int, tuple[float, float]], dict[int, float], np.ndarray | None]:
+        """검출 직후 즉시 호출 — 다음 detect가 내부 버퍼를 재사용하기 전에 복사해 둔다."""
+        landmarks = result.pose_landmarks[0]
+        pts: dict[int, tuple[float, float]] = {}
+        vis: dict[int, float] = {}
+        for i in range(33):
+            u, v = _unrotate_norm(landmarks[i].x, landmarks[i].y, rot_used)
+            pts[i] = (u * grid_w, v * grid_h)
+            vis[i] = landmarks[i].visibility
+        seg = None
+        # 회전 검출(rot != 0)의 세그 마스크는 읽지 않는다 — mediapipe 0.10.35에서
+        # 치수가 뒤집힌 입력의 마스크에 numpy_view()를 호출하면 C++ FATAL(ChannelSize
+        # 1 vs 4)로 프로세스가 죽는다(실측: rot=0 마스크 수백 회는 안전, rot=2에서 즉사).
+        # 파이썬 쪽 channels 메타데이터는 1로 거짓 보고하므로 사전 감지도 불가능 —
+        # 회전 프레임은 세그 컷 없이 진행한다(캡슐+얼굴 마스크는 유지, 품질만 소폭 저하).
+        if rot_used == 0 and result.segmentation_masks:
+            seg = np.array(result.segmentation_masks[0].numpy_view(), copy=True)
+            if seg.ndim == 3:
+                seg = seg[..., 0]
+            seg = cv2.resize(seg, (grid_w, grid_h))
+        return pts, vis, seg
+
+    def process(
+        self, det_bgr: np.ndarray, grid_w: int, grid_h: int,
+    ) -> tuple[dict[int, tuple[float, float]], dict[int, float], np.ndarray | None] | None:
+        """검출 입력(det_bgr, DET_W 폭)에서 포즈를 찾아 (그리드 좌표 pts, vis, 세그) 반환. 실패 시 None."""
+        result = self._detect(det_bgr, self._rot)
+        if not result.pose_landmarks:
+            self._fail_streak += 1
+            # 프로브 스로틀: 첫 실패와 이후 매 N프레임만 나머지 회전 시도
+            if self._fail_streak == 1 or self._fail_streak % _PROBE_INTERVAL == 0:
+                for k in range(len(_ROTS)):
+                    if k == self._rot:
+                        continue
+                    probe = self._detect(det_bgr, k)
+                    if probe.pose_landmarks:
+                        self._rot = k
+                        result = probe
+                        break
+        if not result.pose_landmarks:
+            # 짧은 끊김(_GAP_TOLERANCE 이하)은 streak 유지 — 프로브 복구·순간 놓침으로
+            # 게이트가 재대기하지 않게 한다. 최종 실패가 길어질 때만 리셋.
+            if self._fail_streak > _GAP_TOLERANCE:
+                self._det_streak = 0
+            return None
+
+        self._fail_streak = 0
+        self._det_streak += 1
+        # 시간적 일관성 게이트 — 산발적 오탐 차단. 프리뷰(IMAGE 모드, 단일 프레임)는 예외.
+        if self._video_mode and self._det_streak < _STREAK_GATE:
+            return None
+        return self._extract(result, self._rot, grid_w, grid_h)
+
+    def close(self) -> None:
+        for lmk in self._lmks.values():
+            lmk.close()
+        self._lmks.clear()
 
 
 def _global_affine(prev_gray: np.ndarray | None, gray: np.ndarray) -> np.ndarray | None:
@@ -285,25 +413,22 @@ class _RenderState:
         self.e_ema = np.zeros((ph, pw), np.float32)
         self.heat = np.zeros((ph, pw), np.float32)
 
-    def step(self, small_bgr: np.ndarray, result: vision.PoseLandmarkerResult) -> np.ndarray:
+    def step(
+        self,
+        small_bgr: np.ndarray,
+        pose: tuple[dict[int, tuple[float, float]], dict[int, float], np.ndarray | None] | None,
+    ) -> np.ndarray:
         """한 프레임 처리, 0..1 히트맵(내부 해상도 ph×pw)을 반환한다.
 
-        포즈 미검출 시 근육 맵은 0으로 유지되고 기존 잔열만 감쇠한다 — 크래시 없이
+        `pose`는 `_PoseTracker.process()`의 출력(그리드 좌표 pts, vis, 세그) 또는 None.
+        포즈 미검출(None) 시 근육 맵은 0으로 유지되고 기존 잔열만 감쇠한다 — 크래시 없이
         그레이스풀 폴백(운동열 없이 베이스 화면만 출력).
         """
         gray = cv2.cvtColor(small_bgr, cv2.COLOR_BGR2GRAY)
         affine = _global_affine(self.prev_gray, gray)
 
-        if result.pose_landmarks:
-            landmarks = result.pose_landmarks[0]
-            pts = {i: (landmarks[i].x * self.pw, landmarks[i].y * self.ph) for i in range(33)}
-            vis = {i: landmarks[i].visibility for i in range(33)}
-            seg = None
-            if result.segmentation_masks:
-                seg = result.segmentation_masks[0].numpy_view()
-                if seg.ndim == 3:
-                    seg = seg[..., 0]
-                seg = cv2.resize(seg, (self.pw, self.ph))
+        if pose is not None:
+            pts, vis, seg = pose
             muscle, angs = _muscle_layer(
                 pts, vis, seg, self.ph, self.pw, self.prev_pts, self.prev_angs, self.eff_ema, affine,
             )
@@ -334,18 +459,19 @@ def heat_preview_frame(frame: np.ndarray, weak_cartoon: bool) -> np.ndarray:
     """
     h, w = frame.shape[:2]
     ph = max(2, int(round(PW * h / w)))
+    dh = max(2, int(round(DET_W * h / w)))
     small = cv2.resize(frame, (PW, ph), interpolation=cv2.INTER_AREA)
-    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=cv2.cvtColor(small, cv2.COLOR_BGR2RGB))
+    det = cv2.resize(frame, (DET_W, dh), interpolation=cv2.INTER_AREA)
 
-    landmarker = _make_landmarker(vision.RunningMode.IMAGE)
+    tracker = _PoseTracker(video_mode=False)
     try:
-        result = landmarker.detect(mp_image)
+        pose = tracker.process(det, PW, ph)
     finally:
-        landmarker.close()
+        tracker.close()
 
     state = _RenderState(ph)
     for _ in range(_PREVIEW_CONVERGE_STEPS):
-        heat = state.step(small, result)
+        heat = state.step(small, pose)
     base = light_cartoonize(frame) if weak_cartoon else frame
     heat_full = cv2.resize(heat, (w, h), interpolation=cv2.INTER_LINEAR)
     return _overlay(base, heat_full)
@@ -356,7 +482,8 @@ def render_heat_video(input_path: str, output_path: str, weak_cartoon: bool) -> 
 
     MediaPipe `PoseLandmarker`의 VIDEO 모드는 타임스탬프 단조증가가 필요한 상태
     기반 트래커라 `cartoonize_video()`처럼 프로세스 풀 병렬화가 불가능하다 —
-    단일 프로세스 순차 처리(포즈 신호는 가벼운 lite 모델 + 저해상도 처리로 속도 확보).
+    단일 프로세스 순차 처리(검출 입력 DET_W 다운스케일 + 히트 그리드 PW 분리로 속도 확보).
+    근접 크롭·플랭크류(수평 자세)는 `_PoseTracker`의 회전 폴백이 잡는다.
     """
     cap = cv2.VideoCapture(input_path)
     if not cap.isOpened():
@@ -389,7 +516,8 @@ def render_heat_video(input_path: str, output_path: str, weak_cartoon: bool) -> 
     assert proc.stdin is not None
 
     processed = 0
-    landmarker = _make_landmarker(vision.RunningMode.VIDEO)
+    dh = max(2, int(round(DET_W * out_h / out_w)))
+    tracker = _PoseTracker(video_mode=True)
     state = _RenderState(ph)
     try:
         while True:
@@ -399,10 +527,8 @@ def render_heat_video(input_path: str, output_path: str, weak_cartoon: bool) -> 
             if (frame.shape[1], frame.shape[0]) != (out_w, out_h):
                 frame = cv2.resize(frame, (out_w, out_h), interpolation=cv2.INTER_AREA)
             small = cv2.resize(frame, (PW, ph), interpolation=cv2.INTER_AREA)
-            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=cv2.cvtColor(small, cv2.COLOR_BGR2RGB))
-            ts_ms = int(processed * 1000 / fps)  # 소스 타임스탬프 대신 프레임 인덱스로 단조증가 보장
-            result = landmarker.detect_for_video(mp_image, ts_ms)
-            heat = state.step(small, result)
+            det = cv2.resize(frame, (DET_W, dh), interpolation=cv2.INTER_AREA)
+            heat = state.step(small, tracker.process(det, PW, ph))
 
             base = light_cartoonize(frame) if weak_cartoon else frame
             heat_full = cv2.resize(heat, (out_w, out_h), interpolation=cv2.INTER_LINEAR)
@@ -410,7 +536,7 @@ def render_heat_video(input_path: str, output_path: str, weak_cartoon: bool) -> 
             proc.stdin.write(canvas.tobytes())
             processed += 1
     finally:
-        landmarker.close()
+        tracker.close()
         cap.release()
         proc.stdin.close()
         stderr = proc.stderr.read().decode(errors="replace") if proc.stderr else ""
