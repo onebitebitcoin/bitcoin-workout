@@ -10,11 +10,13 @@ import numpy as np
 import pytest
 
 from app.services.muscle_heat import (
+    PRESETS,
     PW,
     _RenderState,
     _unrotate_norm,
     heat_preview_frame,
     light_cartoonize,
+    preset_for_exercise,
     render_heat_video,
 )
 
@@ -25,6 +27,36 @@ def _textured_frame(seed: int = 5, size: tuple[int, int] = (240, 320)) -> np.nda
     rng = np.random.default_rng(seed)
     base = rng.integers(40, 220, (*size, 3), dtype=np.uint8)
     return cv2.GaussianBlur(base, (5, 5), 0)
+
+
+class TestPresetForExercise:
+    """Gemini 운동명 → 근육군 프리셋 매핑. 부위 오귀속 억제의 핵심."""
+
+    def test_squat_maps_to_legs(self):
+        assert preset_for_exercise("Smith machine squat") == PRESETS["legs"]
+
+    def test_curl_maps_to_arms(self):
+        assert preset_for_exercise("dumbbell bicep curl") == PRESETS["arms"]
+
+    def test_pullup_maps_to_back(self):
+        assert preset_for_exercise("pull-up") == PRESETS["back"]
+
+    def test_pushup_maps_to_chest(self):
+        assert preset_for_exercise("push-ups") == PRESETS["chest"]
+
+    def test_jumprope_maps_to_fullbody(self):
+        assert preset_for_exercise("jump rope") == PRESETS["fullbody"]
+
+    def test_unknown_returns_none(self):
+        assert preset_for_exercise("meditation") is None
+
+    def test_none_returns_none(self):
+        assert preset_for_exercise(None) is None
+
+    def test_squat_preset_excludes_arms(self):
+        # 스쿼트 프리셋에 팔 근육군이 없어야 팔 오발화가 억제된다
+        legs = PRESETS["legs"]
+        assert "uarm" not in legs and "farm" not in legs and "delt" not in legs
 
 
 class TestLightCartoonize:
@@ -124,6 +156,12 @@ class TestHeatPreviewFrame:
         original = frame.copy()
         heat_preview_frame(frame, weak_cartoon=False)
         assert np.array_equal(frame, original)
+
+    def test_exercise_param_accepted(self):
+        # exercise 프리셋 인자가 preview 경로를 통과해도 크래시 없이 동작
+        frame = _textured_frame()
+        out = heat_preview_frame(frame, weak_cartoon=False, exercise="squat")
+        assert out.shape == frame.shape
 
 
 @pytest.mark.skipif(not _HAS_FFMPEG, reason="ffmpeg not installed")

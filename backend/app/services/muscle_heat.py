@@ -68,6 +68,41 @@ CAPS: list[tuple[str, int, int, float, list[str], float, list[int] | None]] = [
 ]
 CORE_ANGLES = ["hipL", "hipR"]  # 코어 = 몸통 굽힘(힙 각도) 변화만. 단순 이동은 무시
 
+# 운동별 근육 프리셋 — Gemini 영상 분류가 넘겨주는 힌트로 "이 운동엔 이 근육군만" 게인을
+# 살리고 나머지는 강하게 감쇠(_PRESET_SUPPRESS)한다. 각속도 휴리스틱만으론 스미스 스쿼트에서
+# 팔 캡슐이 1.0으로 오발화하는 등 부위 오귀속이 큰데(측정 실증), 종목을 알면 이걸 원천 차단할
+# 수 있다. 키는 캡슐 접두사(uarm/farm/delt/thigh/calf/glute/core). None이면 전 캡슐 균등(기존 동작).
+MUSCLE_GROUPS = ("uarm", "farm", "delt", "thigh", "calf", "glute", "core")
+_PRESET_SUPPRESS = 0.12  # 프리셋에 없는 근육군의 게인 배율 (0=완전차단, 1=억제없음).
+                         # off-target(엉뚱한 근육) 열을 실측 30~46% → 1~8%로 낮춤.
+PRESETS: dict[str, set[str]] = {
+    "arms":      {"uarm", "farm", "delt"},          # 컬·프레스류
+    "legs":      {"thigh", "calf", "glute", "core"}, # 스쿼트·런지·레그
+    "back":      {"uarm", "delt", "core"},           # 풀업·로우 (광배 캡슐 없어 이두·어깨로 근사)
+    "chest":     {"uarm", "delt", "core"},           # 푸쉬업·벤치 (가슴 캡슐 없어 삼두·어깨로 근사)
+    "fullbody":  set(MUSCLE_GROUPS),                 # 줄넘기·버피 등 복합
+}
+# Gemini exercise 문자열/근육명 → 프리셋 (부분 일치, 소문자)
+_EXERCISE_PRESET = [
+    ("squat", "legs"), ("lunge", "legs"), ("leg", "legs"), ("deadlift", "legs"),
+    ("curl", "arms"), ("press", "arms"), ("extension", "arms"), ("tricep", "arms"), ("bicep", "arms"),
+    ("pull-up", "back"), ("pullup", "back"), ("pull up", "back"), ("row", "back"), ("lat", "back"),
+    ("push-up", "chest"), ("pushup", "chest"), ("push up", "chest"), ("bench", "chest"), ("dip", "chest"),
+    ("jump rope", "fullbody"), ("jumping", "fullbody"), ("burpee", "fullbody"), ("rope", "fullbody"),
+]
+
+
+def preset_for_exercise(exercise: str | None) -> set[str] | None:
+    """Gemini 운동명 → 근육군 프리셋. 매칭 없으면 None(전 캡슐 균등)."""
+    if not exercise:
+        return None
+    ex = exercise.lower()
+    for kw, preset in _EXERCISE_PRESET:
+        if kw in ex:
+            return PRESETS[preset]
+    return None
+
+
 K_ANG = 0.030       # 각속도(rad/frame) -> effort=1 스케일 (~1.7도/frame)
 DB_ANG = 0.006       # 각도 지터 데드밴드 (팔)
 DB_ANG_LOW = 0.010   # 하체/코어 데드밴드 (지터 얼룩 방지)
@@ -310,6 +345,13 @@ def _static_load_floors(pts: dict[int, tuple[float, float]], vis: dict[int, floa
     return floors
 
 
+def _preset_scale(prefix: str, preset: set[str] | None) -> float:
+    """프리셋에 속하지 않는 근육군은 게인을 강하게 낮춘다(0 아님 — 살짝은 남겨 자연스럽게)."""
+    if preset is None or prefix in preset:
+        return 1.0
+    return _PRESET_SUPPRESS
+
+
 def _muscle_layer(
     pts: dict[int, tuple[float, float]],
     vis: dict[int, float],
@@ -320,8 +362,13 @@ def _muscle_layer(
     prev_angs: dict[str, float],
     eff_ema: dict[str, float],
     affine: np.ndarray | None,
+    preset: set[str] | None = None,
 ) -> tuple[np.ndarray, dict[str, float]]:
-    """한 프레임의 근육 부하 맵(0..1)과 이번 프레임 관절 각도를 계산한다."""
+    """한 프레임의 근육 부하 맵(0..1)과 이번 프레임 관절 각도를 계산한다.
+
+    preset: 운동 종목이 특정하는 근육군 집합(캡슐 접두사). 여기 없는 근육군은 게인을
+    _PRESET_SUPPRESS 로 낮춰 부위 오귀속(스쿼트 팔 오발화 등)을 억제한다. None이면 균등.
+    """
     mid_sho = ((pts[11][0] + pts[12][0]) / 2, (pts[11][1] + pts[12][1]) / 2)
     mid_hip = ((pts[23][0] + pts[24][0]) / 2, (pts[23][1] + pts[24][1]) / 2)
     torso = max(20.0, float(np.hypot(mid_sho[0] - mid_hip[0], mid_sho[1] - mid_hip[1])))
@@ -360,7 +407,8 @@ def _muscle_layer(
 
         if not (in_bounds(pts[a]) and in_bounds(pts[b])):  # 유령 사지 방지
             continue
-        e = max(effort(drivers, gain, aux, DB_ANG_LOW if lower_body else DB_ANG), floors.get(name, 0.0))
+        scale = _preset_scale(name[:-1], preset)  # uarmL -> uarm
+        e = max(effort(drivers, gain, aux, DB_ANG_LOW if lower_body else DB_ANG), floors.get(name, 0.0)) * scale
         e = eff_ema[name] = 0.5 * e + 0.5 * eff_ema.get(name, 0.0)
         if e < 0.12:
             continue
@@ -375,7 +423,7 @@ def _muscle_layer(
         muscle = np.maximum(muscle, layer)
 
     if all(vis.get(i, 0) >= VIS_MIN for i in (11, 12, 23, 24)):  # 코어: 어깨-엉덩이 사각형
-        e = effort(CORE_ANGLES, 0.75, None, DB_ANG_LOW)
+        e = effort(CORE_ANGLES, 0.75, None, DB_ANG_LOW) * _preset_scale("core", preset)
         e = eff_ema["core"] = 0.5 * e + 0.5 * eff_ema.get("core", 0.0)
         if e >= 0.12:
             poly = np.array([pts[11], pts[12], pts[24], pts[23]], np.int32)
@@ -403,9 +451,10 @@ def _muscle_layer(
 class _RenderState:
     """프레임 간 유지되는 트래킹 상태(관절 각도·EMA·잔열). 영상 1개당 인스턴스 1개."""
 
-    def __init__(self, ph: int, pw: int = PW) -> None:
+    def __init__(self, ph: int, pw: int = PW, preset: set[str] | None = None) -> None:
         self.ph = ph
         self.pw = pw
+        self.preset = preset  # 운동 종목 근육군 프리셋 (None = 균등)
         self.prev_pts: dict[int, tuple[float, float]] | None = None
         self.prev_angs: dict[str, float] = {}
         self.prev_gray: np.ndarray | None = None
@@ -431,6 +480,7 @@ class _RenderState:
             pts, vis, seg = pose
             muscle, angs = _muscle_layer(
                 pts, vis, seg, self.ph, self.pw, self.prev_pts, self.prev_angs, self.eff_ema, affine,
+                preset=self.preset,
             )
             self.prev_pts, self.prev_angs = pts, angs
         else:
@@ -445,12 +495,14 @@ class _RenderState:
 _PREVIEW_CONVERGE_STEPS = 12  # EMA가 정적 부하의 정상상태(steady state)에 도달하는 데 필요한 반복 수
 
 
-def heat_preview_frame(frame: np.ndarray, weak_cartoon: bool) -> np.ndarray:
+def heat_preview_frame(frame: np.ndarray, weak_cartoon: bool, exercise: str | None = None) -> np.ndarray:
     """단일 프레임 미리보기.
 
     각속도·이동속도 신호가 없어(프레임 1장) 정적 부하 휴리스틱(오버헤드 지지·깊은 무릎
     굽힘)만 반영된다. 실제 영상에서는 움직일수록 열이 진해진다 — 프론트 힌트 텍스트로
     이 한계를 안내한다.
+
+    exercise: 운동 종목명(선택) — 근육군 프리셋으로 부위 오귀속을 억제한다.
 
     같은 포즈 결과로 `_RenderState`를 여러 스텝 돌려 EMA를 정상상태로 수렴시킨다 —
     "이 자세를 계속 유지하면"의 정확한 극한값이며, 1회 호출로는 잔열 누적(`ALPHA`,
@@ -469,7 +521,7 @@ def heat_preview_frame(frame: np.ndarray, weak_cartoon: bool) -> np.ndarray:
     finally:
         tracker.close()
 
-    state = _RenderState(ph)
+    state = _RenderState(ph, preset=preset_for_exercise(exercise))
     for _ in range(_PREVIEW_CONVERGE_STEPS):
         heat = state.step(small, pose)
     base = light_cartoonize(frame) if weak_cartoon else frame
@@ -477,7 +529,7 @@ def heat_preview_frame(frame: np.ndarray, weak_cartoon: bool) -> np.ndarray:
     return _overlay(base, heat_full)
 
 
-def render_heat_video(input_path: str, output_path: str, weak_cartoon: bool) -> None:
+def render_heat_video(input_path: str, output_path: str, weak_cartoon: bool, exercise: str | None = None) -> None:
     """영상 전체에 근육 히트맵을 합성한다. 원본 오디오 스트림은 그대로 보존(-c:a copy).
 
     MediaPipe `PoseLandmarker`의 VIDEO 모드는 타임스탬프 단조증가가 필요한 상태
@@ -518,7 +570,7 @@ def render_heat_video(input_path: str, output_path: str, weak_cartoon: bool) -> 
     processed = 0
     dh = max(2, int(round(DET_W * out_h / out_w)))
     tracker = _PoseTracker(video_mode=True)
-    state = _RenderState(ph)
+    state = _RenderState(ph, preset=preset_for_exercise(exercise))
     try:
         while True:
             ok, frame = cap.read()
