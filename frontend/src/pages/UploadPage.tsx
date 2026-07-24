@@ -12,7 +12,7 @@ import { MERGE_POLL_INTERVAL_MS } from '../lib/constants'
 import type { Challenge, SubtitleLanguage } from '../api/types'
 import { isAxiosError } from 'axios'
 import StepMedia, { type MediaItem, MAX_IMAGES, IMAGE_CLIP_SECONDS } from './upload/StepMedia'
-import { combineVideoFilter } from '../utils/videoFilter'
+import { type VideoFilterValue } from '../utils/videoFilter'
 import StepSubtitle, { type SubtitleSource } from './upload/StepSubtitle'
 import StepMeta, { type MainCategory } from './upload/StepMeta'
 import { srtToTextLines } from '../utils/subtitles'
@@ -105,8 +105,7 @@ export default function UploadPage() {
   const [subtitleLanguage, setSubtitleLanguage] = useState<SubtitleLanguage>('ko')
   const [extractingSubtitles, setExtractingSubtitles] = useState(false)
   const [muteOriginalAudio, setMuteOriginalAudio] = useState(false)
-  const [cartoonFilter, setCartoonFilter] = useState(false)
-  const [heatFilter, setHeatFilter] = useState(false)
+  const [videoFilter, setVideoFilter] = useState<VideoFilterValue>('')
   const [videoAudioStatus, setVideoAudioStatus] = useState<'idle' | 'analyzing' | 'has_audio' | 'no_audio' | 'error'>('idle')
   const videoSubtitleTriedRef = useRef(false)
 
@@ -468,7 +467,6 @@ export default function UploadPage() {
         form.append('subtitle_language', subtitleLanguage)
       }
       if (muteOriginalAudio) form.append('mute_video', 'true')
-      const videoFilter = combineVideoFilter(cartoonFilter, heatFilter)
       if (videoFilter) form.append('video_filter', videoFilter)
       form.append('tags', JSON.stringify(mainCategory ? [mainCategory] : []))
       if (selectedChallengeId != null) form.append('challenge_id', String(selectedChallengeId))
@@ -607,10 +605,8 @@ export default function UploadPage() {
           estimatedSeconds={estimatedSeconds}
           error={error}
           onNext={() => setStep(1)}
-          cartoonFilter={cartoonFilter}
-          setCartoonFilter={setCartoonFilter}
-          heatFilter={heatFilter}
-          setHeatFilter={setHeatFilter}
+          videoFilter={videoFilter}
+          setVideoFilter={setVideoFilter}
         />
       )}
       {step === 1 && (

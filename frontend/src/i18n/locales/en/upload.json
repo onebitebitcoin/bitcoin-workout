@@ -156,15 +156,28 @@
     "title": "Video effects",
     "previewLoading": "Generating preview...",
     "previewFailed": "Couldn't load the preview. The filter will still be applied.",
-    "cartoon": {
-      "title": "Cartoon filter",
-      "hint": "Turns your video and photos into a cartoon look. Faces and backgrounds are softly simplified.",
-      "previewLabel": "Cartoon preview"
-    },
-    "heat": {
-      "title": "Muscle heat",
-      "hint": "Muscles working hardest glow red. It gets more intense the more you move in the actual video.",
-      "previewLabel": "Muscle heat preview"
+    "previewLabel": "Effect preview",
+    "options": {
+      "none": {
+        "title": "No effect",
+        "hint": "Upload as-is."
+      },
+      "cartoon": {
+        "title": "Cartoon filter",
+        "hint": "Turns your whole video into a cartoon look. Faces and backgrounds are softly simplified."
+      },
+      "heat": {
+        "title": "Muscle heat",
+        "hint": "Muscles working hardest glow red — more intense the more you move."
+      },
+      "cartoonHeat": {
+        "title": "Cartoon + heat",
+        "hint": "A light cartoon look for privacy, with muscle heat layered on top."
+      },
+      "footsteps": {
+        "title": "Footsteps",
+        "hint": "Footprints stamp to your walking rhythm with step and floor counters. Great for walks and stairs."
+      }
     }
   }
 }

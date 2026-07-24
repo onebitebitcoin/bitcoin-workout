@@ -2,7 +2,6 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi } from 'vitest'
 import StepMedia, { type MediaItem } from './StepMedia'
-import { combineVideoFilter } from '../../utils/videoFilter'
 
 vi.mock('../../api/client', () => ({
   default: { post: vi.fn(() => new Promise(() => undefined)) },
@@ -29,10 +28,8 @@ function buildProps(overrides: Partial<React.ComponentProps<typeof StepMedia>> =
     estimatedSeconds: 0,
     error: '',
     onNext: vi.fn(),
-    cartoonFilter: false,
-    setCartoonFilter: vi.fn(),
-    heatFilter: false,
-    setHeatFilter: vi.fn(),
+    videoFilter: '' as const,
+    setVideoFilter: vi.fn(),
     ...overrides,
   }
 }
@@ -71,72 +68,56 @@ describe('StepMedia', () => {
     expect(onRemove).toHaveBeenCalledWith('a')
   })
 
-  it('아이템이 없으면 필터 토글이 보이지 않는다', () => {
+  it('아이템이 없으면 효과 옵션이 보이지 않는다', () => {
     render(<StepMedia {...buildProps()} />)
-    expect(screen.queryAllByRole('switch')).toHaveLength(0)
+    expect(screen.queryAllByRole('radio')).toHaveLength(0)
   })
 
-  it('아이템이 있으면 카툰·운동열 토글이 각각 하나씩 보인다', () => {
+  it('아이템이 있으면 효과 옵션 5개(없음/카툰/운동열/카툰+운동열/발자국)가 보인다', () => {
     const items = [makeItem('image', 'a')]
     render(<StepMedia {...buildProps({ items, estimatedSeconds: 3 })} />)
-    expect(screen.getAllByRole('switch')).toHaveLength(2)
+    expect(screen.getAllByRole('radio')).toHaveLength(5)
   })
 
-  it('카툰 토글 클릭 시 setCartoonFilter(true) 호출', async () => {
-    const setCartoonFilter = vi.fn()
+  it.each([
+    ['카툰 필터', 'cartoon'],
+    ['운동열 강조', 'heat'],
+    ['카툰 + 운동열', 'cartoon_heat'],
+    ['발자국', 'footsteps'],
+  ])('%s 선택 시 setVideoFilter(%s) 호출', async (label, value) => {
+    const setVideoFilter = vi.fn()
     const items = [makeItem('image', 'a')]
-    render(<StepMedia {...buildProps({ items, estimatedSeconds: 3, setCartoonFilter })} />)
-    await userEvent.click(screen.getByRole('switch', { name: '카툰 필터' }))
-    expect(setCartoonFilter).toHaveBeenCalledWith(true)
+    render(<StepMedia {...buildProps({ items, estimatedSeconds: 3, setVideoFilter })} />)
+    await userEvent.click(screen.getByRole('radio', { name: label }))
+    expect(setVideoFilter).toHaveBeenCalledWith(value)
   })
 
-  it('운동열 토글 클릭 시 setHeatFilter(true) 호출', async () => {
-    const setHeatFilter = vi.fn()
+  it('효과 없음 선택 시 setVideoFilter(빈 값) 호출', async () => {
+    const setVideoFilter = vi.fn()
     const items = [makeItem('image', 'a')]
-    render(<StepMedia {...buildProps({ items, estimatedSeconds: 3, setHeatFilter })} />)
-    await userEvent.click(screen.getByRole('switch', { name: '운동열 강조' }))
-    expect(setHeatFilter).toHaveBeenCalledWith(true)
+    render(<StepMedia {...buildProps({ items, estimatedSeconds: 3, videoFilter: 'cartoon', setVideoFilter })} />)
+    await userEvent.click(screen.getByRole('radio', { name: '효과 없음' }))
+    expect(setVideoFilter).toHaveBeenCalledWith('')
   })
 
-  it('카툰 필터 ON이면 이미지 아이템으로 filter-preview 요청을 보낸다', async () => {
+  it('선택된 옵션은 aria-checked=true', () => {
     const items = [makeItem('image', 'a')]
-    render(<StepMedia {...buildProps({ items, estimatedSeconds: 3, cartoonFilter: true })} />)
-    await waitFor(() =>
-      expect(vi.mocked(client.post)).toHaveBeenCalledWith(
-        '/videos/filter-preview',
-        expect.any(FormData),
-        expect.objectContaining({ responseType: 'blob' }),
-      ),
-    )
+    render(<StepMedia {...buildProps({ items, estimatedSeconds: 3, videoFilter: 'footsteps' })} />)
+    expect(screen.getByRole('radio', { name: '발자국' })).toHaveAttribute('aria-checked', 'true')
+    expect(screen.getByRole('radio', { name: '카툰 필터' })).toHaveAttribute('aria-checked', 'false')
   })
 
-  it('운동열 필터 ON이면 filter-preview 요청을 보낸다', async () => {
-    const items = [makeItem('image', 'a')]
-    render(<StepMedia {...buildProps({ items, estimatedSeconds: 3, heatFilter: true })} />)
-    await waitFor(() =>
-      expect(vi.mocked(client.post)).toHaveBeenCalledWith(
-        '/videos/filter-preview',
-        expect.any(FormData),
-        expect.objectContaining({ responseType: 'blob' }),
-      ),
-    )
-  })
-})
-
-describe('combineVideoFilter', () => {
-  it('둘 다 꺼지면 undefined', () => {
-    expect(combineVideoFilter(false, false)).toBeUndefined()
-  })
-
-  it('카툰만 켜지면 cartoon', () => {
-    expect(combineVideoFilter(true, false)).toBe('cartoon')
-  })
-
-  it('운동열만 켜지면 heat', () => {
-    expect(combineVideoFilter(false, true)).toBe('heat')
-  })
-
-  it('둘 다 켜지면 cartoon_heat', () => {
-    expect(combineVideoFilter(true, true)).toBe('cartoon_heat')
-  })
+  it.each(['cartoon', 'heat', 'footsteps'] as const)(
+    '%s 선택이면 filter-preview 요청을 보낸다', async (videoFilter) => {
+      const items = [makeItem('image', 'a')]
+      render(<StepMedia {...buildProps({ items, estimatedSeconds: 3, videoFilter })} />)
+      await waitFor(() =>
+        expect(vi.mocked(client.post)).toHaveBeenCalledWith(
+          '/videos/filter-preview',
+          expect.any(FormData),
+          expect.objectContaining({ responseType: 'blob' }),
+        ),
+      )
+    },
+  )
 })

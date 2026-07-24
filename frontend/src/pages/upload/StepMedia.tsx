@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type ChangeEvent, type ReactNode, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ImagePlus, Film, X, GripVertical, Loader2, Wand2, Flame } from 'lucide-react'
+import { ImagePlus, Film, X, GripVertical, Loader2, Wand2, Flame, Ban, Layers, Footprints } from 'lucide-react'
 import client from '../../api/client'
-import { combineVideoFilter } from '../../utils/videoFilter'
+import { VIDEO_FILTER_OPTIONS, type VideoFilterValue } from '../../utils/videoFilter'
 import {
   DndContext,
   PointerSensor,
@@ -43,10 +43,8 @@ interface Props {
   estimatedSeconds: number
   error: string
   onNext: () => void
-  cartoonFilter: boolean
-  setCartoonFilter: (on: boolean) => void
-  heatFilter: boolean
-  setHeatFilter: (on: boolean) => void
+  videoFilter: VideoFilterValue
+  setVideoFilter: (value: VideoFilterValue) => void
 }
 
 /** 첫 미디어에서 프리뷰용 프레임 1장을 JPEG Blob으로 캡처 (이미지는 파일 그대로). */
@@ -114,37 +112,47 @@ function SortableCard({ item, onRemove }: { item: MediaItem; onRemove: (id: stri
   )
 }
 
-function FilterRow({
-  icon, title, hint, on, onToggle,
-}: { icon: ReactNode; title: string; hint: string; on: boolean; onToggle: () => void }) {
+const FILTER_ICONS: Record<string, ReactNode> = {
+  none: <Ban size={16} className="text-theme-muted" />,
+  cartoon: <Wand2 size={16} className="text-accent" />,
+  heat: <Flame size={16} className="text-accent" />,
+  cartoonHeat: <Layers size={16} className="text-accent" />,
+  footsteps: <Footprints size={16} className="text-accent" />,
+}
+
+function FilterOption({
+  icon, title, hint, selected, onSelect,
+}: { icon: ReactNode; title: string; hint: string; selected: boolean; onSelect: () => void }) {
   return (
-    <div className="flex items-center justify-between gap-3">
-      <div className="flex items-center gap-2">
-        {icon}
-        <div>
-          <p className="text-sm font-semibold text-theme-primary">{title}</p>
-          <p className="text-xs text-theme-muted mt-0.5 leading-relaxed">{hint}</p>
-        </div>
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      aria-label={title}
+      onClick={onSelect}
+      className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors ${
+        selected ? 'border-accent bg-accent/10' : 'border-theme-border bg-transparent'
+      }`}
+    >
+      {icon}
+      <div className="flex-1">
+        <p className="text-sm font-semibold text-theme-primary">{title}</p>
+        <p className="text-xs text-theme-muted mt-0.5 leading-relaxed">{hint}</p>
       </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={on}
-        aria-label={title}
-        onClick={onToggle}
-        className={`flex h-6 w-11 shrink-0 items-center rounded-full p-0.5 transition-colors ${
-          on ? 'justify-end bg-accent' : 'justify-start bg-theme-surface2'
+      <span
+        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
+          selected ? 'border-accent' : 'border-theme-border'
         }`}
       >
-        <span className="h-5 w-5 rounded-full bg-white shadow" />
-      </button>
-    </div>
+        {selected && <span className="h-2 w-2 rounded-full bg-accent" />}
+      </span>
+    </button>
   )
 }
 
 export default function StepMedia({
   fileInputRef, items, onAddFiles, onRemove, onReorder, estimatedSeconds, error, onNext,
-  cartoonFilter, setCartoonFilter, heatFilter, setHeatFilter,
+  videoFilter, setVideoFilter,
 }: Props) {
   const { t } = useTranslation('upload')
   const localInputRef = useRef<HTMLInputElement>(null)
@@ -154,7 +162,6 @@ export default function StepMedia({
   const [previewLoading, setPreviewLoading] = useState(false)
   const [previewError, setPreviewError] = useState(false)
   const firstItemId = items[0]?.id
-  const videoFilter = combineVideoFilter(cartoonFilter, heatFilter)
 
   useEffect(() => {
     if (!videoFilter || !items[0]) {
@@ -258,21 +265,18 @@ export default function StepMedia({
         <div className="rounded-2xl bg-theme-surface p-4">
           <p className="text-sm font-semibold text-theme-primary mb-3">{t('filter.title')}</p>
 
-          <FilterRow
-            icon={<Wand2 size={16} className="text-accent" />}
-            title={t('filter.cartoon.title')}
-            hint={t('filter.cartoon.hint')}
-            on={cartoonFilter}
-            onToggle={() => setCartoonFilter(!cartoonFilter)}
-          />
-          <div className="my-3 h-px bg-theme-border" />
-          <FilterRow
-            icon={<Flame size={16} className="text-accent" />}
-            title={t('filter.heat.title')}
-            hint={t('filter.heat.hint')}
-            on={heatFilter}
-            onToggle={() => setHeatFilter(!heatFilter)}
-          />
+          <div role="radiogroup" aria-label={t('filter.title')} className="flex flex-col gap-2">
+            {VIDEO_FILTER_OPTIONS.map((opt) => (
+              <FilterOption
+                key={opt.key}
+                icon={FILTER_ICONS[opt.key]}
+                title={t(`filter.options.${opt.key}.title`)}
+                hint={t(`filter.options.${opt.key}.hint`)}
+                selected={videoFilter === opt.value}
+                onSelect={() => setVideoFilter(opt.value)}
+              />
+            ))}
+          </div>
 
           {videoFilter && (
             <div className="mt-3 flex flex-col items-center gap-2">
@@ -285,7 +289,7 @@ export default function StepMedia({
               {!previewLoading && previewUrl && (
                 <img
                   src={previewUrl}
-                  alt={t(heatFilter ? 'filter.heat.previewLabel' : 'filter.cartoon.previewLabel')}
+                  alt={t('filter.previewLabel')}
                   className="max-h-56 max-w-full rounded-xl object-contain"
                 />
               )}
