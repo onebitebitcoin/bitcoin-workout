@@ -27,7 +27,7 @@ stack_health/
 | 비트코인 리워드/정산 | `backend/app/services/reward.py` + `backend/app/routes/rewards.py` (Blink Lightning API) |
 | 영상 업로드/스토리지 | `backend/app/routes/videos.py` + `backend/app/services/r2.py` (Cloudflare R2) |
 | 영상 인코딩/병합/자막 처리 | `worker/tasks/full_pipeline.py`(단일), `full_pipeline_multi.py`(다중 미디어), `compose.py`(영상+이미지 concat), `merge.py`, `subtitle_extract.py` + `backend/app/services/job_queue.py` (Redis 큐 enqueue) |
-| 영상 필터 (카툰·운동열 강조) | `backend/app/services/cartoon.py`(카툰 렌더러) + `backend/app/services/muscle_heat.py`(포즈 기반 근육 히트맵 렌더러, mediapipe) + `POST /videos/filter-preview`(1프레임 미리보기, `video_filter=cartoon\|heat\|cartoon_heat`) + `worker/tasks/full_pipeline_multi.py`(`_apply_video_filter`) + `frontend/src/pages/upload/StepMedia.tsx`(두 스위치 UI) + `frontend/src/utils/videoFilter.ts`(조합 로직) |
+| 영상 필터 (카툰·운동열·발자국) | `backend/app/services/cartoon.py`(카툰 렌더러) + `backend/app/services/muscle_heat.py`(포즈 기반 근육 히트맵, mediapipe; `preset_for_exercise` 운동별 프리셋) + `backend/app/services/exercise_classify.py`(Gemini 운동 종목 분류) + `backend/app/services/motion_fx.py`(옵티컬 플로우 기반 발자국 리듬 효과, 포즈 불필요) + `POST /videos/filter-preview`(1프레임 미리보기, `video_filter=cartoon\|heat\|cartoon_heat\|footsteps`) + `worker/tasks/full_pipeline_multi.py`(`_apply_video_filter`; heat 계열만 classify) + `frontend/src/pages/upload/StepMedia.tsx`(효과 선택 라디오 UI) + `frontend/src/utils/videoFilter.ts`(옵션 목록·타입) |
 | 다중 미디어 업로드 (영상≤1+이미지≤5) | `frontend/src/pages/upload/Step{Media,Subtitle,Meta}.tsx` → `POST /videos/upload-multi` → `worker/tasks/full_pipeline_multi.py` (`docs/PLAN-2026-06-29-upload-multi-media.md`) |
 | 자막 (Whisper 환각 필터 등) | `backend/app/services/subtitles.py` + `worker/tasks/subtitle.py` |
 | 프론트 페이지 수정 | `frontend/src/pages/<페이지>.tsx` (라우팅: `frontend/src/App.tsx`) |
