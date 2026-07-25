@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent, type ReactNode, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ImagePlus, Film, X, GripVertical, Loader2, Wand2, Flame, Ban, Layers, Footprints } from 'lucide-react'
+import { ImagePlus, Film, X, GripVertical, Loader2, Wand2, Flame, Ban, Layers, Footprints, ChevronDown, Check } from 'lucide-react'
 import client from '../../api/client'
 import { VIDEO_FILTER_OPTIONS, type VideoFilterValue } from '../../utils/videoFilter'
 import {
@@ -120,33 +120,96 @@ const FILTER_ICONS: Record<string, ReactNode> = {
   footsteps: <Footprints size={16} className="text-accent" />,
 }
 
-function FilterOption({
-  icon, title, hint, selected, onSelect,
-}: { icon: ReactNode; title: string; hint: string; selected: boolean; onSelect: () => void }) {
+interface FilterDropdownOption {
+  value: VideoFilterValue
+  key: string
+  title: string
+  hint: string
+}
+
+/** 효과 선택 드롭다운 — 닫힌 상태는 선택된 효과 하나만, 열면 아이콘+제목+힌트 목록.
+ *  효과가 늘어나도 카드 높이가 고정되도록 라디오 리스트를 대체한다. */
+function FilterDropdown({
+  options, value, onChange, label,
+}: {
+  options: FilterDropdownOption[]
+  value: VideoFilterValue
+  onChange: (value: VideoFilterValue) => void
+  label: string
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  const selected = options.find((o) => o.value === value) ?? options[0]
+
+  useEffect(() => {
+    if (!open) return
+    function onDown(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
   return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={selected}
-      aria-label={title}
-      onClick={onSelect}
-      className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors ${
-        selected ? 'border-accent bg-accent/10' : 'border-theme-border bg-transparent'
-      }`}
-    >
-      {icon}
-      <div className="flex-1">
-        <p className="text-sm font-semibold text-theme-primary">{title}</p>
-        <p className="text-xs text-theme-muted mt-0.5 leading-relaxed">{hint}</p>
-      </div>
-      <span
-        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
-          selected ? 'border-accent' : 'border-theme-border'
-        }`}
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={label}
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-3 rounded-xl border border-theme-border bg-theme-surface2 p-3 text-left"
       >
-        {selected && <span className="h-2 w-2 rounded-full bg-accent" />}
-      </span>
-    </button>
+        {FILTER_ICONS[selected.key]}
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-theme-primary">{selected.title}</p>
+          <p className="text-xs text-theme-muted mt-0.5 leading-relaxed">{selected.hint}</p>
+        </div>
+        <ChevronDown
+          size={16}
+          className={`shrink-0 text-theme-subtle transition-transform ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          aria-label={label}
+          className="absolute left-0 right-0 top-[calc(100%+6px)] z-20 rounded-xl border border-theme-border bg-theme-surface p-1.5 shadow-xl"
+        >
+          {options.map((o) => {
+            const isSel = o.value === value
+            return (
+              <button
+                key={o.key}
+                type="button"
+                role="option"
+                aria-selected={isSel}
+                aria-label={o.title}
+                onClick={() => { onChange(o.value); setOpen(false) }}
+                className={`flex w-full items-center gap-3 rounded-lg p-2.5 text-left transition-colors ${
+                  isSel ? 'bg-accent/10' : 'hover:bg-theme-surface2'
+                }`}
+              >
+                {FILTER_ICONS[o.key]}
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-theme-primary">{o.title}</p>
+                  <p className="text-xs text-theme-muted mt-0.5 leading-relaxed">{o.hint}</p>
+                </div>
+                {isSel && <Check size={15} className="shrink-0 text-accent" />}
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -265,18 +328,17 @@ export default function StepMedia({
         <div className="rounded-2xl bg-theme-surface p-4">
           <p className="text-sm font-semibold text-theme-primary mb-3">{t('filter.title')}</p>
 
-          <div role="radiogroup" aria-label={t('filter.title')} className="flex flex-col gap-2">
-            {VIDEO_FILTER_OPTIONS.map((opt) => (
-              <FilterOption
-                key={opt.key}
-                icon={FILTER_ICONS[opt.key]}
-                title={t(`filter.options.${opt.key}.title`)}
-                hint={t(`filter.options.${opt.key}.hint`)}
-                selected={videoFilter === opt.value}
-                onSelect={() => setVideoFilter(opt.value)}
-              />
-            ))}
-          </div>
+          <FilterDropdown
+            label={t('filter.title')}
+            value={videoFilter}
+            onChange={setVideoFilter}
+            options={VIDEO_FILTER_OPTIONS.map((opt) => ({
+              value: opt.value,
+              key: opt.key,
+              title: t(`filter.options.${opt.key}.title`),
+              hint: t(`filter.options.${opt.key}.hint`),
+            }))}
+          />
 
           {videoFilter && (
             <div className="mt-3 flex flex-col items-center gap-2">

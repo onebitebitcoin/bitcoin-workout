@@ -68,15 +68,24 @@ describe('StepMedia', () => {
     expect(onRemove).toHaveBeenCalledWith('a')
   })
 
-  it('아이템이 없으면 효과 옵션이 보이지 않는다', () => {
+  it('아이템이 없으면 효과 드롭다운이 보이지 않는다', () => {
     render(<StepMedia {...buildProps()} />)
-    expect(screen.queryAllByRole('radio')).toHaveLength(0)
+    expect(screen.queryByRole('listbox')).toBeNull()
+    expect(screen.queryByLabelText('영상 효과')).toBeNull()
   })
 
-  it('아이템이 있으면 효과 옵션 5개(없음/카툰/운동열/카툰+운동열/발자국)가 보인다', () => {
+  it('닫힌 상태에선 선택된 효과만 버튼에 보이고 옵션 목록은 감춰진다', () => {
+    const items = [makeItem('image', 'a')]
+    render(<StepMedia {...buildProps({ items, estimatedSeconds: 3, videoFilter: 'heat' })} />)
+    expect(screen.getByRole('button', { name: '영상 효과' })).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByRole('listbox')).toBeNull()
+  })
+
+  it('드롭다운을 열면 효과 옵션 5개가 보인다', async () => {
     const items = [makeItem('image', 'a')]
     render(<StepMedia {...buildProps({ items, estimatedSeconds: 3 })} />)
-    expect(screen.getAllByRole('radio')).toHaveLength(5)
+    await userEvent.click(screen.getByRole('button', { name: '영상 효과' }))
+    expect(screen.getAllByRole('option')).toHaveLength(5)
   })
 
   it.each([
@@ -84,27 +93,30 @@ describe('StepMedia', () => {
     ['운동열 강조', 'heat'],
     ['카툰 + 운동열', 'cartoon_heat'],
     ['발자국', 'footsteps'],
-  ])('%s 선택 시 setVideoFilter(%s) 호출', async (label, value) => {
+  ])('%s 옵션 선택 시 setVideoFilter(%s) 호출', async (label, value) => {
     const setVideoFilter = vi.fn()
     const items = [makeItem('image', 'a')]
     render(<StepMedia {...buildProps({ items, estimatedSeconds: 3, setVideoFilter })} />)
-    await userEvent.click(screen.getByRole('radio', { name: label }))
+    await userEvent.click(screen.getByRole('button', { name: '영상 효과' }))
+    await userEvent.click(screen.getByRole('option', { name: label }))
     expect(setVideoFilter).toHaveBeenCalledWith(value)
   })
 
-  it('효과 없음 선택 시 setVideoFilter(빈 값) 호출', async () => {
+  it('효과 없음 옵션 선택 시 setVideoFilter(빈 값) 호출', async () => {
     const setVideoFilter = vi.fn()
     const items = [makeItem('image', 'a')]
     render(<StepMedia {...buildProps({ items, estimatedSeconds: 3, videoFilter: 'cartoon', setVideoFilter })} />)
-    await userEvent.click(screen.getByRole('radio', { name: '효과 없음' }))
+    await userEvent.click(screen.getByRole('button', { name: '영상 효과' }))
+    await userEvent.click(screen.getByRole('option', { name: '효과 없음' }))
     expect(setVideoFilter).toHaveBeenCalledWith('')
   })
 
-  it('선택된 옵션은 aria-checked=true', () => {
+  it('선택된 옵션은 열었을 때 aria-selected=true', async () => {
     const items = [makeItem('image', 'a')]
     render(<StepMedia {...buildProps({ items, estimatedSeconds: 3, videoFilter: 'footsteps' })} />)
-    expect(screen.getByRole('radio', { name: '발자국' })).toHaveAttribute('aria-checked', 'true')
-    expect(screen.getByRole('radio', { name: '카툰 필터' })).toHaveAttribute('aria-checked', 'false')
+    await userEvent.click(screen.getByRole('button', { name: '영상 효과' }))
+    expect(screen.getByRole('option', { name: '발자국' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('option', { name: '카툰 필터' })).toHaveAttribute('aria-selected', 'false')
   })
 
   it.each(['cartoon', 'heat', 'footsteps'] as const)(
