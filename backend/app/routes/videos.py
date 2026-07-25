@@ -1189,30 +1189,14 @@ PREVIEW_MAX_WIDTH = 1280
 ALLOWED_VIDEO_FILTERS = {"cartoon", "heat", "cartoon_heat", "footsteps"}
 
 
-@router.post("/filter-preview")
-async def filter_preview(
-    frame: UploadFile = File(...),
-    video_filter: str = Form("cartoon"),
-    current_user: User = Depends(get_active_user),
-):
-    """업로드 미리보기: 프레임 1장에 영상 필터를 적용해 JPEG로 반환한다.
+def _render_filter_preview(raw: bytes, video_filter: str) -> bytes:
+    """프레임 1장 → 필터 적용 JPEG 바이트. 순수 CPU 바운드 — 반드시 threadpool에서 호출한다.
 
-    워커 파이프라인과 동일한 렌더러(`app.services.cartoon`, `app.services.muscle_heat`)를
-    사용하므로 미리보기 룩과 최종 결과물이 일치한다. "heat"/"cartoon_heat"는 프레임 1장만
-    받으므로 움직임 신호가 없어 정적 부하(오버헤드 지지·깊은 무릎 굽힘)만 반영된다 — 실제
-    영상에서는 동작에 따라 열이 더 진해진다.
+    "heat"는 MediaPipe 포즈 검출까지 도는 무거운 경로(실측 0.7~0.9초/호출)라, 이벤트
+    루프에서 직접 돌리면 그동안 API 전체가 멈춘다.
     """
     import cv2
     import numpy as np
-
-    if video_filter not in ALLOWED_VIDEO_FILTERS:
-        raise api_error(400, E_VIDEO_FORMAT_INVALID, f"지원하지 않는 필터입니다: {video_filter}")
-
-    raw = await frame.read()
-    if len(raw) == 0:
-        raise api_error(400, E_IMAGE_FORMAT_INVALID, "빈 파일입니다")
-    if len(raw) > MAX_PREVIEW_IMAGE_SIZE:
-        raise api_error(413, E_IMAGE_TOO_LARGE, "미리보기 프레임이 너무 큽니다 (최대 10MB)")
 
     img = cv2.imdecode(np.frombuffer(raw, np.uint8), cv2.IMREAD_COLOR)
     if img is None:
@@ -1240,10 +1224,36 @@ async def filter_preview(
     ok, buf = cv2.imencode(".jpg", out, [cv2.IMWRITE_JPEG_QUALITY, 88])
     if not ok:
         raise api_error(500, E_VIDEO_PROCESS_FAILED, "미리보기 생성에 실패했습니다")
+    return buf.tobytes()
 
+
+@router.post("/filter-preview")
+async def filter_preview(
+    frame: UploadFile = File(...),
+    video_filter: str = Form("cartoon"),
+    current_user: User = Depends(get_active_user),
+):
+    """업로드 미리보기: 프레임 1장에 영상 필터를 적용해 JPEG로 반환한다.
+
+    워커 파이프라인과 동일한 렌더러(`app.services.cartoon`, `app.services.muscle_heat`)를
+    사용하므로 미리보기 룩과 최종 결과물이 일치한다. "heat"/"cartoon_heat"는 프레임 1장만
+    받으므로 움직임 신호가 없어 정적 부하(오버헤드 지지·깊은 무릎 굽힘)만 반영된다 — 실제
+    영상에서는 동작에 따라 열이 더 진해진다.
+    """
     from fastapi.responses import Response
+    from starlette.concurrency import run_in_threadpool
 
-    return Response(content=buf.tobytes(), media_type="image/jpeg")
+    if video_filter not in ALLOWED_VIDEO_FILTERS:
+        raise api_error(400, E_VIDEO_FORMAT_INVALID, f"지원하지 않는 필터입니다: {video_filter}")
+
+    raw = await frame.read()
+    if len(raw) == 0:
+        raise api_error(400, E_IMAGE_FORMAT_INVALID, "빈 파일입니다")
+    if len(raw) > MAX_PREVIEW_IMAGE_SIZE:
+        raise api_error(413, E_IMAGE_TOO_LARGE, "미리보기 프레임이 너무 큽니다 (최대 10MB)")
+
+    jpeg = await run_in_threadpool(_render_filter_preview, raw, video_filter)
+    return Response(content=jpeg, media_type="image/jpeg")
 
 
 @router.post("/upload-multi")

@@ -47,6 +47,17 @@ class TestPresetForExercise:
     def test_jumprope_maps_to_fullbody(self):
         assert preset_for_exercise("jump rope") == PRESETS["fullbody"]
 
+    def test_bench_press_maps_to_chest_not_arms(self):
+        # 넓은 키워드 "press"가 "bench"/"chest"를 가리면 안 된다 (순서 의존)
+        assert preset_for_exercise("barbell bench press") == PRESETS["chest"]
+        assert preset_for_exercise("chest press") == PRESETS["chest"]
+
+    def test_leg_press_stays_legs(self):
+        assert preset_for_exercise("leg press") == PRESETS["legs"]
+
+    def test_overhead_press_still_arms(self):
+        assert preset_for_exercise("overhead press") == PRESETS["arms"]
+
     def test_unknown_returns_none(self):
         assert preset_for_exercise("meditation") is None
 

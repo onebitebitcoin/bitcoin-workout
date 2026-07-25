@@ -11,11 +11,12 @@ None을 반환해, 호출측이 프리셋 없이(exercise=None) 그대로 진행
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import os
-import subprocess
 
+import cv2
 import httpx
 
 logger = logging.getLogger(__name__)
@@ -34,29 +35,37 @@ _PROMPT = (
 )
 
 
-def _probe_duration(path: str) -> float | None:
-    try:
-        out = subprocess.run(
-            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
-             "-of", "default=noprint_wrappers=1:nokey=1", path],
-            capture_output=True, text=True, timeout=15, check=True,
-        )
-        return float(out.stdout.strip())
-    except (subprocess.SubprocessError, ValueError):
-        return None
+def _sample_frames_jpeg(path: str) -> list[bytes]:
+    """영상 길이의 _SAMPLE_FRACTIONS 지점에서 프레임을 뽑아 JPEG 바이트로 반환한다.
 
-
-def _extract_frame_jpeg(path: str, ts: float) -> bytes | None:
+    cv2는 이미 이 서비스 레이어의 의존성이라 ffprobe/ffmpeg 프로세스를 띄우지 않는다
+    (파일 핸들 1개로 duration·프레임·인코딩까지 처리).
+    """
+    cap = cv2.VideoCapture(path)
+    if not cap.isOpened():
+        return []
     try:
-        out = subprocess.run(
-            ["ffmpeg", "-v", "error", "-ss", f"{ts:.3f}", "-i", path,
-             "-vf", f"scale={_FRAME_WIDTH}:-2", "-frames:v", "1",
-             "-f", "image2", "-c:v", "mjpeg", "pipe:1"],
-            capture_output=True, timeout=20, check=True,
-        )
-        return out.stdout or None
-    except subprocess.SubprocessError:
-        return None
+        total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        if total <= 0:
+            return []
+        out: list[bytes] = []
+        for frac in _SAMPLE_FRACTIONS:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, min(total - 1, int(total * frac)))
+            ok, frame = cap.read()
+            if not ok:
+                continue
+            h, w = frame.shape[:2]
+            if w > _FRAME_WIDTH:
+                frame = cv2.resize(
+                    frame, (_FRAME_WIDTH, max(1, round(h * _FRAME_WIDTH / w))),
+                    interpolation=cv2.INTER_AREA,
+                )
+            enc, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+            if enc:
+                out.append(buf.tobytes())
+        return out
+    finally:
+        cap.release()
 
 
 def classify_exercise(video_path: str, api_key: str | None = None) -> str | None:
@@ -70,20 +79,15 @@ def classify_exercise(video_path: str, api_key: str | None = None) -> str | None
         logger.info("classify_exercise: GEMINI_API_KEY not set — skipping (exercise=None)")
         return None
 
-    dur = _probe_duration(video_path)
-    if dur is None or dur <= 0:
+    frames = _sample_frames_jpeg(video_path)
+    if not frames:  # 열기 실패 / 프레임을 하나도 못 뽑음
         return None
-
-    import base64
 
     parts: list[dict] = [{"text": _PROMPT}]
-    for frac in _SAMPLE_FRACTIONS:
-        jpeg = _extract_frame_jpeg(video_path, dur * frac)
-        if jpeg:
-            parts.append({"inline_data": {"mime_type": "image/jpeg",
-                                          "data": base64.b64encode(jpeg).decode()}})
-    if len(parts) == 1:  # 프레임을 하나도 못 뽑음
-        return None
+    parts += [
+        {"inline_data": {"mime_type": "image/jpeg", "data": base64.b64encode(j).decode()}}
+        for j in frames
+    ]
 
     body = {"contents": [{"parts": parts}],
             "generationConfig": {"response_mime_type": "application/json"}}

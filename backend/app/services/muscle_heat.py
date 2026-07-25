@@ -82,12 +82,15 @@ PRESETS: dict[str, set[str]] = {
     "chest":     {"uarm", "delt", "core"},           # 푸쉬업·벤치 (가슴 캡슐 없어 삼두·어깨로 근사)
     "fullbody":  set(MUSCLE_GROUPS),                 # 줄넘기·버피 등 복합
 }
-# Gemini exercise 문자열/근육명 → 프리셋 (부분 일치, 소문자)
+# Gemini exercise 문자열/근육명 → 프리셋 (부분 일치, 소문자, 위에서부터 첫 매치)
+# 순서 주의: 넓은 키워드가 좁은 키워드를 가리므로 좁은 쪽이 먼저 와야 한다.
+# ("press", "arms")가 위에 있으면 "bench press"/"chest press"가 arms로 잘못 잡힌다(실측).
 _EXERCISE_PRESET = [
     ("squat", "legs"), ("lunge", "legs"), ("leg", "legs"), ("deadlift", "legs"),
-    ("curl", "arms"), ("press", "arms"), ("extension", "arms"), ("tricep", "arms"), ("bicep", "arms"),
+    ("push-up", "chest"), ("pushup", "chest"), ("push up", "chest"),
+    ("bench", "chest"), ("chest", "chest"), ("dip", "chest"),
     ("pull-up", "back"), ("pullup", "back"), ("pull up", "back"), ("row", "back"), ("lat", "back"),
-    ("push-up", "chest"), ("pushup", "chest"), ("push up", "chest"), ("bench", "chest"), ("dip", "chest"),
+    ("curl", "arms"), ("press", "arms"), ("extension", "arms"), ("tricep", "arms"), ("bicep", "arms"),
     ("jump rope", "fullbody"), ("jumping", "fullbody"), ("burpee", "fullbody"), ("rope", "fullbody"),
 ]
 
