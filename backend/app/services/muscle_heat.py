@@ -68,10 +68,12 @@ CAPS: list[tuple[str, int, int, float, list[str], float, list[int] | None]] = [
 ]
 CORE_ANGLES = ["hipL", "hipR"]  # 코어 = 몸통 굽힘(힙 각도) 변화만. 단순 이동은 무시
 
-# 운동별 근육 프리셋 — Gemini 영상 분류가 넘겨주는 힌트로 "이 운동엔 이 근육군만" 게인을
-# 살리고 나머지는 강하게 감쇠(_PRESET_SUPPRESS)한다. 각속도 휴리스틱만으론 스미스 스쿼트에서
-# 팔 캡슐이 1.0으로 오발화하는 등 부위 오귀속이 큰데(측정 실증), 종목을 알면 이걸 원천 차단할
-# 수 있다. 키는 캡슐 접두사(uarm/farm/delt/thigh/calf/glute/core). None이면 전 캡슐 균등(기존 동작).
+# 근육군 프리셋 — Gemini가 영상을 보고 이 딕셔너리의 키 중 하나를 직접 골라주면(`exercise_classify.py`)
+# "이 근육군만" 게인을 살리고 나머지는 강하게 감쇠(_PRESET_SUPPRESS)한다. 각속도 휴리스틱만으론
+# 스미스 스쿼트에서 팔 캡슐이 1.0으로 오발화하는 등 부위 오귀속이 큰데(측정 실증), 근육군을 알면
+# 이걸 원천 차단할 수 있다. 값은 캡슐 접두사(uarm/farm/delt/thigh/calf/glute/core) 집합.
+# 키(arms/legs/.../fullbody) 자체가 Gemini 프롬프트에 노출되는 계약이므로 이름 변경 시 프롬프트도 같이 바꿔야 한다.
+# None이면 전 캡슐 균등(기존 동작).
 MUSCLE_GROUPS = ("uarm", "farm", "delt", "thigh", "calf", "glute", "core")
 _PRESET_SUPPRESS = 0.12  # 프리셋에 없는 근육군의 게인 배율 (0=완전차단, 1=억제없음).
                          # off-target(엉뚱한 근육) 열을 실측 30~46% → 1~8%로 낮춤.
@@ -80,30 +82,20 @@ PRESETS: dict[str, set[str]] = {
     "legs":      {"thigh", "calf", "glute", "core"}, # 스쿼트·런지·레그
     "back":      {"uarm", "delt", "core"},           # 풀업·로우 (광배 캡슐 없어 이두·어깨로 근사)
     "chest":     {"uarm", "delt", "core"},           # 푸쉬업·벤치 (가슴 캡슐 없어 삼두·어깨로 근사)
+    "core":      {"core"},                           # 플랭크·싯업·크런치 — 팔다리 오발화 억제가 핵심
     "fullbody":  set(MUSCLE_GROUPS),                 # 줄넘기·버피 등 복합
 }
-# Gemini exercise 문자열/근육명 → 프리셋 (부분 일치, 소문자, 위에서부터 첫 매치)
-# 순서 주의: 넓은 키워드가 좁은 키워드를 가리므로 좁은 쪽이 먼저 와야 한다.
-# ("press", "arms")가 위에 있으면 "bench press"/"chest press"가 arms로 잘못 잡힌다(실측).
-_EXERCISE_PRESET = [
-    ("squat", "legs"), ("lunge", "legs"), ("leg", "legs"), ("deadlift", "legs"),
-    ("push-up", "chest"), ("pushup", "chest"), ("push up", "chest"),
-    ("bench", "chest"), ("chest", "chest"), ("dip", "chest"),
-    ("pull-up", "back"), ("pullup", "back"), ("pull up", "back"), ("row", "back"), ("lat", "back"),
-    ("curl", "arms"), ("press", "arms"), ("extension", "arms"), ("tricep", "arms"), ("bicep", "arms"),
-    ("jump rope", "fullbody"), ("jumping", "fullbody"), ("burpee", "fullbody"), ("rope", "fullbody"),
-]
 
 
-def preset_for_exercise(exercise: str | None) -> set[str] | None:
-    """Gemini 운동명 → 근육군 프리셋. 매칭 없으면 None(전 캡슐 균등)."""
-    if not exercise:
+def preset_for_exercise(muscle_group: str | None) -> set[str] | None:
+    """Gemini가 고른 근육군(PRESETS 키) → 캡슐 프리셋. 매칭 없으면 None(전 캡슐 균등).
+
+    Gemini가 운동명이 아니라 이 PRESETS 키 중 하나를 직접 고르므로(`exercise_classify.py`
+    참고) 여기선 그대로 조회만 한다 — 부분일치/키워드 순서 문제가 구조적으로 없다.
+    """
+    if not muscle_group:
         return None
-    ex = exercise.lower()
-    for kw, preset in _EXERCISE_PRESET:
-        if kw in ex:
-            return PRESETS[preset]
-    return None
+    return PRESETS.get(muscle_group.strip().lower())
 
 
 K_ANG = 0.030       # 각속도(rad/frame) -> effort=1 스케일 (~1.7도/frame)
@@ -505,7 +497,7 @@ def heat_preview_frame(frame: np.ndarray, weak_cartoon: bool, exercise: str | No
     굽힘)만 반영된다. 실제 영상에서는 움직일수록 열이 진해진다 — 프론트 힌트 텍스트로
     이 한계를 안내한다.
 
-    exercise: 운동 종목명(선택) — 근육군 프리셋으로 부위 오귀속을 억제한다.
+    exercise: 근육군 키(PRESETS 참고, 선택) — 프리셋으로 부위 오귀속을 억제한다.
 
     같은 포즈 결과로 `_RenderState`를 여러 스텝 돌려 EMA를 정상상태로 수렴시킨다 —
     "이 자세를 계속 유지하면"의 정확한 극한값이며, 1회 호출로는 잔열 누적(`ALPHA`,

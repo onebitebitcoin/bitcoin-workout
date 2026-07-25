@@ -30,36 +30,21 @@ def _textured_frame(seed: int = 5, size: tuple[int, int] = (240, 320)) -> np.nda
 
 
 class TestPresetForExercise:
-    """Gemini 운동명 → 근육군 프리셋 매핑. 부위 오귀속 억제의 핵심."""
+    """근육군 키(Gemini가 직접 고름) → 캡슐 프리셋 조회. 부위 오귀속 억제의 핵심."""
 
-    def test_squat_maps_to_legs(self):
-        assert preset_for_exercise("Smith machine squat") == PRESETS["legs"]
+    def test_known_groups_map_to_presets(self):
+        for group in PRESETS:
+            assert preset_for_exercise(group) == PRESETS[group]
 
-    def test_curl_maps_to_arms(self):
-        assert preset_for_exercise("dumbbell bicep curl") == PRESETS["arms"]
+    def test_case_and_whitespace_insensitive(self):
+        assert preset_for_exercise(" Legs ") == PRESETS["legs"]
+        assert preset_for_exercise("ARMS") == PRESETS["arms"]
 
-    def test_pullup_maps_to_back(self):
-        assert preset_for_exercise("pull-up") == PRESETS["back"]
-
-    def test_pushup_maps_to_chest(self):
-        assert preset_for_exercise("push-ups") == PRESETS["chest"]
-
-    def test_jumprope_maps_to_fullbody(self):
-        assert preset_for_exercise("jump rope") == PRESETS["fullbody"]
-
-    def test_bench_press_maps_to_chest_not_arms(self):
-        # 넓은 키워드 "press"가 "bench"/"chest"를 가리면 안 된다 (순서 의존)
-        assert preset_for_exercise("barbell bench press") == PRESETS["chest"]
-        assert preset_for_exercise("chest press") == PRESETS["chest"]
-
-    def test_leg_press_stays_legs(self):
-        assert preset_for_exercise("leg press") == PRESETS["legs"]
-
-    def test_overhead_press_still_arms(self):
-        assert preset_for_exercise("overhead press") == PRESETS["arms"]
-
-    def test_unknown_returns_none(self):
+    def test_unknown_group_returns_none(self):
+        # Gemini가 "unknown"이나 프리셋 밖 문자열을 뱉어도 조용히 무시된다 (부분일치 없음)
+        assert preset_for_exercise("unknown") is None
         assert preset_for_exercise("meditation") is None
+        assert preset_for_exercise("bench press") is None  # 운동명 자체는 더 이상 유효 입력이 아님
 
     def test_none_returns_none(self):
         assert preset_for_exercise(None) is None
@@ -68,6 +53,10 @@ class TestPresetForExercise:
         # 스쿼트 프리셋에 팔 근육군이 없어야 팔 오발화가 억제된다
         legs = PRESETS["legs"]
         assert "uarm" not in legs and "farm" not in legs and "delt" not in legs
+
+    def test_core_preset_is_core_only(self):
+        # 플랭크·싯업류 — 코어 캡슐만 살고 팔다리는 전부 억제
+        assert PRESETS["core"] == {"core"}
 
 
 class TestLightCartoonize:
@@ -169,9 +158,9 @@ class TestHeatPreviewFrame:
         assert np.array_equal(frame, original)
 
     def test_exercise_param_accepted(self):
-        # exercise 프리셋 인자가 preview 경로를 통과해도 크래시 없이 동작
+        # exercise 프리셋 인자(근육군 키)가 preview 경로를 통과해도 크래시 없이 동작
         frame = _textured_frame()
-        out = heat_preview_frame(frame, weak_cartoon=False, exercise="squat")
+        out = heat_preview_frame(frame, weak_cartoon=False, exercise="legs")
         assert out.shape == frame.shape
 
 
