@@ -10,9 +10,11 @@ import numpy as np
 import pytest
 
 from app.services.motion_fx import (
-    _adaptive_color,
     _COLOR_INK,
     _COLOR_NEON,
+    _FOOT_WIDTH_RATIO,
+    _adaptive_color,
+    _contrast_color,
     _make_foot_mask,
     footsteps_preview_frame,
     render_footsteps_video,
@@ -30,9 +32,15 @@ def _textured_frame(seed: int = 5, size: tuple[int, int] = (240, 320)) -> np.nda
 class TestFootMask:
     def test_shape_and_range(self):
         m = _make_foot_mask(80, left=False, angle_deg=0)
-        assert m.shape == (80, int(80 * 0.5))
+        assert m.shape == (80, int(80 * _FOOT_WIDTH_RATIO))
         assert 0.0 <= m.min() and m.max() <= 1.0
         assert m.max() > 0.5  # 실제로 뭔가 그려짐
+
+    def test_forefoot_and_heel_are_separate(self):
+        """앞창·뒷굽이 붙어 한 덩어리가 되면 신발 자국으로 안 읽힌다(이전 봉 모양 회귀 방지)."""
+        m = _make_foot_mask(160, left=False, angle_deg=0)
+        n_labels, _ = cv2.connectedComponents((m > 0.5).astype(np.uint8))
+        assert n_labels - 1 == 2  # 배경 제외 = 앞창 + 뒷굽
 
     def test_left_is_mirror_of_right(self):
         r = _make_foot_mask(80, left=False, angle_deg=0)
@@ -53,6 +61,11 @@ class TestAdaptiveColor:
     def test_bright_background_ink(self):
         bright = np.full((100, 100, 3), 220, np.uint8)
         assert _adaptive_color(bright, 50, 50, 40) == _COLOR_INK
+
+    def test_contrast_color_swaps_palette(self):
+        """걸음 번호가 발자국과 같은 색이면 앞창 위에서 안 보인다."""
+        assert _contrast_color(_COLOR_NEON) == _COLOR_INK
+        assert _contrast_color(_COLOR_INK) == _COLOR_NEON
 
 
 class TestFootstepsPreviewFrame:

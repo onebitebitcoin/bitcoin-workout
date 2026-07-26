@@ -36,7 +36,7 @@ FOOT_LIFE = 1.6     # 발자국이 사라지기까지(초)
 FOOT_MAX = 10       # 화면에 동시에 남는 최대 개수
 FOOT_HEIGHT_FRAC = 0.085  # 발자국 세로 높이 / 화면 높이
 FOOT_Y_FRAC = 0.20        # 발자국 세로 위치 / 화면 높이 (화면 상단)
-_FOOT_WIDTH_RATIO = 0.5   # 발자국 마스크 가로/세로 비율
+_FOOT_WIDTH_RATIO = 0.4375  # 발자국 마스크 가로/세로 비율 (아이콘 원본 bbox 비율)
 _COLOR_NEON = (60, 255, 57)   # 어두운 배경용 형광 그린 (BGR)
 _COLOR_INK = (30, 26, 24)     # 밝은 배경용 잉크 블랙
 _LUM_THRESHOLD = 115          # 이 미만이면 어두운 배경으로 판정
@@ -66,30 +66,57 @@ def _global_translation(prev_gray: np.ndarray, gray: np.ndarray) -> tuple[float,
 
 _FOOT_CACHE: dict[tuple[int, bool, int], np.ndarray] = {}
 
+# 신발 발자국 실루엣 — 앞창/뒷굽 2개 폴리곤, 마스크 크기 기준 0..1 정규화 좌표.
+# 출처: Font Awesome Free 6.7.2 "shoe-prints" (https://fontawesome.com/icons/shoe-prints),
+# 아이콘 라이선스 CC BY 4.0. 원본 SVG path의 첫 번째 발자국만 뽑아 90도 회전(진행 방향이
+# 위)한 뒤 베지어를 폴리라인으로 평탄화한 결과다. 런타임 SVG 파싱을 피하려고 좌표를 그대로
+# 박아둔다 — 모양을 바꾸려면 원본 SVG에서 다시 변환해야 한다.
+_SHOE_POLYS: tuple[tuple[tuple[float, float], ...], ...] = (
+    # 앞창(forefoot)
+    (
+        (0.0028, 0.4697), (0.0160, 0.5212), (0.0293, 0.5563), (0.0452, 0.5910),
+        (0.0891, 0.6702), (0.1428, 0.7500), (0.7142, 0.7500), (0.7174, 0.7165),
+        (0.7265, 0.6864), (0.7406, 0.6589), (0.7589, 0.6337), (0.7805, 0.6104),
+        (0.8046, 0.5885), (0.8925, 0.5193), (0.9259, 0.4907), (0.9553, 0.4599),
+        (0.9736, 0.4347), (0.9913, 0.3976), (0.9985, 0.3663), (0.9996, 0.3293),
+        (0.9962, 0.2973), (0.9887, 0.2620), (0.9764, 0.2247), (0.9585, 0.1865),
+        (0.9343, 0.1488), (0.9030, 0.1128), (0.8845, 0.0958), (0.8412, 0.0646),
+        (0.8163, 0.0507), (0.7593, 0.0271), (0.7271, 0.0178), (0.6923, 0.0102),
+        (0.6548, 0.0046), (0.6145, 0.0011), (0.5275, 0.0012), (0.4851, 0.0050),
+        (0.4443, 0.0111), (0.4050, 0.0193), (0.3674, 0.0297), (0.3314, 0.0419),
+        (0.2645, 0.0717), (0.2045, 0.1076), (0.1772, 0.1274), (0.1281, 0.1703),
+        (0.1064, 0.1931), (0.0687, 0.2407), (0.0390, 0.2900), (0.0272, 0.3150),
+        (0.0175, 0.3399), (0.0044, 0.3895), (0.0000, 0.4375),
+    ),
+    # 뒷굽(heel)
+    (
+        (0.1435, 0.8835), (0.1454, 0.8919), (0.1530, 0.9081), (0.1653, 0.9236),
+        (0.1819, 0.9380), (0.2141, 0.9575), (0.2399, 0.9688), (0.2689, 0.9786),
+        (0.3174, 0.9901), (0.3898, 0.9988), (0.4481, 0.9997), (0.5044, 0.9955),
+        (0.5564, 0.9867), (0.6030, 0.9739), (0.6430, 0.9575), (0.6654, 0.9448),
+        (0.6840, 0.9309), (0.7040, 0.9081), (0.7116, 0.8919), (0.7142, 0.8750),
+        (0.7142, 0.8125), (0.1428, 0.8125),
+    ),
+)
+# 앞창 세로 중심(마스크 높이 대비) — 걸음 번호를 앞창 한가운데 얹는 기준점
+_FOREFOOT_CY_FRAC = 0.375
+
 
 def _make_foot_mask(height_px: int, left: bool, angle_deg: float) -> np.ndarray:
-    """단순화된 신발 밑창 모양 알파 마스크(0..1).
+    """신발 발자국 알파 마스크(0..1). 오른발 기준으로 그리고 왼발은 미러.
 
-    토박스(앞)·허리(중족)·힐(뒤) 타원 3개를 겹쳐 만든 매끈한 신발 밑창 실루엣 —
-    맨발 발가락 디테일은 뺐다(작은 화면에서 더 잘 알아보는 단순한 형태). 좌우가 거의
-    대칭인 모양이라 left는 육안상 차이가 거의 없고, 실제 좌/우 구분은 호출부가 넘기는
-    회전각(angle_deg)이 만든다.
+    앞창과 뒷굽이 떨어진 실루엣이라 작게 찍혀도 신발 자국으로 읽힌다(맨발 발가락 디테일
+    없음). 모양 좌표는 `_SHOE_POLYS` 참조.
     """
     key = (height_px, left, round(angle_deg))
     if key in _FOOT_CACHE:
         return _FOOT_CACHE[key]
     h = height_px
-    w = int(h * _FOOT_WIDTH_RATIO)
+    w = max(1, int(h * _FOOT_WIDTH_RATIO))
     mask = np.zeros((h, w), np.uint8)
-    sx, sy = w / 100.0, h / 160.0
-
-    def ell(cx: float, cy: float, ax: float, ay: float) -> None:
-        cv2.ellipse(mask, (int(cx * sx), int(cy * sy)),
-                    (max(1, int(ax * sx)), max(1, int(ay * sy))), 0, 0, 360, 255, -1)
-
-    ell(50, 32, 30, 30)   # 토박스 — 둥글고 넓게
-    ell(50, 84, 22, 36)   # 허리(중족) — 좁게 이어줌
-    ell(50, 132, 27, 28)  # 힐 — 둥글게
+    scale = np.array([w - 1, h - 1], np.float64)
+    for poly in _SHOE_POLYS:
+        cv2.fillPoly(mask, [np.round(np.asarray(poly) * scale).astype(np.int32)], 255)
 
     if left:
         mask = cv2.flip(mask, 1)
@@ -124,22 +151,38 @@ def _stamp_footprint(
     return canvas
 
 
+def _contrast_color(color: tuple[int, int, int]) -> tuple[int, int, int]:
+    """발자국 색 위에 얹을 글자 색 — 두 팔레트 색을 서로 맞바꾼다.
+
+    발자국과 같은 색으로 쓰면 꽉 찬 앞창 위에서 글자가 보이지 않는다.
+    """
+    return _COLOR_INK if color == _COLOR_NEON else _COLOR_NEON
+
+
 def _stamp_step_number(
     canvas: np.ndarray, cx: int, cy: int, size: int, step_num: int,
     alpha: float, color: tuple[int, int, int],
 ) -> np.ndarray:
-    """발자국 위에 걸음 번호를 새긴다(발자국과 같은 alpha로 페이드).
+    """발자국 앞창 한가운데에 걸음 번호를 새긴다(발자국과 같은 alpha로 페이드).
 
-    ponytail: 자릿수가 늘어나면(3자리+) 발자국 폭을 넘칠 수 있음 — 실사용 걸음 수 범위(수백
-    이하)에선 안 보이는 문제라 폭에 맞춘 자동 축소는 생략.
+    color는 발자국 색 — 글자는 그 대비색으로 찍는다. 자릿수가 늘어도 앞창을 넘치지 않게
+    글자 폭이 앞창 폭을 넘으면 그 비율만큼 줄인다(cv2 텍스트 폭은 font_scale에 비례).
     """
     text = str(step_num)
-    font_scale = max(0.35, size / 70.0)
+    font_scale = max(0.35, size / 90.0)
     thickness = max(1, size // 40)
     (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, thickness)
-    org = (cx - tw // 2, cy + th // 2)
+    max_w = max(1, int(size * _FOOT_WIDTH_RATIO * 0.72))  # 앞창은 위아래로 좁아지므로 여유를 둔다
+    if tw > max_w:
+        shrink = max_w / tw
+        font_scale *= shrink
+        thickness = max(1, int(thickness * shrink))
+        (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, thickness)
+    ny = cy - int((0.5 - _FOREFOOT_CY_FRAC) * size)  # 마스크 중심 → 앞창 중심
+    org = (cx - tw // 2, ny + th // 2)
     ov = canvas.copy()
-    cv2.putText(ov, text, org, cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, thickness, cv2.LINE_AA)
+    cv2.putText(ov, text, org, cv2.FONT_HERSHEY_SIMPLEX, font_scale,
+                _contrast_color(color), thickness, cv2.LINE_AA)
     cv2.addWeighted(ov, alpha, canvas, 1 - alpha, 0, canvas)
     return canvas
 
