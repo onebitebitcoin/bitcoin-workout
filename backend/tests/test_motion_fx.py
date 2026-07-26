@@ -30,7 +30,7 @@ def _textured_frame(seed: int = 5, size: tuple[int, int] = (240, 320)) -> np.nda
 class TestFootMask:
     def test_shape_and_range(self):
         m = _make_foot_mask(80, left=False, angle_deg=0)
-        assert m.shape == (80, int(80 * 0.62))
+        assert m.shape == (80, int(80 * 0.5))
         assert 0.0 <= m.min() and m.max() <= 1.0
         assert m.max() > 0.5  # 실제로 뭔가 그려짐
 

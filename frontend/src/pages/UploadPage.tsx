@@ -242,7 +242,10 @@ export default function UploadPage() {
   useEffect(() => {
     const savedJobId = loadJob()
     if (savedJobId) { setPipelineJobId(savedJobId); setPipelineStatus('pending') }
-    const handlePageHide = () => { uploadAbortRef.current?.abort() }
+    // e.persisted=true면 bfcache로 들어가는 것(홈 버튼/앱 전환 등 백그라운드 전환 포함) —
+    // 페이지가 완전히 사라지는 게 아니므로 업로드를 끊지 않는다. 실제 unload(뒤로가기로
+    // 다른 사이트 이동, 탭 종료 등)일 때만 abort.
+    const handlePageHide = (e: PageTransitionEvent) => { if (!e.persisted) uploadAbortRef.current?.abort() }
     const handlePageShow = (e: PageTransitionEvent) => {
       if (e.persisted) { setUploading(false); setError('') }
     }
@@ -473,10 +476,23 @@ export default function UploadPage() {
       if (selectedChallengeId != null) form.append('challenge_id', String(selectedChallengeId))
       if (workoutStart) form.append('workout_start', workoutStart)
       if (workoutEnd) form.append('workout_end', workoutEnd)
-      const { data: { data: { job_id } } } = await client.post<{ data: { job_id: string } }>(
+      const postOnce = () => client.post<{ data: { job_id: string } }>(
         '/videos/upload-multi', form,
         { signal: ctrl.signal, timeout: 300_000, onUploadProgress: (e) => { if (e.total) setUploadProgress(Math.round((e.loaded / e.total) * 70)) } },
       )
+      let res
+      try {
+        res = await postOnce()
+      } catch (err) {
+        // 응답 없이 끊긴 경우(타임아웃/네트워크 순단 — 백그라운드 전환 중 흔함)만 1회 재시도.
+        // 서버가 실제로 응답한 에러(4xx/5xx)는 재시도해도 똑같이 실패하므로 바로 던진다.
+        // ponytail: 1회만 재시도, 반복 순단까지 버티려면 루프+backoff로 확장.
+        const transient = isAxiosError(err) && !err.response && err.code !== 'ERR_CANCELED'
+        if (!transient) throw err
+        setUploadProgress(0)
+        res = await postOnce()
+      }
+      const { data: { data: { job_id } } } = res
       saveJob(job_id); setPipelineJobId(job_id); setPipelineStatus('pending'); setUploadProgress(70)
     } catch (err: unknown) {
       if (isAxiosError(err) && err.code === 'ERR_CANCELED') return

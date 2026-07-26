@@ -2,8 +2,9 @@
 
 걷기·계단 영상용: 걸을 때 카메라가 위아래로 흔들리는 주기적 진동이 곧 걸음 리듬이다
 (실사용 계단 영상 실측: FFT 지배 주파수 77~95 steps/min — 사람 케이던스 범위와 일치).
-그 박자마다 해부학적 발자국을 화면 하단에 좌/우 교대로 찍고, 걸음 수·케이던스·층수를
-HUD로 표시한다. 사람/포즈 검출을 쓰지 않아 발이 안 보이거나 풍경만 찍혀도 동작한다.
+그 박자마다 단순화된 신발 발자국을 화면 상단에 좌/우 교대로 찍고 걸음 번호를 새기며,
+걸음 수·케이던스·층수는 하단 HUD로 표시한다. 사람/포즈 검출을 쓰지 않아 발이 안 보이거나
+풍경만 찍혀도 동작한다.
 
 `cartoon.py`/`muscle_heat.py`와 같은 제약: cv2/numpy 외 앱 의존성을 두지 않는다 —
 worker가 `../backend`를 sys.path에 얹어 이 모듈을 단독 import한다(`worker/config.py`).
@@ -34,6 +35,8 @@ PX_PER_FLOOR = 260.0  # 세로 누적 이 만큼마다 1층 (계단 영상 기�
 FOOT_LIFE = 1.6     # 발자국이 사라지기까지(초)
 FOOT_MAX = 10       # 화면에 동시에 남는 최대 개수
 FOOT_HEIGHT_FRAC = 0.085  # 발자국 세로 높이 / 화면 높이
+FOOT_Y_FRAC = 0.20        # 발자국 세로 위치 / 화면 높이 (화면 상단)
+_FOOT_WIDTH_RATIO = 0.5   # 발자국 마스크 가로/세로 비율
 _COLOR_NEON = (60, 255, 57)   # 어두운 배경용 형광 그린 (BGR)
 _COLOR_INK = (30, 26, 24)     # 밝은 배경용 잉크 블랙
 _LUM_THRESHOLD = 115          # 이 미만이면 어두운 배경으로 판정
@@ -65,16 +68,18 @@ _FOOT_CACHE: dict[tuple[int, bool, int], np.ndarray] = {}
 
 
 def _make_foot_mask(height_px: int, left: bool, angle_deg: float) -> np.ndarray:
-    """해부학적 맨발 자국 알파 마스크(0..1). 오른발 기준으로 그리고 왼발은 미러.
+    """단순화된 신발 밑창 모양 알파 마스크(0..1).
 
-    앞꿈치(발볼) 넓게 → 아치에서 안쪽(엄지쪽)이 파임 → 뒤꿈치 둥글게.
-    발가락 5개는 엄지(안쪽)가 크고 바깥으로 갈수록 작아지며 호를 그린다.
+    토박스(앞)·허리(중족)·힐(뒤) 타원 3개를 겹쳐 만든 매끈한 신발 밑창 실루엣 —
+    맨발 발가락 디테일은 뺐다(작은 화면에서 더 잘 알아보는 단순한 형태). 좌우가 거의
+    대칭인 모양이라 left는 육안상 차이가 거의 없고, 실제 좌/우 구분은 호출부가 넘기는
+    회전각(angle_deg)이 만든다.
     """
     key = (height_px, left, round(angle_deg))
     if key in _FOOT_CACHE:
         return _FOOT_CACHE[key]
     h = height_px
-    w = int(h * 0.62)
+    w = int(h * _FOOT_WIDTH_RATIO)
     mask = np.zeros((h, w), np.uint8)
     sx, sy = w / 100.0, h / 160.0
 
@@ -82,11 +87,9 @@ def _make_foot_mask(height_px: int, left: bool, angle_deg: float) -> np.ndarray:
         cv2.ellipse(mask, (int(cx * sx), int(cy * sy)),
                     (max(1, int(ax * sx)), max(1, int(ay * sy))), 0, 0, 360, 255, -1)
 
-    ell(52, 62, 33, 24)   # 앞꿈치(발볼)
-    ell(60, 96, 23, 27)   # 중족 — 바깥쪽에 붙여 안쪽 아치가 파이게
-    ell(55, 132, 22, 21)  # 뒤꿈치
-    for tx, ty, tr in ((24, 33, 13), (43, 24, 9), (58, 23, 8), (72, 27, 7), (84, 34, 6)):
-        cv2.circle(mask, (int(tx * sx), int(ty * sy)), max(1, int(tr * min(sx, sy))), 255, -1)
+    ell(50, 32, 30, 30)   # 토박스 — 둥글고 넓게
+    ell(50, 84, 22, 36)   # 허리(중족) — 좁게 이어줌
+    ell(50, 132, 27, 28)  # 힐 — 둥글게
 
     if left:
         mask = cv2.flip(mask, 1)
@@ -118,6 +121,26 @@ def _stamp_footprint(
     region = canvas[y0:y1, x0:x1].astype(np.float32)
     col = np.array(color, np.float32)
     canvas[y0:y1, x0:x1] = (region * (1 - sub[..., None]) + col * sub[..., None]).astype(np.uint8)
+    return canvas
+
+
+def _stamp_step_number(
+    canvas: np.ndarray, cx: int, cy: int, size: int, step_num: int,
+    alpha: float, color: tuple[int, int, int],
+) -> np.ndarray:
+    """발자국 위에 걸음 번호를 새긴다(발자국과 같은 alpha로 페이드).
+
+    ponytail: 자릿수가 늘어나면(3자리+) 발자국 폭을 넘칠 수 있음 — 실사용 걸음 수 범위(수백
+    이하)에선 안 보이는 문제라 폭에 맞춘 자동 축소는 생략.
+    """
+    text = str(step_num)
+    font_scale = max(0.35, size / 70.0)
+    thickness = max(1, size // 40)
+    (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, thickness)
+    org = (cx - tw // 2, cy + th // 2)
+    ov = canvas.copy()
+    cv2.putText(ov, text, org, cv2.FONT_HERSHEY_SIMPLEX, font_scale, color, thickness, cv2.LINE_AA)
+    cv2.addWeighted(ov, alpha, canvas, 1 - alpha, 0, canvas)
     return canvas
 
 
@@ -170,10 +193,12 @@ def footsteps_preview_frame(frame: np.ndarray) -> np.ndarray:
     out = frame.copy()
     h, w = out.shape[:2]
     size = max(12, int(h * FOOT_HEIGHT_FRAC))
-    for side, fx_frac, ang in ((True, 0.34, -9), (False, 0.66, 9)):
-        cx, cy = int(w * fx_frac), int(h * 0.80)
+    cy = int(h * FOOT_Y_FRAC)
+    for step_num, (side, fx_frac, ang) in enumerate(((True, 0.34, -9), (False, 0.66, 9)), start=1):
+        cx = int(w * fx_frac)
         color = _adaptive_color(out, cx, cy, size)
         out = _stamp_footprint(out, cx, cy, size, ang, 0.85, color, side)
+        out = _stamp_step_number(out, cx, cy, size, step_num, 0.85, color)
     return _draw_hud(out, steps=2, cadence=0.0, floor=1, climbing=False)
 
 
@@ -222,8 +247,8 @@ def render_footsteps_video(input_path: str, output_path: str) -> None:
     half_peak = 0.0
     last_step_t = -10.0
     step_times: list[float] = []
-    # (t, x, y, size, angle, is_left, color)
-    feet: list[tuple[float, int, int, int, float, bool, tuple[int, int, int]]] = []
+    # (t, x, y, size, angle, is_left, color, step_num)
+    feet: list[tuple[float, int, int, int, float, bool, tuple[int, int, int], int]] = []
     side = 0
     step_count = 0
     processed = 0
@@ -261,11 +286,11 @@ def render_footsteps_video(input_path: str, output_path: str) -> None:
                     step_count += 1
                     side ^= 1
                     fx = int(out_w * (0.34 if side else 0.66) + rng.uniform(-0.03, 0.03) * out_w)
-                    fy = int(out_h * (0.80 + rng.uniform(-0.04, 0.04)))
+                    fy = int(out_h * (FOOT_Y_FRAC + rng.uniform(-0.04, 0.04)))
                     fsize = max(12, int(out_h * FOOT_HEIGHT_FRAC))
                     fang = -9 if side else 9
                     fcol = _adaptive_color(frame, fx, fy, fsize)
-                    feet.append((t_now, fx, fy, fsize, fang, bool(side), fcol))
+                    feet.append((t_now, fx, fy, fsize, fang, bool(side), fcol, step_count))
                     if len(feet) > FOOT_MAX:
                         feet.pop(0)
                 prev_osc = osc
@@ -276,13 +301,14 @@ def render_footsteps_video(input_path: str, output_path: str) -> None:
                     climbing = True
             prev_gray = gray
 
-            for (ft, fx, fy, fsz, fang, is_left, fcol) in feet:
+            for (ft, fx, fy, fsz, fang, is_left, fcol, fstep) in feet:
                 age = t_now - ft
                 if age > FOOT_LIFE:
                     continue
                 alpha = max(0.0, 1.0 - age / FOOT_LIFE) * 0.85
                 pop = 1.0 + 0.30 * max(0.0, 1.0 - age / 0.18)  # 찍히는 순간 살짝 커짐
                 frame = _stamp_footprint(frame, fx, fy, int(fsz * pop), fang, alpha, fcol, is_left)
+                frame = _stamp_step_number(frame, fx, fy, fsz, fstep, alpha, fcol)
             feet = [f for f in feet if t_now - f[0] <= FOOT_LIFE]
 
             step_times = [s for s in step_times if t_now - s <= 4.0]
