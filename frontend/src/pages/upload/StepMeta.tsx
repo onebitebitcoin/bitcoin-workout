@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import type { Challenge } from '../../api/types'
 import client from '../../api/client'
 import type { MediaItem } from './StepMedia'
+import type { VideoFilterValue } from '../../utils/videoFilter'
 import MediaPreviewBox from './MediaPreviewBox'
 
 export const MAIN_CATEGORIES = ['가벼운 활동', '땀 흘리는 운동'] as const
@@ -40,6 +41,8 @@ interface Props {
   subtitleLines: string[]
   subtitleSize: 'small' | 'large'
   subtitlePosition: 'top' | 'center' | 'bottom'
+  videoFilter: VideoFilterValue
+  filteredPreviewUrl: string | null
 }
 
 export default function StepMeta({
@@ -50,6 +53,7 @@ export default function StepMeta({
   workoutStart, setWorkoutStart, workoutEnd, setWorkoutEnd,
   caption, setCaption, limitError, setLimitError, error, uploading, onUpload,
   items, subtitleSource, subtitleLines, subtitleSize, subtitlePosition,
+  videoFilter, filteredPreviewUrl,
 }: Props) {
   const { t } = useTranslation('upload')
 
@@ -158,6 +162,8 @@ export default function StepMeta({
               subtitleLines={subtitleLines}
               subtitleSize={subtitleSize}
               subtitlePosition={subtitlePosition}
+              videoFilter={videoFilter}
+              filteredPreviewUrl={filteredPreviewUrl}
             />
           </div>
         )}

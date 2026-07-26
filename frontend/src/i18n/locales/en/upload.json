@@ -150,7 +150,8 @@
     "clipboardCopied": "Copied to clipboard!"
   },
   "preview": {
-    "title": "Preview"
+    "title": "Preview",
+    "filterNote": "Still-frame preview with effect applied — actual result may differ."
   },
   "filter": {
     "title": "Video effects",

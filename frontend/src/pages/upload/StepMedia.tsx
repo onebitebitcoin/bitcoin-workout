@@ -45,6 +45,8 @@ interface Props {
   onNext: () => void
   videoFilter: VideoFilterValue
   setVideoFilter: (value: VideoFilterValue) => void
+  /** 필터 적용된 미리보기 프레임 URL을 상위로 전달 (StepMeta 최종 미리보기에서 재사용). */
+  onFilteredPreviewChange?: (url: string | null) => void
 }
 
 /** 첫 미디어에서 프리뷰용 프레임 1장을 JPEG Blob으로 캡처 (이미지는 파일 그대로). */
@@ -215,7 +217,7 @@ function FilterDropdown({
 
 export default function StepMedia({
   fileInputRef, items, onAddFiles, onRemove, onReorder, estimatedSeconds, error, onNext,
-  videoFilter, setVideoFilter,
+  videoFilter, setVideoFilter, onFilteredPreviewChange,
 }: Props) {
   const { t } = useTranslation('upload')
   const localInputRef = useRef<HTMLInputElement>(null)
@@ -250,6 +252,10 @@ export default function StepMedia({
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoFilter, firstItemId])
+
+  useEffect(() => {
+    onFilteredPreviewChange?.(previewUrl)
+  }, [previewUrl, onFilteredPreviewChange])
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),

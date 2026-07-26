@@ -150,7 +150,8 @@
     "clipboardCopied": "클립보드에 복사됐어요!"
   },
   "preview": {
-    "title": "미리보기"
+    "title": "미리보기",
+    "filterNote": "효과 적용 정지 프레임 미리보기 — 실제 처리 결과와 다를 수 있어요."
   },
   "filter": {
     "title": "영상 효과",

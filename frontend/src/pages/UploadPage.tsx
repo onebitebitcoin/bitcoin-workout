@@ -106,6 +106,7 @@ export default function UploadPage() {
   const [extractingSubtitles, setExtractingSubtitles] = useState(false)
   const [muteOriginalAudio, setMuteOriginalAudio] = useState(false)
   const [videoFilter, setVideoFilter] = useState<VideoFilterValue>('')
+  const [filteredPreviewUrl, setFilteredPreviewUrl] = useState<string | null>(null)
   const [videoAudioStatus, setVideoAudioStatus] = useState<'idle' | 'analyzing' | 'has_audio' | 'no_audio' | 'error'>('idle')
   const videoSubtitleTriedRef = useRef(false)
 
@@ -607,6 +608,7 @@ export default function UploadPage() {
           onNext={() => setStep(1)}
           videoFilter={videoFilter}
           setVideoFilter={setVideoFilter}
+          onFilteredPreviewChange={setFilteredPreviewUrl}
         />
       )}
       {step === 1 && (
@@ -650,6 +652,8 @@ export default function UploadPage() {
           subtitleLines={subtitleLines}
           subtitleSize={subtitleSize}
           subtitlePosition={subtitlePosition}
+          videoFilter={videoFilter}
+          filteredPreviewUrl={filteredPreviewUrl}
         />
       )}
     </div>
