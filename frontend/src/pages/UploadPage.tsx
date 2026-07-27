@@ -42,13 +42,16 @@ const PIPELINE_JOB_MAX_AGE_MS = 23 * 60 * 60 * 1000
 
 const CONFETTI_COLORS = ['#B5FF2E', '#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#FF9FF3']
 
+// 실제 백엔드 파이프라인 단계 순서(worker/tasks/full_pipeline_multi.py의 status_callback 호출 순서)와
+// 일치시켜야 한다: compose → audio_merge → compress → filter → db_save → thumbnail → subtitle → db_save.
 const STEP_CONFIG: Record<string, { start: number; ceiling: number; interval: number }> = {
   compose:     { start: 72, ceiling: 80, interval: 3000 },
   audio_merge: { start: 80, ceiling: 82, interval: 1500 },
-  image_merge: { start: 82, ceiling: 88, interval: 5000 },
-  subtitle_burn: { start: 86, ceiling: 90, interval: 3000 },
-  compress:    { start: 91, ceiling: 94, interval: 1500 },
-  db_save:     { start: 95, ceiling: 98, interval: 1500 },
+  compress:    { start: 82, ceiling: 88, interval: 1500 },
+  filter:      { start: 88, ceiling: 92, interval: 3000 },
+  db_save:     { start: 92, ceiling: 94, interval: 1500 },
+  thumbnail:   { start: 94, ceiling: 96, interval: 1500 },
+  subtitle:    { start: 96, ceiling: 98, interval: 1500 },
 }
 
 function genId(): string {

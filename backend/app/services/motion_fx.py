@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import logging
 import subprocess
+import threading
 
 import cv2
 import numpy as np
@@ -281,6 +282,18 @@ def render_footsteps_video(input_path: str, output_path: str) -> None:
     )
     assert proc.stdin is not None
 
+    # stderr를 계속 읽어 비워두지 않으면 ffmpeg 로그로 파이프 버퍼가 차서 ffmpeg가 멈추고,
+    # 그러면 아래 stdin.write()도 함께 블로킹되어 영구 교착 상태에 빠진다(실제 운영 장애 재현됨).
+    stderr_chunks: list[bytes] = []
+
+    def _drain_stderr() -> None:
+        assert proc.stderr is not None
+        for chunk in iter(lambda: proc.stderr.read(4096), b""):
+            stderr_chunks.append(chunk)
+
+    stderr_thread = threading.Thread(target=_drain_stderr, daemon=True)
+    stderr_thread.start()
+
     rng = np.random.default_rng(7)  # 지터 재현성 (같은 입력 → 같은 출력)
     detrend_n = max(3, int(fps * DETREND_SEC) | 1)
     dy_hist: list[float] = []
@@ -364,10 +377,11 @@ def render_footsteps_video(input_path: str, output_path: str) -> None:
     finally:
         cap.release()
         proc.stdin.close()
-        stderr = proc.stderr.read().decode(errors="replace") if proc.stderr else ""
         code = proc.wait()
+        stderr_thread.join(timeout=5)
 
     if code != 0:
+        stderr = b"".join(stderr_chunks).decode(errors="replace")
         raise RuntimeError(f"ffmpeg encode failed (exit {code}): {stderr[-500:]}")
     if processed == 0:
         raise ValueError("no frames decoded from input video")
