@@ -56,6 +56,14 @@ sudo nginx -s reload
 
 `deploy.sh`는 두 파일을 모두 업데이트하도록 수정되어 있다 (`scripts/deploy.sh` Step 7).
 
+### 워커(worker) 멀티 인스턴스 — 핵심 주의사항
+
+**실제 운영 워커**: `measly` 유저 systemd `--user` 템플릿 유닛 `stack-health-worker@1`, `stack-health-worker@2` (`~/.config/systemd/user/stack-health-worker@.service`, repo에는 없음 — 다른 `stack-health-app-*` 유닛들과 동일하게 호스트 전용 파일). `WorkingDirectory=/home/measly/stack-health/worker`에서 repo 코드를 직접 실행한다.
+
+- 인스턴스 개수는 `worker/.env`의 `WORKER_INSTANCES`로 정하고, `scripts/deploy.sh`가 이 값을 읽어 `stack-health-worker@1..N`을 전부 재시작한다 (push 배포 시 자동).
+- `backend/app/services/cartoon.py`, `muscle_heat.py`는 `WORKER_INSTANCES`로 코어 수를 나눠 프로세스 풀 크기를 정하므로, 인스턴스 수를 바꾸면 반드시 `worker/.env`의 `WORKER_INSTANCES`도 같이 맞춰야 한다 (기본 8코어 기준 2인스턴스 권장, `(8-2)/2=3` 프로세스/인스턴스).
+- **`worker/deploy.sh` + repo의 `worker/stackhealth-worker@.service`는 이것과 다른, 별도의 `/opt/stackhealth-worker` 단일 전용서버 배포 경로용이다 (`worker/DEPLOY.md` 참고). 이 서버에는 `/opt/stackhealth-worker`가 존재하지 않고, 어떤 자동화도 그 스크립트를 실행하지 않는다 — 혼동 금지.**
+
 ### 장애 이력 (2026-05-31)
 
 - **증상**: `https://stackhealth.life` 전체 502/521, 데이터가 보이지 않음

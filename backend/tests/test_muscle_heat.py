@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 
@@ -9,9 +10,11 @@ import cv2
 import numpy as np
 import pytest
 
+import app.services.muscle_heat as muscle_heat
 from app.services.muscle_heat import (
     PRESETS,
     PW,
+    _plan_segments,
     _RenderState,
     _unrotate_norm,
     heat_preview_frame,
@@ -200,6 +203,86 @@ class TestRenderHeatVideo:
         assert int(video_stream["nb_frames"]) == 10  # 1초 x 10fps
 
     def test_invalid_input_raises(self, tmp_path):
+        bad = tmp_path / "bad.mp4"
+        bad.write_bytes(b"not a video")
+        with pytest.raises((ValueError, RuntimeError)):
+            render_heat_video(str(bad), str(tmp_path / "out.mp4"), weak_cartoon=False)
+
+
+class TestPlanSegments:
+    """구간 병렬처리 분할 로직 — 나머지 프레임 처리, pad 클램핑, k<=1 폴백을 검증."""
+
+    def test_k_le_1_returns_single_segment(self):
+        assert _plan_segments(100, 1) == [(0, 100, 0)]
+        assert _plan_segments(100, 0) == [(0, 100, 0)]
+
+    def test_even_split_with_pad(self):
+        segs = _plan_segments(120, 3)
+        assert segs == [(0, 40, 0), (40, 80, 16), (80, 120, 56)]
+
+    def test_segments_cover_all_frames_without_gap_or_overlap(self):
+        segs = _plan_segments(100, 3)
+        starts = [s for s, _, _ in segs]
+        ends = [e for _, e, _ in segs]
+        assert starts[0] == 0
+        assert ends[-1] == 100
+        assert starts[1:] == ends[:-1]  # 다음 구간 시작 == 이전 구간 끝 (gap/overlap 없음)
+
+    def test_remainder_goes_to_last_segment(self):
+        segs = _plan_segments(100, 3)  # 100 // 3 == 33
+        assert [e - s for s, e, _ in segs] == [33, 33, 34]
+
+    def test_pad_never_negative_and_first_segment_unpadded(self):
+        segs = _plan_segments(10, 5)  # base=2 < _SEG_PAD_FRAMES(24)
+        assert segs[0][2] == 0
+        assert all(pad >= 0 for _, _, pad in segs)
+
+
+@pytest.mark.skipif(not _HAS_FFMPEG, reason="ffmpeg not installed")
+class TestRenderHeatVideoParallel:
+    """`_MIN_SEGMENT_FRAMES`/`_HEAT_WORKERS`를 낮춰 구간 병렬 경로를 강제로 태우는 E2E 테스트."""
+
+    @pytest.fixture()
+    def longer_sample_with_audio(self, tmp_path):
+        """2초 테스트 영상(합성 패턴, 사람 없음) + 사인파 오디오 — 병렬 경로를 태울 만큼 길다."""
+        path = tmp_path / "in_long.mp4"
+        subprocess.run(
+            [
+                "ffmpeg", "-y", "-v", "error",
+                "-f", "lavfi", "-i", "testsrc=duration=2:size=320x240:rate=10",
+                "-f", "lavfi", "-i", "sine=frequency=440:duration=2",
+                "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest",
+                str(path),
+            ],
+            check=True, timeout=60,
+        )
+        return path
+
+    @pytest.mark.parametrize("weak_cartoon", [False, True])
+    def test_parallel_path_preserves_frames_and_audio(
+        self, longer_sample_with_audio, tmp_path, weak_cartoon, monkeypatch,
+    ):
+        monkeypatch.setattr(muscle_heat, "_MIN_SEGMENT_FRAMES", 5)
+        monkeypatch.setattr(muscle_heat, "_HEAT_WORKERS", 2)
+        assert len(_plan_segments(20, 2)) == 2  # 이 설정으로 실제 k=2가 나오는지 사전 확인
+
+        out = tmp_path / f"out_parallel_{weak_cartoon}.mp4"
+        render_heat_video(str(longer_sample_with_audio), str(out), weak_cartoon=weak_cartoon)
+
+        probe = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "stream=codec_type,nb_frames",
+             "-of", "json", str(out)],
+            check=True, capture_output=True, text=True, timeout=30,
+        )
+        streams = json.loads(probe.stdout)["streams"]
+        types = {s["codec_type"] for s in streams}
+        assert types == {"video", "audio"}, f"streams: {streams}"
+        video_stream = next(s for s in streams if s["codec_type"] == "video")
+        assert int(video_stream["nb_frames"]) == 20  # 2초 x 10fps, 구간 분할 후에도 총 프레임수 보존
+
+    def test_invalid_input_raises_in_parallel_path_too(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(muscle_heat, "_MIN_SEGMENT_FRAMES", 1)
+        monkeypatch.setattr(muscle_heat, "_HEAT_WORKERS", 2)
         bad = tmp_path / "bad.mp4"
         bad.write_bytes(b"not a video")
         with pytest.raises((ValueError, RuntimeError)):

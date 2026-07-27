@@ -1,5 +1,5 @@
 [Unit]
-Description=Stack Health Video Merge Worker
+Description=Stack Health Video Merge Worker (instance %i)
 After=network.target
 Wants=network.target
 
@@ -14,7 +14,7 @@ Restart=always
 RestartSec=5
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=stackhealth-worker
+SyslogIdentifier=stackhealth-worker-%i
 
 # 안전한 ffmpeg 실행을 위한 권한
 NoNewPrivileges=yes

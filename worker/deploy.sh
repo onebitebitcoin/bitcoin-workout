@@ -13,6 +13,9 @@ set -e
 INSTALL_DIR="/opt/stackhealth-worker"
 SERVICE_USER="stackhealth"
 SERVICE_NAME="stackhealth-worker"
+# 동시에 띄울 worker.py 인스턴스 수 — 환경변수로 오버라이드 가능 (예: WORKER_INSTANCES=2 bash deploy.sh)
+# cartoon.py/muscle_heat.py가 이 값을 .env에서 읽어 job당 내부 프로세스 풀 크기를 나눈다.
+WORKER_INSTANCES="${WORKER_INSTANCES:-1}"
 
 echo "======================================"
 echo " Stack Health Worker 배포 시작"
@@ -90,6 +93,7 @@ if [ ! -f "$ENV_FILE" ] || [ ! -s "$ENV_FILE" ]; then
     cp "$INSTALL_DIR/.env.example" "$ENV_FILE"
     # Redis URL을 위에서 생성한 값으로 교체
     sed -i "s|REDIS_URL=.*|REDIS_URL=$REDIS_URL|" "$ENV_FILE"
+    sed -i "s|WORKER_INSTANCES=.*|WORKER_INSTANCES=$WORKER_INSTANCES|" "$ENV_FILE"
     chown "$SERVICE_USER:$SERVICE_USER" "$ENV_FILE"
     chmod 600 "$ENV_FILE"
     echo ""
@@ -100,14 +104,26 @@ if [ ! -f "$ENV_FILE" ] || [ ! -s "$ENV_FILE" ]; then
     grep -E "^(R2_|REDIS_)" "$ENV_FILE"
     echo ""
 else
-    echo "  → 기존 .env 파일 유지"
+    echo "  → 기존 .env 파일 유지 (WORKER_INSTANCES는 값이 있으면 갱신)"
+    if grep -q "^WORKER_INSTANCES=" "$ENV_FILE"; then
+        sed -i "s|^WORKER_INSTANCES=.*|WORKER_INSTANCES=$WORKER_INSTANCES|" "$ENV_FILE"
+    else
+        echo "WORKER_INSTANCES=$WORKER_INSTANCES" >> "$ENV_FILE"
+    fi
 fi
 
-# ── 7. systemd 서비스 설치 ────────────────────────────────────────
-echo "[7/7] systemd 서비스 설치..."
-cp "$INSTALL_DIR/stackhealth-worker.service" /etc/systemd/system/
+# ── 7. systemd 서비스 설치 (템플릿 유닛, 인스턴스 N개) ─────────────
+echo "[7/7] systemd 서비스 설치 (인스턴스 ${WORKER_INSTANCES}개)..."
+cp "$INSTALL_DIR/stackhealth-worker@.service" /etc/systemd/system/
+# 예전 단일 유닛(stackhealth-worker.service)이 남아있으면 정리 — 템플릿 유닛으로 대체됨
+if systemctl list-unit-files "${SERVICE_NAME}.service" &>/dev/null; then
+    systemctl disable --now "${SERVICE_NAME}.service" 2>/dev/null || true
+    rm -f "/etc/systemd/system/${SERVICE_NAME}.service"
+fi
 systemctl daemon-reload
-systemctl enable "$SERVICE_NAME"
+for i in $(seq 1 "$WORKER_INSTANCES"); do
+    systemctl enable "${SERVICE_NAME}@${i}"
+done
 
 echo ""
 echo "======================================"
@@ -117,8 +133,11 @@ echo ""
 echo "다음 단계:"
 echo "  1. R2 크레덴셜 설정:  nano $ENV_FILE"
 echo "  2. 헬스체크:          sudo -u $SERVICE_USER $INSTALL_DIR/venv/bin/python $INSTALL_DIR/health_check.py"
-echo "  3. 워커 시작:         systemctl start $SERVICE_NAME"
-echo "  4. 로그 확인:         journalctl -u $SERVICE_NAME -f"
+echo "  3. 워커 시작 (인스턴스 ${WORKER_INSTANCES}개):"
+for i in $(seq 1 "$WORKER_INSTANCES"); do
+    echo "       systemctl start ${SERVICE_NAME}@${i}"
+done
+echo "  4. 로그 확인:         journalctl -u '${SERVICE_NAME}@*' -f"
 echo ""
 echo "Railway 백엔드에 설정할 REDIS_URL:"
 echo "  $REDIS_URL"

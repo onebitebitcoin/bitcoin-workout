@@ -127,9 +127,13 @@ systemctl --user stop "stack-health-app-$CURRENT_SLOT" || true
 # 슬롯 파일 업데이트
 echo "$NEXT_SLOT" > "$SLOT_FILE"
 
-# 워커 재시작
-echo "    워커 재시작..."
-systemctl --user restart stack-health-worker
+# 워커 재시작 (WORKER_INSTANCES개 인스턴스 — worker/.env 기준, systemd 템플릿 유닛 stack-health-worker@N)
+WORKER_INSTANCES=$(grep "^WORKER_INSTANCES=" "$APP_DIR/worker/.env" 2>/dev/null | cut -d= -f2)
+WORKER_INSTANCES="${WORKER_INSTANCES:-1}"
+echo "    워커 재시작 (인스턴스 ${WORKER_INSTANCES}개)..."
+for i in $(seq 1 "$WORKER_INSTANCES"); do
+    systemctl --user restart "stack-health-worker@${i}"
+done
 
 echo ""
 echo "✅ 배포 완료"

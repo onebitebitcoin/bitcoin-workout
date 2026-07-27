@@ -11,6 +11,7 @@ import logging
 import multiprocessing as mp
 import os
 import subprocess
+import threading
 
 import cv2
 import numpy as np
@@ -21,7 +22,10 @@ LINE_BGR = np.array([45, 42, 48], np.float32)  # 카툰 윤곽선 (잉크)
 
 # NlMeans 등 OpenCV 연산은 멀티스레드 확장성이 낮아(10코어 ~1.4x) 프레임 단위
 # 프로세스 병렬화가 효과적이다. 워커는 OpenCV 내부 스레딩을 꺼서 과다구독을 막는다.
-_WORKERS = max(1, (os.cpu_count() or 4) - 2)
+# WORKER_INSTANCES(동시에 띄운 worker.py 개수)로 나눠, 여러 인스턴스가 동시에 무거운
+# job을 처리해도 총 프로세스 수가 코어 수를 넘지 않게 한다 (기본 1 = 인스턴스 1개).
+_WORKER_INSTANCES = max(1, int(os.environ.get("WORKER_INSTANCES", "1")))
+_WORKERS = max(1, ((os.cpu_count() or 4) - 2) // _WORKER_INSTANCES)
 _CHUNK = 16  # 청크 단위 map: 전 프레임을 메모리에 들고 있지 않도록 제한
 
 
@@ -134,6 +138,18 @@ def cartoonize_video(input_path: str, output_path: str) -> None:
     )
     assert proc.stdin is not None
 
+    # stderr를 계속 읽어 비워두지 않으면 ffmpeg 로그로 파이프 버퍼가 차서 ffmpeg가 멈추고,
+    # 그러면 아래 stdin.write()도 함께 블로킹되어 영구 교착 상태에 빠진다(motion_fx.py와 동일 버그).
+    stderr_chunks: list[bytes] = []
+
+    def _drain_stderr() -> None:
+        assert proc.stderr is not None
+        for chunk in iter(lambda: proc.stderr.read(4096), b""):
+            stderr_chunks.append(chunk)
+
+    stderr_thread = threading.Thread(target=_drain_stderr, daemon=True)
+    stderr_thread.start()
+
     processed = 0
     gamma_ema: float | None = None
     pool = mp.get_context("spawn").Pool(_WORKERS, initializer=_worker_init)
@@ -160,10 +176,11 @@ def cartoonize_video(input_path: str, output_path: str) -> None:
         pool.join()
         cap.release()
         proc.stdin.close()
-        stderr = proc.stderr.read().decode(errors="replace") if proc.stderr else ""
         code = proc.wait()
+        stderr_thread.join(timeout=5)
 
     if code != 0:
+        stderr = b"".join(stderr_chunks).decode(errors="replace")
         raise RuntimeError(f"ffmpeg encode failed (exit {code}): {stderr[-500:]}")
     if processed == 0:
         raise ValueError("no frames decoded from input video")

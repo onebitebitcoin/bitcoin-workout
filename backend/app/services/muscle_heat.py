@@ -12,8 +12,11 @@ worker가 `../backend`를 sys.path에 얹어 이 모듈을 단독 import한다(`
 from __future__ import annotations
 
 import logging
+import multiprocessing
 import os
 import subprocess
+import tempfile
+import threading
 
 import cv2
 import mediapipe as mp
@@ -524,13 +527,148 @@ def heat_preview_frame(frame: np.ndarray, weak_cartoon: bool, exercise: str | No
     return _overlay(base, heat_full)
 
 
+# WORKER_INSTANCES(동시에 띄운 worker.py 개수)로 나눠, 여러 인스턴스가 동시에 무거운
+# job을 처리해도 총 프로세스 수가 코어 수를 넘지 않게 한다 (기본 1 = 인스턴스 1개).
+_WORKER_INSTANCES = max(1, int(os.environ.get("WORKER_INSTANCES", "1")))
+_HEAT_WORKERS = max(1, ((os.cpu_count() or 4) - 2) // _WORKER_INSTANCES)
+_MIN_SEGMENT_FRAMES = 90  # ~3초@30fps 미만은 분할 실익이 없음(프로세스 기동비용이 더 큼)
+_SEG_PAD_FRAMES = 24  # 구간 경계 예열 프레임 수(_STREAK_GATE=12 + 여유) — 열 EMA/스트릭 게이트 워밍업용
+
+
+def _heat_worker_init() -> None:
+    cv2.setNumThreads(1)
+
+
+def _plan_segments(frame_count: int, k: int) -> list[tuple[int, int, int]]:
+    """frame_count를 k개 구간 (start, end, pad_start)로 분할. 나머지 프레임은 마지막 구간이 흡수.
+
+    pad_start: 이 구간이 실제로 쓰기 시작하는 start보다 앞서 읽기 시작하는 지점(예열용).
+    0번 구간은 원래도 처음부터 시작이라 예열이 필요 없다.
+    """
+    if k <= 1:
+        return [(0, frame_count, 0)]
+    base = frame_count // k
+    segments: list[tuple[int, int, int]] = []
+    start = 0
+    for i in range(k):
+        end = frame_count if i == k - 1 else start + base
+        pad_start = 0 if i == 0 else max(0, start - _SEG_PAD_FRAMES)
+        segments.append((start, end, pad_start))
+        start = end
+    return segments
+
+
+def _render_heat_segment(args: tuple) -> tuple[int, str]:
+    """구간 하나를 렌더링해 비디오 전용(오디오 없음) mp4로 저장. (처리된 프레임 수, seg_path) 반환.
+
+    pad_start부터 읽어 tracker/state를 예열시키고 start 이후 프레임만 ffmpeg에 쓴다 —
+    구간 경계에서 열 EMA·스트릭 게이트가 0부터 다시 쌓이며 생기는 깜빡임을 줄이기 위함.
+    """
+    (input_path, start, end, pad_start, out_w, out_h, ph, dh, fps, weak_cartoon, exercise, seg_path) = args
+
+    cap = cv2.VideoCapture(input_path)
+    if not cap.isOpened():
+        raise ValueError(f"cannot open video: {input_path}")
+    if pad_start > 0:
+        cap.set(cv2.CAP_PROP_POS_FRAMES, pad_start)
+
+    ffmpeg_cmd = [
+        "ffmpeg", "-y",
+        "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{out_w}x{out_h}",
+        "-r", f"{fps:.6f}", "-i", "-",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast",
+        "-movflags", "+faststart",
+        seg_path,
+    ]
+    proc = subprocess.Popen(
+        ffmpeg_cmd, stdin=subprocess.PIPE,
+        stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+    )
+    assert proc.stdin is not None
+
+    stderr_chunks: list[bytes] = []
+
+    def _drain_stderr() -> None:
+        assert proc.stderr is not None
+        for chunk in iter(lambda: proc.stderr.read(4096), b""):
+            stderr_chunks.append(chunk)
+
+    stderr_thread = threading.Thread(target=_drain_stderr, daemon=True)
+    stderr_thread.start()
+
+    tracker = _PoseTracker(video_mode=True)
+    state = _RenderState(ph, preset=preset_for_exercise(exercise))
+    processed = 0
+    frame_idx = pad_start
+    try:
+        while frame_idx < end:
+            ok, frame = cap.read()
+            if not ok:
+                break
+            if (frame.shape[1], frame.shape[0]) != (out_w, out_h):
+                frame = cv2.resize(frame, (out_w, out_h), interpolation=cv2.INTER_AREA)
+            small = cv2.resize(frame, (PW, ph), interpolation=cv2.INTER_AREA)
+            det = cv2.resize(frame, (DET_W, dh), interpolation=cv2.INTER_AREA)
+            heat = state.step(small, tracker.process(det, PW, ph))
+
+            if frame_idx >= start:
+                base = light_cartoonize(frame) if weak_cartoon else frame
+                heat_full = cv2.resize(heat, (out_w, out_h), interpolation=cv2.INTER_LINEAR)
+                canvas = _overlay(base, heat_full)
+                proc.stdin.write(canvas.tobytes())
+                processed += 1
+            frame_idx += 1
+    finally:
+        tracker.close()
+        cap.release()
+        proc.stdin.close()
+        code = proc.wait()
+        stderr_thread.join(timeout=5)
+
+    if code != 0:
+        stderr = b"".join(stderr_chunks).decode(errors="replace")
+        raise RuntimeError(f"ffmpeg encode failed (exit {code}): {stderr[-500:]}")
+    if processed != end - start:
+        raise ValueError(f"segment frame mismatch: expected {end - start}, got {processed}")
+    return processed, seg_path
+
+
+def _concat_and_mux(seg_paths: list[str], input_path: str, output_path: str) -> None:
+    """구간 mp4들을 무손실로 이어붙이고(-c:v copy) 원본 오디오를 한 번만 입힌다."""
+    concat_list = output_path + ".concat.txt"
+    with open(concat_list, "w") as f:
+        for p in seg_paths:
+            f.write(f"file '{p}'\n")
+    try:
+        cmd = [
+            "ffmpeg", "-y",
+            "-f", "concat", "-safe", "0", "-i", concat_list,
+            "-i", input_path,
+            "-map", "0:v", "-map", "1:a?",
+            "-c:v", "copy", "-c:a", "copy",
+            "-movflags", "+faststart",
+            output_path,
+        ]
+        result = subprocess.run(cmd, capture_output=True, timeout=120)
+        if result.returncode != 0:
+            stderr = result.stderr.decode(errors="replace")
+            raise RuntimeError(f"concat mux failed (exit {result.returncode}): {stderr[-500:]}")
+    finally:
+        try:
+            os.remove(concat_list)
+        except OSError:
+            pass
+
+
 def render_heat_video(input_path: str, output_path: str, weak_cartoon: bool, exercise: str | None = None) -> None:
     """영상 전체에 근육 히트맵을 합성한다. 원본 오디오 스트림은 그대로 보존(-c:a copy).
 
-    MediaPipe `PoseLandmarker`의 VIDEO 모드는 타임스탬프 단조증가가 필요한 상태
-    기반 트래커라 `cartoonize_video()`처럼 프로세스 풀 병렬화가 불가능하다 —
-    단일 프로세스 순차 처리(검출 입력 DET_W 다운스케일 + 히트 그리드 PW 분리로 속도 확보).
-    근접 크롭·플랭크류(수평 자세)는 `_PoseTracker`의 회전 폴백이 잡는다.
+    프레임 수가 `_MIN_SEGMENT_FRAMES` 이상이면 영상을 `_HEAT_WORKERS`개 구간으로 나눠 프로세스
+    풀로 병렬 렌더링한다 — MediaPipe `PoseLandmarker`의 VIDEO 모드는 타임스탬프 단조증가가
+    필요한 상태 기반 트래커라 `cartoonize_video()`처럼 프레임 단위 풀 병렬화는 불가능하지만,
+    구간 단위로는 각 구간이 독립된 트래커·히트 상태를 가지고 각자 순차 처리할 수 있다.
+    짧은 영상은 프로세스 기동 비용이 더 크므로 기존 단일 프로세스 경로(`_render_heat_sequential`)를
+    그대로 쓴다.
     """
     cap = cv2.VideoCapture(input_path)
     if not cap.isOpened():
@@ -544,6 +682,52 @@ def render_heat_video(input_path: str, output_path: str, weak_cartoon: bool, exe
         cap.release()
         raise ValueError(f"video too small: {w}x{h}")
     ph = max(2, int(round(PW * out_h / out_w)))
+    dh = max(2, int(round(DET_W * out_h / out_w)))
+
+    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    cap.release()
+    # 컨테이너가 프레임 수를 신뢰할 수 없게 보고하면(0 이하) 안전하게 단일 프로세스로 폴백.
+    k = min(_HEAT_WORKERS, max(1, frame_count // _MIN_SEGMENT_FRAMES)) if frame_count > 0 else 1
+
+    if k <= 1:
+        _render_heat_sequential(input_path, output_path, out_w, out_h, ph, dh, fps, weak_cartoon, exercise)
+        return
+
+    segments = _plan_segments(frame_count, k)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        seg_args = [
+            (input_path, start, end, pad_start, out_w, out_h, ph, dh, fps, weak_cartoon, exercise,
+             os.path.join(tmpdir, f"seg_{i}.mp4"))
+            for i, (start, end, pad_start) in enumerate(segments)
+        ]
+        pool = multiprocessing.get_context("spawn").Pool(k, initializer=_heat_worker_init)
+        try:
+            results = pool.map(_render_heat_segment, seg_args)
+        finally:
+            pool.close()
+            pool.join()
+
+        total_processed = sum(r[0] for r in results)
+        if total_processed != frame_count:
+            raise RuntimeError(f"segment total mismatch: expected {frame_count}, got {total_processed}")
+
+        seg_paths = [r[1] for r in results]
+        _concat_and_mux(seg_paths, input_path, output_path)
+
+    logger.info(
+        "render_heat_video: %d frames across %d segments (weak_cartoon=%s) → %s",
+        frame_count, k, weak_cartoon, output_path,
+    )
+
+
+def _render_heat_sequential(
+    input_path: str, output_path: str, out_w: int, out_h: int, ph: int, dh: int, fps: float,
+    weak_cartoon: bool, exercise: str | None,
+) -> None:
+    """단일 프로세스 순차 렌더링(짧은 영상용 — 구간 분할 오버헤드가 더 클 때)."""
+    cap = cv2.VideoCapture(input_path)
+    if not cap.isOpened():
+        raise ValueError(f"cannot open video: {input_path}")
 
     ffmpeg_cmd = [
         "ffmpeg", "-y",
@@ -562,8 +746,19 @@ def render_heat_video(input_path: str, output_path: str, weak_cartoon: bool, exe
     )
     assert proc.stdin is not None
 
+    # stderr를 계속 읽어 비워두지 않으면 ffmpeg 로그로 파이프 버퍼가 차서 ffmpeg가 멈추고,
+    # 그러면 아래 stdin.write()도 함께 블로킹되어 영구 교착 상태에 빠진다(motion_fx.py와 동일 버그).
+    stderr_chunks: list[bytes] = []
+
+    def _drain_stderr() -> None:
+        assert proc.stderr is not None
+        for chunk in iter(lambda: proc.stderr.read(4096), b""):
+            stderr_chunks.append(chunk)
+
+    stderr_thread = threading.Thread(target=_drain_stderr, daemon=True)
+    stderr_thread.start()
+
     processed = 0
-    dh = max(2, int(round(DET_W * out_h / out_w)))
     tracker = _PoseTracker(video_mode=True)
     state = _RenderState(ph, preset=preset_for_exercise(exercise))
     try:
@@ -586,10 +781,11 @@ def render_heat_video(input_path: str, output_path: str, weak_cartoon: bool, exe
         tracker.close()
         cap.release()
         proc.stdin.close()
-        stderr = proc.stderr.read().decode(errors="replace") if proc.stderr else ""
         code = proc.wait()
+        stderr_thread.join(timeout=5)
 
     if code != 0:
+        stderr = b"".join(stderr_chunks).decode(errors="replace")
         raise RuntimeError(f"ffmpeg encode failed (exit {code}): {stderr[-500:]}")
     if processed == 0:
         raise ValueError("no frames decoded from input video")
