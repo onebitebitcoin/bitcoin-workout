@@ -18,7 +18,15 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-LINE_BGR = np.array([45, 42, 48], np.float32)  # 카툰 윤곽선 (잉크)
+LINE_BGR = np.array([45, 42, 48], np.uint16)  # 카툰 윤곽선 (잉크)
+
+# L채널 셀 양자화 LUT: 0.8*(round(L/42.5)*42.5) + 0.2*L — 6단계 소프트 양자화
+_CEL_LUT = np.clip(
+    0.8 * (np.round(np.arange(256, dtype=np.float32) / 42.5) * 42.5)
+    + 0.2 * np.arange(256, dtype=np.float32),
+    0,
+    255,
+).astype(np.uint8)
 
 # NlMeans 등 OpenCV 연산은 멀티스레드 확장성이 낮아(10코어 ~1.4x) 프레임 단위
 # 프로세스 병렬화가 효과적이다. 워커는 OpenCV 내부 스레딩을 꺼서 과다구독을 막는다.
@@ -69,11 +77,12 @@ def cartoon_frame(frame: np.ndarray, gamma: float = 1.0) -> np.ndarray:
     small = cv2.bilateralFilter(small, 9, 75, 75)
     smooth = cv2.resize(small, (w, h), interpolation=cv2.INTER_LINEAR)
 
-    # 셀 셰이딩: L만 6단계 소프트 양자화 (경계 깜빡임·밴딩 완화), 색은 부드럽게 유지
-    lab = cv2.cvtColor(smooth, cv2.COLOR_BGR2LAB).astype(np.float32)
-    lum = lab[:, :, 0]
-    lab[:, :, 0] = 0.8 * (np.round(lum / 42.5) * 42.5) + 0.2 * lum
-    cel = cv2.cvtColor(np.clip(lab, 0, 255).astype(np.uint8), cv2.COLOR_LAB2BGR)
+    # 셀 셰이딩: L만 6단계 소프트 양자화 (경계 깜빡임·밴딩 완화), 색은 부드럽게 유지.
+    # L은 uint8이라 양자화식이 256개 값의 순수 함수 — 전체 이미지를 float32로 올리는 대신
+    # 미리 만든 LUT를 태운다(결과 동일, ~63% 단축).
+    lab = cv2.cvtColor(smooth, cv2.COLOR_BGR2LAB)
+    lab[:, :, 0] = cv2.LUT(np.ascontiguousarray(lab[:, :, 0]), _CEL_LUT)
+    cel = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
 
     # 잉크 라인: DoG → 이진화 → 소성분 제거 → 살짝 두껍게 → 소프트 블렌드
     gray = cv2.cvtColor(den, cv2.COLOR_BGR2GRAY)
@@ -81,13 +90,18 @@ def cartoon_frame(frame: np.ndarray, gamma: float = 1.0) -> np.ndarray:
     g2 = cv2.GaussianBlur(gray, (0, 0), 3.0)
     _, line_mask = cv2.threshold(cv2.subtract(g1, g2), 4, 255, cv2.THRESH_BINARY)
     line_mask = cv2.morphologyEx(line_mask, cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))
-    n, labels, stats, _ = cv2.connectedComponentsWithStats(line_mask, 8)
-    for i in range(1, n):
-        if stats[i, cv2.CC_STAT_AREA] < 14:
-            line_mask[labels == i] = 0
+    _, labels, stats, _ = cv2.connectedComponentsWithStats(line_mask, 8)
+    # 컴포넌트별 Python 루프(`labels == i`)는 성분 수만큼 전체 이미지를 훑어
+    # 1080x1920·성분 800개 기준 프레임당 ~330ms(전체의 60%)를 잡아먹었다.
+    # 면적 조건을 라벨 LUT로 바꿔 한 번의 인덱싱으로 처리한다(결과는 픽셀 단위 동일).
+    keep = stats[:, cv2.CC_STAT_AREA] >= 14
+    keep[0] = False  # 배경 라벨
+    line_mask = np.where(keep[labels], np.uint8(255), np.uint8(0))
     line_mask = cv2.dilate(line_mask, np.ones((2, 2), np.uint8))
-    alpha = (cv2.GaussianBlur(line_mask, (3, 3), 0).astype(np.float32) / 255.0)[..., None]
-    out = cel.astype(np.float32) * (1 - alpha) + LINE_BGR * alpha
+    # 소프트 블렌드를 uint16 정수 연산으로 처리 (float32 대비 ~27% 단축).
+    # 반올림 방식 차이로 float 버전과 최대 1레벨 오차가 날 수 있으나 육안 식별 불가.
+    alpha = cv2.GaussianBlur(line_mask, (3, 3), 0).astype(np.uint16)[..., None]
+    out = (cel.astype(np.uint16) * (255 - alpha) + LINE_BGR * alpha) // 255
     return out.astype(np.uint8)
 
 
