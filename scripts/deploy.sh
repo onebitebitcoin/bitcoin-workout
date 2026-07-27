@@ -23,6 +23,21 @@ _notify_fail() {
 }
 trap '_notify_fail' ERR
 
+# ── 동시 배포 방지 (배타 잠금) ────────────────────────────────────────
+# 배포 두 개가 겹치면 한쪽의 npm ci가 node_modules를 지우는 중에 다른 쪽이
+# 설치를 끝내 의존성 트리가 깨진 채 exit 0이 된다.
+# (2026-07-28 v0.17.3~0.17.5 배포 3연속 실패 — "tsc: not found" 원인)
+LOCK_FILE="/tmp/stackhealth-deploy.lock"
+LOCK_WAIT=600
+exec 200>"$LOCK_FILE"
+if ! flock -w "$LOCK_WAIT" 200; then
+    echo "✗ 다른 배포가 ${LOCK_WAIT}초 넘게 진행 중 → 이번 배포 중단"
+    bash "$TELEGRAM_SCRIPT" "⏳ <b>Stack Health 배포 중단</b>
+🕐 $(TZ="Asia/Seoul" date "+%Y-%m-%d %H:%M") (KST)
+• 다른 배포가 진행 중이어서 잠금 획득 실패 (${LOCK_WAIT}초 대기)" 2>/dev/null || true
+    exit 1
+fi
+
 # ── 현재/다음 슬롯 결정 ───────────────────────────────────────────────
 CURRENT_SLOT=$(cat "$SLOT_FILE" 2>/dev/null || echo "blue")
 if [ "$CURRENT_SLOT" = "blue" ]; then
