@@ -11,6 +11,7 @@ import logging
 import multiprocessing as mp
 import os
 import subprocess
+import tempfile
 import threading
 
 import cv2
@@ -35,6 +36,13 @@ _CEL_LUT = np.clip(
 _WORKER_INSTANCES = max(1, int(os.environ.get("WORKER_INSTANCES", "1")))
 _WORKERS = max(1, ((os.cpu_count() or 4) - 2) // _WORKER_INSTANCES)
 _CHUNK = 16  # 청크 단위 map: 전 프레임을 메모리에 들고 있지 않도록 제한
+_MIN_SEGMENT_FRAMES = 90  # ~3초@30fps 미만은 분할 실익이 없음(프로세스 기동비용이 더 큼)
+# 구간 경계 예열 프레임 수 — 감마 EMA 워밍업용. EMA가 `_GAMMA_SAMPLE_EVERY`마다만 갱신되므로
+# 60프레임 ≈ 12회 갱신이 필요하다(24프레임이면 경계 감마가 최대 0.12 어긋나 밝기가 튄다).
+# 예열 구간은 디코딩과 감마 계산만 하고 렌더는 건너뛴다. 반드시 본문과 같은 샘플링 주기를
+# 써야 한다 — 주기가 다르면 EMA 응답이 달라져 예열을 늘려도 수렴하지 않는다.
+_SEG_PAD_FRAMES = 60
+_GAMMA_SAMPLE_EVERY = 5  # 감마 재계산 주기(프레임). 노출은 연속적이라 매 프레임 잴 필요가 없다
 
 
 def adaptive_gamma(frame: np.ndarray) -> float:
@@ -114,11 +122,141 @@ def _render_one(args: tuple[np.ndarray, float]) -> np.ndarray:
     return cartoon_frame(frame, gamma)
 
 
+def _sample_gamma(frame: np.ndarray, gamma_ema: float | None, frame_idx: int) -> float:
+    """감마를 `_GAMMA_SAMPLE_EVERY` 프레임마다만 재계산하고 EMA로 스무딩한다.
+
+    `adaptive_gamma`는 프레임 전체를 그레이로 변환해 평균을 내므로 공짜가 아닌데,
+    노출은 연속적으로 변하고 EMA가 이미 스무딩하고 있어 매 프레임 잴 필요가 없다.
+    (샘플링 주기가 길어진 만큼 EMA 추종이 느려지는데, 이는 깜빡임 억제에 오히려 유리하다.)
+    """
+    if gamma_ema is not None and frame_idx % _GAMMA_SAMPLE_EVERY:
+        return gamma_ema
+    g = adaptive_gamma(frame)
+    return g if gamma_ema is None else 0.9 * gamma_ema + 0.1 * g
+
+
+def _plan_segments(frame_count: int, k: int) -> list[tuple[int, int, int]]:
+    """frame_count를 k개 구간 (start, end, pad_start)로 분할. 나머지 프레임은 마지막 구간이 흡수.
+
+    pad_start: 이 구간이 실제로 쓰기 시작하는 start보다 앞서 읽기 시작하는 지점(예열용).
+    0번 구간은 원래도 처음부터 시작이라 예열이 필요 없다.
+    """
+    if k <= 1:
+        return [(0, frame_count, 0)]
+    base = frame_count // k
+    segments: list[tuple[int, int, int]] = []
+    start = 0
+    for i in range(k):
+        end = frame_count if i == k - 1 else start + base
+        pad_start = 0 if i == 0 else max(0, start - _SEG_PAD_FRAMES)
+        segments.append((start, end, pad_start))
+        start = end
+    return segments
+
+
+def _render_cartoon_segment(args: tuple) -> tuple[int, str]:
+    """구간 하나를 카툰 변환해 비디오 전용(오디오 없음) mp4로 저장. (프레임 수, seg_path) 반환.
+
+    pad_start부터 읽어 감마 EMA를 예열시키고 start 이후 프레임만 ffmpeg에 쓴다 —
+    구간 경계에서 EMA가 0부터 다시 쌓이며 밝기가 튀는 것을 막기 위함.
+    """
+    input_path, start, end, pad_start, out_w, out_h, fps, seg_path = args
+    cv2.setNumThreads(1)
+
+    cap = cv2.VideoCapture(input_path)
+    if not cap.isOpened():
+        raise ValueError(f"cannot open video: {input_path}")
+    if pad_start > 0:
+        cap.set(cv2.CAP_PROP_POS_FRAMES, pad_start)
+
+    ffmpeg_cmd = [
+        "ffmpeg", "-y",
+        "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{out_w}x{out_h}",
+        "-r", f"{fps:.6f}", "-i", "-",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast",
+        "-movflags", "+faststart",
+        seg_path,
+    ]
+    proc = subprocess.Popen(
+        ffmpeg_cmd, stdin=subprocess.PIPE,
+        stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
+    )
+    assert proc.stdin is not None
+
+    stderr_chunks: list[bytes] = []
+
+    def _drain_stderr() -> None:
+        assert proc.stderr is not None
+        for chunk in iter(lambda: proc.stderr.read(4096), b""):
+            stderr_chunks.append(chunk)
+
+    stderr_thread = threading.Thread(target=_drain_stderr, daemon=True)
+    stderr_thread.start()
+
+    processed = 0
+    gamma_ema: float | None = None
+    frame_idx = pad_start
+    try:
+        while frame_idx < end:
+            ok, frame = cap.read()
+            if not ok:
+                break
+            if (frame.shape[1], frame.shape[0]) != (out_w, out_h):
+                frame = cv2.resize(frame, (out_w, out_h), interpolation=cv2.INTER_AREA)
+            gamma_ema = _sample_gamma(frame, gamma_ema, frame_idx - pad_start)
+            if frame_idx >= start:
+                proc.stdin.write(cartoon_frame(frame, gamma_ema).tobytes())
+                processed += 1
+            frame_idx += 1
+    finally:
+        cap.release()
+        proc.stdin.close()
+        code = proc.wait()
+        stderr_thread.join(timeout=5)
+
+    if code != 0:
+        stderr = b"".join(stderr_chunks).decode(errors="replace")
+        raise RuntimeError(f"ffmpeg encode failed (exit {code}): {stderr[-500:]}")
+    if processed != end - start:
+        raise ValueError(f"segment frame mismatch: expected {end - start}, got {processed}")
+    return processed, seg_path
+
+
+def _concat_and_mux(seg_paths: list[str], input_path: str, output_path: str) -> None:
+    """구간 mp4들을 무손실로 이어붙이고(-c:v copy) 원본 오디오를 한 번만 입힌다."""
+    concat_list = output_path + ".concat.txt"
+    with open(concat_list, "w") as f:
+        for p in seg_paths:
+            f.write(f"file '{p}'\n")
+    try:
+        cmd = [
+            "ffmpeg", "-y",
+            "-f", "concat", "-safe", "0", "-i", concat_list,
+            "-i", input_path,
+            "-map", "0:v", "-map", "1:a?",
+            "-c:v", "copy", "-c:a", "copy",
+            "-movflags", "+faststart",
+            output_path,
+        ]
+        result = subprocess.run(cmd, capture_output=True, timeout=120)
+        if result.returncode != 0:
+            stderr = result.stderr.decode(errors="replace")
+            raise RuntimeError(f"concat mux failed (exit {result.returncode}): {stderr[-500:]}")
+    finally:
+        try:
+            os.remove(concat_list)
+        except OSError:
+            pass
+
+
 def cartoonize_video(input_path: str, output_path: str) -> None:
     """영상 전체를 카툰 변환한다. 원본 오디오 스트림은 그대로 보존(-c:a copy).
 
-    프레임을 프로세스 풀로 병렬 렌더링하고, ffmpeg 2입력(raw 비디오 파이프 +
-    원본 파일의 오디오)으로 재합성한다. 오디오가 없는 입력도 동작한다(0:a?).
+    프레임 수가 `_MIN_SEGMENT_FRAMES` 이상이면 영상을 `_WORKERS`개 구간으로 나눠 프로세스
+    풀로 병렬 렌더링한다 — 카툰 변환은 프레임 단위로 독립적이라 구간별로 디코딩·렌더링·
+    인코딩을 통째로 병렬화할 수 있고, 그러면 부모 프로세스가 홀로 하던 디코딩과 raw 파이프
+    쓰기(1080x1920 기준 프레임당 6.2MB)까지 함께 분산된다.
+    짧은 영상은 구간 분할 실익이 없어 기존 프레임 단위 병렬 경로를 그대로 쓴다.
     """
     cap = cv2.VideoCapture(input_path)
     if not cap.isOpened():
@@ -132,6 +270,58 @@ def cartoonize_video(input_path: str, output_path: str) -> None:
     if out_w < 2 or out_h < 2:
         cap.release()
         raise ValueError(f"video too small: {w}x{h}")
+    frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    cap.release()
+
+    # 컨테이너가 프레임 수를 신뢰할 수 없게 보고하면(0 이하) 안전하게 프레임 병렬로 폴백.
+    k = min(_WORKERS, max(1, frame_count // _MIN_SEGMENT_FRAMES)) if frame_count > 0 else 1
+    if k <= 1:
+        _cartoonize_frame_parallel(input_path, output_path, out_w, out_h, fps)
+        return
+
+    try:
+        segments = _plan_segments(frame_count, k)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            seg_args = [
+                (input_path, start, end, pad_start, out_w, out_h, fps,
+                 os.path.join(tmpdir, f"seg_{i}.mp4"))
+                for i, (start, end, pad_start) in enumerate(segments)
+            ]
+            pool = mp.get_context("spawn").Pool(k)
+            try:
+                results = pool.map(_render_cartoon_segment, seg_args)
+            finally:
+                pool.terminate()
+                pool.join()
+            _concat_and_mux([p for _, p in results], input_path, output_path)
+    except Exception:
+        # 구간 분할은 컨테이너가 보고한 프레임 수에 의존한다 — 값이 부정확하면 구간이
+        # 어긋나 실패한다. 프레임 병렬 경로는 EOF까지 읽으므로 그 영향을 받지 않는다.
+        # 잡 전체를 실패시키는 대신 느리지만 확실한 경로로 되돌린다.
+        logger.warning(
+            "cartoonize_video: 구간 병렬 실패 → 프레임 병렬로 폴백 (frames=%d, k=%d)",
+            frame_count, k, exc_info=True,
+        )
+        _cartoonize_frame_parallel(input_path, output_path, out_w, out_h, fps)
+        return
+
+    processed = sum(n for n, _ in results)
+    logger.info(
+        "cartoonize_video: %d frames in %d segments → %s", processed, len(segments), output_path
+    )
+
+
+def _cartoonize_frame_parallel(
+    input_path: str, output_path: str, out_w: int, out_h: int, fps: float
+) -> None:
+    """짧은 영상용 경로: 프레임을 프로세스 풀로 병렬 렌더링하고 단일 ffmpeg로 인코딩한다.
+
+    ffmpeg 2입력(raw 비디오 파이프 + 원본 파일의 오디오)으로 재합성한다.
+    오디오가 없는 입력도 동작한다(1:a?).
+    """
+    cap = cv2.VideoCapture(input_path)
+    if not cap.isOpened():
+        raise ValueError(f"cannot open video: {input_path}")
 
     ffmpeg_cmd = [
         "ffmpeg", "-y",
@@ -163,6 +353,7 @@ def cartoonize_video(input_path: str, output_path: str) -> None:
     stderr_thread.start()
 
     processed = 0
+    read_idx = 0
     gamma_ema: float | None = None
     pool = mp.get_context("spawn").Pool(_WORKERS, initializer=_worker_init)
     try:
@@ -175,8 +366,8 @@ def cartoonize_video(input_path: str, output_path: str) -> None:
                 if (frame.shape[1], frame.shape[0]) != (out_w, out_h):
                     frame = cv2.resize(frame, (out_w, out_h), interpolation=cv2.INTER_AREA)
                 # 감마 EMA: 프레임별 노출 변화로 밝기가 깜빡이지 않게 스무딩
-                g = adaptive_gamma(frame)
-                gamma_ema = g if gamma_ema is None else 0.9 * gamma_ema + 0.1 * g
+                gamma_ema = _sample_gamma(frame, gamma_ema, read_idx)
+                read_idx += 1
                 batch.append((frame, gamma_ema))
             if not batch:
                 break
