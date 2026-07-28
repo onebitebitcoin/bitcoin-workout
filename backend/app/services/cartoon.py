@@ -117,6 +117,9 @@ def cartoon_frame(frame: np.ndarray, gamma: float = 1.0) -> np.ndarray:
     keep[0] = False  # 배경 라벨
     line_mask = np.where(keep[labels], np.uint8(255), np.uint8(0))
     line_mask = cv2.dilate(line_mask, np.ones((2, 2), np.uint8))
+    # half-res(σ/면적임계 절반 재조정)로 계산하는 실험을 실측했으나 텍스트/세부선이
+    # 점묘화·단절되는 화질 저하가 뚜렷해 폐기했다(ponytail: 속도보다 화질 우선, 재시도 시
+    # DoG 입력을 half-res로 낮추지 말고 connectedComponents 단계만 최적화할 것).
     # 소프트 블렌드를 uint16 정수 연산으로 처리 (float32 대비 ~27% 단축).
     # 반올림 방식 차이로 float 버전과 최대 1레벨 오차가 날 수 있으나 육안 식별 불가.
     alpha = cv2.GaussianBlur(line_mask, (3, 3), 0).astype(np.uint16)[..., None]

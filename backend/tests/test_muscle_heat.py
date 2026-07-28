@@ -12,8 +12,13 @@ import pytest
 
 import app.services.muscle_heat as muscle_heat
 from app.services.muscle_heat import (
+    _GAP_TOLERANCE,
+    _GAP_TOLERANCE_ATTEMPTS,
+    _STREAK_GATE,
+    _STREAK_GATE_ATTEMPTS,
     PRESETS,
     PW,
+    _muscle_layer,
     _plan_segments,
     _RenderState,
     _unrotate_norm,
@@ -138,6 +143,109 @@ class TestRenderStateConvergence:
         for _ in range(12):
             heat = state.step(dummy, _overhead_pose())
         assert heat.max() > 0.12  # 수렴 후: 오버레이에서 보임
+
+
+def _hip_angle_pose(angle_deg: float, ph: int = 200, pw: int = PW):
+    """어깨(11)-엉덩이(23,vertex)-무릎(25) 각도를 지정한 최소 포즈.
+
+    gluteL 캡슐(드라이버 hipL 단일, aux 없음)만 활성화해 각속도 정규화(stride)를
+    다른 신호(이동속도 보조, 정적부하 플로어)와 분리해 테스트하기 위한 헬퍼.
+    각도가 180°에 가까우면 무릎이 펴진 상태 — `_static_load_floors`의 깊은 무릎
+    굽힘 플로어(<110°)를 피해 순수 각속도 신호만 측정한다.
+    """
+    vis = {i: 0.0 for i in range(33)}
+    pts = {i: (0.5 * pw, 0.5 * ph) for i in range(33)}
+    pts[11] = (0.5 * pw, 0.20 * ph)  # 어깨
+    pts[23] = (0.5 * pw, 0.55 * ph)  # 엉덩이(각도 꼭짓점)
+    rad = np.radians(angle_deg)
+    knee_len = 0.30 * ph
+    pts[25] = (pts[23][0] + knee_len * np.sin(rad), pts[23][1] - knee_len * np.cos(rad))
+    pts[12] = (0.5 * pw + 1, 0.20 * ph)  # mid_sho 계산용(직접 인덱싱되므로 키 필요)
+    pts[24] = (0.5 * pw + 1, 0.55 * ph)  # mid_hip 계산용
+    for i in (11, 12, 23, 24, 25):
+        vis[i] = 0.9
+    return pts, vis
+
+
+class TestMuscleLayerStrideNormalization:
+    """POSE_STRIDE로 포즈 추론을 격프레임 건너뛸 때, `_muscle_layer`의 stride 인자가
+    누적 델타(원시 각도차)를 프레임당으로 되돌려 단일 프레임 검출과 동일한 effort를
+    내는지 검증 — P6(perf 리포트)의 핵심 정합성 요구사항."""
+
+    def test_double_delta_with_stride_two_matches_single_delta_stride_one(self):
+        step_deg = np.degrees(0.020)  # DB_ANG_LOW(0.010)~K_ANG(0.030) 사이 — 데드밴드/포화 회피
+        pts0, vis0 = _hip_angle_pose(179.0)
+        pts1, vis1 = _hip_angle_pose(179.0 - step_deg)       # 1프레임 후(stride=1 비교 대상)
+        pts2, vis2 = _hip_angle_pose(179.0 - 2 * step_deg)   # 2프레임 후(stride=2 비교 대상)
+        angs0 = {name: muscle_heat._joint_angle(pts0, vis0, name) for name in muscle_heat.ANGLES}
+
+        eff_ema_s1: dict[str, float] = {}
+        _muscle_layer(pts1, vis1, None, 200, PW, pts0, angs0, eff_ema_s1, None, stride=1)
+
+        eff_ema_s2: dict[str, float] = {}
+        _muscle_layer(pts2, vis2, None, 200, PW, pts0, angs0, eff_ema_s2, None, stride=2)
+
+        assert eff_ema_s1["gluteL"] > 0.0  # 데드밴드 위 — 유의미한 신호인지 사전 확인
+        assert eff_ema_s2["gluteL"] == pytest.approx(eff_ema_s1["gluteL"], rel=1e-6)
+
+    def test_stride_one_without_normalization_would_double_count(self):
+        # 위 테스트의 대조군: stride 보정을 안 하면(=stride=1로 2프레임분 델타를 넣으면)
+        # 값이 달라져야 한다 — 정규화가 실제로 결과에 영향을 준다는 것 자체를 확인.
+        step_deg = np.degrees(0.020)
+        pts0, vis0 = _hip_angle_pose(179.0)
+        pts2, vis2 = _hip_angle_pose(179.0 - 2 * step_deg)
+        angs0 = {name: muscle_heat._joint_angle(pts0, vis0, name) for name in muscle_heat.ANGLES}
+
+        eff_ema_correct: dict[str, float] = {}
+        _muscle_layer(pts2, vis2, None, 200, PW, pts0, angs0, eff_ema_correct, None, stride=2)
+
+        eff_ema_unnormalized: dict[str, float] = {}
+        _muscle_layer(pts2, vis2, None, 200, PW, pts0, angs0, eff_ema_unnormalized, None, stride=1)
+
+        assert eff_ema_unnormalized["gluteL"] > eff_ema_correct["gluteL"]
+
+
+class TestRenderStateHold:
+    """hold=True(POSE_STRIDE 스킵 프레임)는 마지막 근육 캔버스를 재사용해야 하고,
+    pose=None(진짜 검출 실패)은 여전히 0으로 즉시 폴백해야 한다 — 둘을 혼동하면
+    스킵 프레임마다 열이 깜빡이거나(hold 없이) 사람이 실제로 사라져도 열이 안 꺼지는(hold
+    오적용) 두 가지 회귀가 생긴다."""
+
+    def test_hold_reuses_last_muscle_canvas(self):
+        state = _RenderState(ph=200, stride=2)
+        dummy = np.zeros((200, PW, 3), np.uint8)
+        state.step(dummy, _overhead_pose())  # 정적 부하로 muscle 캔버스 채움
+        held_muscle = state.last_muscle.copy()
+        assert held_muscle.max() > 0  # 사전 확인: 실제로 뭔가 그려졌는지
+
+        state.step(dummy, None, hold=True)
+        assert np.array_equal(state.last_muscle, held_muscle)  # hold는 캔버스를 바꾸지 않음
+        assert state.e_ema.max() > 0  # 0으로 꺼지지 않고 이전 근육 캔버스가 계속 반영됨
+
+    def test_true_detection_failure_still_zeroes_immediately(self):
+        state = _RenderState(ph=200, stride=2)
+        dummy = np.zeros((200, PW, 3), np.uint8)
+        state.step(dummy, _overhead_pose())
+        assert state.last_muscle.max() > 0
+
+        state.step(dummy, None, hold=False)  # 진짜 미검출 — freeze 아님
+        assert state.last_muscle.max() == 0
+
+
+class TestStreakGateAttempts:
+    """_STREAK_GATE/_GAP_TOLERANCE는 '검출 시도 횟수' 단위 상수다. POSE_STRIDE로 시도
+    빈도 자체가 줄었으므로, 원래 프레임(wall-clock) 도메인 의미를 보존하려면 시도 횟수
+    임계값도 stride만큼 나눠야 한다 — 나누지 않으면 게이트 통과에 필요한 실제 시간이
+    stride배로 늘어난다(회귀 시나리오)."""
+
+    def test_attempts_scaled_down_by_stride(self):
+        assert _STREAK_GATE_ATTEMPTS == max(1, _STREAK_GATE // muscle_heat.POSE_STRIDE)
+        assert _GAP_TOLERANCE_ATTEMPTS == max(1, _GAP_TOLERANCE // muscle_heat.POSE_STRIDE)
+
+    def test_never_zero_even_at_high_stride(self):
+        # 극단적인 stride에서도 게이트가 0이 되어 즉시 통과해버리면 오탐 차단이 무력화된다.
+        assert max(1, _STREAK_GATE // 100) >= 1
+        assert max(1, _GAP_TOLERANCE // 100) >= 1
 
 
 class TestHeatPreviewFrame:

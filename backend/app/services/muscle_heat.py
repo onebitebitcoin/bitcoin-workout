@@ -44,6 +44,15 @@ _STREAK_GATE = 12    # 연속 K프레임 검출돼야 열 활성화 — conf 0.3
 _GAP_TOLERANCE = 2   # 이 이하의 짧은 검출 끊김은 streak 유지 — 트래킹 순간 놓침(1~2프레임)으로
                      # 게이트가 재대기하는 것 방지. 오탐(x281)의 끊김 간격은 3~4프레임이라 안 살아남음.
 
+POSE_STRIDE = 2  # 비디오 렌더 루프(_render_heat_segment/_render_heat_sequential)에서 격프레임마다만
+                 # mediapipe 포즈 추론을 실행 — 나머지 프레임은 마지막 근육 캔버스를 그대로 유지(freeze)
+                 # 해 렌더한다(`_RenderState.step(..., hold=True)`). heat/cartoon_heat의 지배적 비용이
+                 # 포즈 추론이라 실측 확인 후 도입(성능 리포트 P6). 아래 두 값은 위 _STREAK_GATE/
+                 # _GAP_TOLERANCE가 "검출 시도 횟수" 단위이므로 stride만큼 나눠 원래 프레임(wall-clock)
+                 # 도메인 의미를 보존한다 — _PoseTracker는 이 값만 참조하고 원본 상수는 문서용으로 남긴다.
+_STREAK_GATE_ATTEMPTS = max(1, _STREAK_GATE // POSE_STRIDE)
+_GAP_TOLERANCE_ATTEMPTS = max(1, _GAP_TOLERANCE // POSE_STRIDE)
+
 # 관절 각도 정의: 이름 -> (A, 꼭짓점, B). 각도 = ∠A-꼭짓점-B (MediaPipe Pose 33 랜드마크 인덱스)
 ANGLES: dict[str, tuple[int, int, int]] = {
     "elbowL": (11, 13, 15), "elbowR": (12, 14, 16),
@@ -157,7 +166,7 @@ class _PoseTracker:
     def _family(rot_idx: int) -> str:
         return "port" if rot_idx in (1, 2) else "land"
 
-    def _detect(self, det_bgr: np.ndarray, rot_idx: int) -> vision.PoseLandmarkerResult:
+    def _detect(self, det_bgr: np.ndarray, rot_idx: int, frame_gap: int = 1) -> vision.PoseLandmarkerResult:
         fam = self._family(rot_idx)
         if fam not in self._lmks:
             self._lmks[fam] = _make_landmarker(
@@ -167,7 +176,10 @@ class _PoseTracker:
         img = det_bgr if code is None else cv2.rotate(det_bgr, code)
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
         if self._video_mode:
-            self._ts[fam] += 33
+            # frame_gap: 이번 호출이 직전 호출로부터 몇 비디오 프레임 지났는지(POSE_STRIDE로
+            # 건너뛴 프레임 포함) — VIDEO 모드는 타임스탬프 단조증가만 요구하므로 실제 경과
+            # 시간을 근사해 넘겨준다(정확한 모니터링용, 하류 로직은 타임스탬프를 읽지 않음).
+            self._ts[fam] += 33 * frame_gap
             return self._lmks[fam].detect_for_video(mp_image, self._ts[fam])
         return self._lmks[fam].detect(mp_image)
 
@@ -197,10 +209,16 @@ class _PoseTracker:
         return pts, vis, seg
 
     def process(
-        self, det_bgr: np.ndarray, grid_w: int, grid_h: int,
+        self, det_bgr: np.ndarray, grid_w: int, grid_h: int, frame_gap: int = 1,
     ) -> tuple[dict[int, tuple[float, float]], dict[int, float], np.ndarray | None] | None:
-        """검출 입력(det_bgr, DET_W 폭)에서 포즈를 찾아 (그리드 좌표 pts, vis, 세그) 반환. 실패 시 None."""
-        result = self._detect(det_bgr, self._rot)
+        """검출 입력(det_bgr, DET_W 폭)에서 포즈를 찾아 (그리드 좌표 pts, vis, 세그) 반환. 실패 시 None.
+
+        frame_gap: 렌더 루프가 POSE_STRIDE로 프레임을 건너뛰고 호출한 경우 그 간격(비디오
+        프레임 수). `_fail_streak`/`_det_streak`는 "검출 시도 횟수" 단위라 gap과 무관하게
+        1씩 증가하고, 게이트 비교는 모듈 상수 `_STREAK_GATE_ATTEMPTS`/`_GAP_TOLERANCE_ATTEMPTS`
+        (stride로 이미 나눠둔 값)를 쓴다 — wall-clock 의미 보존.
+        """
+        result = self._detect(det_bgr, self._rot, frame_gap)
         if not result.pose_landmarks:
             self._fail_streak += 1
             # 프로브 스로틀: 첫 실패와 이후 매 N프레임만 나머지 회전 시도
@@ -208,22 +226,22 @@ class _PoseTracker:
                 for k in range(len(_ROTS)):
                     if k == self._rot:
                         continue
-                    probe = self._detect(det_bgr, k)
+                    probe = self._detect(det_bgr, k, frame_gap)
                     if probe.pose_landmarks:
                         self._rot = k
                         result = probe
                         break
         if not result.pose_landmarks:
-            # 짧은 끊김(_GAP_TOLERANCE 이하)은 streak 유지 — 프로브 복구·순간 놓침으로
+            # 짧은 끊김(_GAP_TOLERANCE_ATTEMPTS 이하)은 streak 유지 — 프로브 복구·순간 놓침으로
             # 게이트가 재대기하지 않게 한다. 최종 실패가 길어질 때만 리셋.
-            if self._fail_streak > _GAP_TOLERANCE:
+            if self._fail_streak > _GAP_TOLERANCE_ATTEMPTS:
                 self._det_streak = 0
             return None
 
         self._fail_streak = 0
         self._det_streak += 1
         # 시간적 일관성 게이트 — 산발적 오탐 차단. 프리뷰(IMAGE 모드, 단일 프레임)는 예외.
-        if self._video_mode and self._det_streak < _STREAK_GATE:
+        if self._video_mode and self._det_streak < _STREAK_GATE_ATTEMPTS:
             return None
         return self._extract(result, self._rot, grid_w, grid_h)
 
@@ -324,7 +342,14 @@ def _joint_speed(
     torso: float,
     affine: np.ndarray | None,
 ) -> float:
-    """카메라 보정 관절 이동속도 (torso 길이 단위/frame). 팔 캡슐 보조 신호용."""
+    """카메라 보정 관절 이동속도 (torso 길이 단위/frame). 팔 캡슐 보조 신호용.
+
+    # ponytail: affine은 항상 "직전 비디오 프레임 1개" 기준 카메라 이동이다. POSE_STRIDE>1로
+    # prev_pts가 여러 프레임 전 값일 때도 단일 프레임 affine으로만 보정하므로 카메라가 흔들리는
+    # 구간에서 보정이 근소하게 과소해질 수 있다 — 이 신호는 팔 캡슐의 0.7 가중 보조항일 뿐이고
+    # 주 신호(각속도)는 애초에 카메라 흔들림에 불변이라 체감 영향은 낮다. 완전히 없애려면
+    # stride개 프레임의 affine을 누적 합성해야 하는데, 그 정도까지는 필요하지 않다고 판단.
+    """
     if prev_pts is None or joint not in prev_pts or vis.get(joint, 0) < VIS_MIN:
         return 0.0
     px, py = prev_pts[joint]
@@ -373,11 +398,16 @@ def _muscle_layer(
     eff_ema: dict[str, float],
     affine: np.ndarray | None,
     preset: set[str] | None = None,
+    stride: int = 1,
 ) -> tuple[np.ndarray, dict[str, float]]:
     """한 프레임의 근육 부하 맵(0..1)과 이번 프레임 관절 각도를 계산한다.
 
     preset: 운동 종목이 특정하는 근육군 집합(캡슐 접두사). 여기 없는 근육군은 게인을
     _PRESET_SUPPRESS 로 낮춰 부위 오귀속(스쿼트 팔 오발화 등)을 억제한다. None이면 균등.
+    stride: prev_pts/prev_angs가 몇 비디오 프레임 전 값인지(POSE_STRIDE). K_ANG/DB_ANG/
+    K_LIN/DB_LIN은 모두 "프레임당" 단위로 튜닝된 상수라, stride>1이면 원시 델타(수 프레임에
+    걸쳐 누적된 이동량)를 프레임당으로 되돌린 뒤(나눗셈) 데드밴드를 적용해야 임계값 의미가
+    유지된다 — 데드밴드 자체는 측정 잡음 크기라 stride와 무관하므로 나누지 않는다.
     """
     mid_sho = ((pts[11][0] + pts[12][0]) / 2, (pts[11][1] + pts[12][1]) / 2)
     mid_hip = ((pts[23][0] + pts[24][0]) / 2, (pts[23][1] + pts[24][1]) / 2)
@@ -394,13 +424,13 @@ def _muscle_layer(
         ]
         angular = 0.0
         if samples:
-            v = max(0.0, float(np.mean(samples)) - db)
+            v = max(0.0, float(np.mean(samples)) / stride - db)
             angular = min(1.0, v / K_ANG) ** 1.2
         linear = 0.0
         if aux:
             speeds = [_joint_speed(pts, prev_pts, vis, j, torso, affine) for j in aux if vis.get(j, 0) >= VIS_MIN]
             if speeds:
-                v = max(0.0, float(np.mean(speeds)) - DB_LIN)
+                v = max(0.0, float(np.mean(speeds)) / stride - DB_LIN)
                 linear = min(1.0, v / K_LIN) ** 1.2 * 0.7  # 보조 신호라 감쇠
         return max(angular, linear) * gain
 
@@ -461,14 +491,16 @@ def _muscle_layer(
 class _RenderState:
     """프레임 간 유지되는 트래킹 상태(관절 각도·EMA·잔열). 영상 1개당 인스턴스 1개."""
 
-    def __init__(self, ph: int, pw: int = PW, preset: set[str] | None = None) -> None:
+    def __init__(self, ph: int, pw: int = PW, preset: set[str] | None = None, stride: int = 1) -> None:
         self.ph = ph
         self.pw = pw
         self.preset = preset  # 운동 종목 근육군 프리셋 (None = 균등)
+        self.stride = stride  # POSE_STRIDE — _muscle_layer의 델타 정규화에 전달
         self.prev_pts: dict[int, tuple[float, float]] | None = None
         self.prev_angs: dict[str, float] = {}
         self.prev_gray: np.ndarray | None = None
         self.eff_ema: dict[str, float] = {}
+        self.last_muscle = np.zeros((ph, pw), np.float32)  # hold=True 프레임이 재사용할 마지막 근육 캔버스
         self.e_ema = np.zeros((ph, pw), np.float32)
         self.heat = np.zeros((ph, pw), np.float32)
 
@@ -476,25 +508,37 @@ class _RenderState:
         self,
         small_bgr: np.ndarray,
         pose: tuple[dict[int, tuple[float, float]], dict[int, float], np.ndarray | None] | None,
+        hold: bool = False,
     ) -> np.ndarray:
         """한 프레임 처리, 0..1 히트맵(내부 해상도 ph×pw)을 반환한다.
 
         `pose`는 `_PoseTracker.process()`의 출력(그리드 좌표 pts, vis, 세그) 또는 None.
-        포즈 미검출(None) 시 근육 맵은 0으로 유지되고 기존 잔열만 감쇠한다 — 크래시 없이
-        그레이스풀 폴백(운동열 없이 베이스 화면만 출력).
+        포즈 미검출(None, hold=False) 시 근육 맵은 0으로 유지되고 기존 잔열만 감쇠한다 —
+        크래시 없이 그레이스풀 폴백(운동열 없이 베이스 화면만 출력).
+
+        hold=True: POSE_STRIDE로 포즈 추론 자체를 건너뛴 프레임(진짜 검출 실패와 다름) —
+        마지막으로 그린 근육 캔버스(`last_muscle`)를 그대로 재사용한다. 실패(pose=None)처럼
+        0으로 채우면 잔열이 매 스킵 프레임마다 꺼졌다 켜지며 깜빡이고 정상상태 히트 강도가
+        (실측) 연속 검출 대비 최대 ~31% 낮게 수렴한다 — hold는 그 문제를 피하려는 것으로,
+        진짜 미검출(사람이 실제로 사라짐)은 hold=False 경로로 여전히 즉시 0 처리해 잔열이
+        정상적으로 감쇠하게 둔다.
         """
         gray = cv2.cvtColor(small_bgr, cv2.COLOR_BGR2GRAY)
         affine = _global_affine(self.prev_gray, gray)
 
-        if pose is not None:
+        if hold:
+            muscle = self.last_muscle
+        elif pose is not None:
             pts, vis, seg = pose
             muscle, angs = _muscle_layer(
                 pts, vis, seg, self.ph, self.pw, self.prev_pts, self.prev_angs, self.eff_ema, affine,
-                preset=self.preset,
+                preset=self.preset, stride=self.stride,
             )
             self.prev_pts, self.prev_angs = pts, angs
+            self.last_muscle = muscle
         else:
             muscle = np.zeros((self.ph, self.pw), np.float32)
+            self.last_muscle = muscle
 
         self.e_ema = 0.55 * muscle + 0.45 * self.e_ema
         self.heat = np.maximum(self.heat * DECAY, ALPHA * self.e_ema)
@@ -623,7 +667,7 @@ def _render_heat_segment(args: tuple) -> tuple[int, str]:
     stderr_thread.start()
 
     tracker = _PoseTracker(video_mode=True)
-    state = _RenderState(ph, preset=preset_for_exercise(exercise))
+    state = _RenderState(ph, preset=preset_for_exercise(exercise), stride=POSE_STRIDE)
     processed = 0
     frame_idx = pad_start
     try:
@@ -634,8 +678,13 @@ def _render_heat_segment(args: tuple) -> tuple[int, str]:
             if (frame.shape[1], frame.shape[0]) != (out_w, out_h):
                 frame = cv2.resize(frame, (out_w, out_h), interpolation=cv2.INTER_AREA)
             small = cv2.resize(frame, (PW, ph), interpolation=cv2.INTER_AREA)
-            det = cv2.resize(frame, (DET_W, dh), interpolation=cv2.INTER_AREA)
-            heat = state.step(small, tracker.process(det, PW, ph))
+            # frame_idx는 원본 영상 절대 프레임 번호(구간마다 다른 pad_start에서 시작)라
+            # 구간 경계에서도 스트라이드 위상이 어긋나지 않는다.
+            if frame_idx % POSE_STRIDE == 0:
+                det = cv2.resize(frame, (DET_W, dh), interpolation=cv2.INTER_AREA)
+                heat = state.step(small, tracker.process(det, PW, ph, frame_gap=POSE_STRIDE))
+            else:
+                heat = state.step(small, None, hold=True)
 
             if frame_idx >= start:
                 base = light_cartoonize(frame) if weak_cartoon else frame
@@ -784,8 +833,9 @@ def _render_heat_sequential(
     stderr_thread.start()
 
     processed = 0
+    frame_idx = 0
     tracker = _PoseTracker(video_mode=True)
-    state = _RenderState(ph, preset=preset_for_exercise(exercise))
+    state = _RenderState(ph, preset=preset_for_exercise(exercise), stride=POSE_STRIDE)
     try:
         while True:
             ok, frame = cap.read()
@@ -794,8 +844,12 @@ def _render_heat_sequential(
             if (frame.shape[1], frame.shape[0]) != (out_w, out_h):
                 frame = cv2.resize(frame, (out_w, out_h), interpolation=cv2.INTER_AREA)
             small = cv2.resize(frame, (PW, ph), interpolation=cv2.INTER_AREA)
-            det = cv2.resize(frame, (DET_W, dh), interpolation=cv2.INTER_AREA)
-            heat = state.step(small, tracker.process(det, PW, ph))
+            if frame_idx % POSE_STRIDE == 0:
+                det = cv2.resize(frame, (DET_W, dh), interpolation=cv2.INTER_AREA)
+                heat = state.step(small, tracker.process(det, PW, ph, frame_gap=POSE_STRIDE))
+            else:
+                heat = state.step(small, None, hold=True)
+            frame_idx += 1
 
             base = light_cartoonize(frame) if weak_cartoon else frame
             canvas = _overlay(base, heat)
