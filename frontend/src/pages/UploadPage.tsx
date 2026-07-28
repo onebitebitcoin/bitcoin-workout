@@ -8,7 +8,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import client from '../api/client'
 import { useAuthStore } from '../store/auth'
 import { getApiErrorMessage } from '../api/errors'
-import { MERGE_POLL_INTERVAL_MS } from '../lib/constants'
+import { MERGE_POLL_INTERVAL_MS, UPLOAD_STEP_CONFIG } from '../lib/constants'
 import type { Challenge, SubtitleLanguage } from '../api/types'
 import { isAxiosError } from 'axios'
 import StepMedia, { type MediaItem, MAX_IMAGES, IMAGE_CLIP_SECONDS } from './upload/StepMedia'
@@ -41,20 +41,6 @@ const PIPELINE_JOB_KEY = 'upload_pipeline_job'
 const PIPELINE_JOB_MAX_AGE_MS = 23 * 60 * 60 * 1000
 
 const CONFETTI_COLORS = ['#B5FF2E', '#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#FF9FF3']
-
-// 실제 백엔드 파이프라인 단계 순서(worker/tasks/full_pipeline_multi.py의 status_callback 호출 순서)와
-// 일치시켜야 한다: compose → audio_merge → filter(있으면) → compress(필터 없거나 실패 시만)
-// → db_save → thumbnail → subtitle → db_save. 폴링이 실제 pipeline_step을 그대로 반영하므로
-// (아래 pollJob) 건너뛴 단계는 자연히 표시되지 않는다 — 이 맵에 없는 단계가 와도 안전.
-const STEP_CONFIG: Record<string, { start: number; ceiling: number; interval: number }> = {
-  compose:     { start: 72, ceiling: 80, interval: 3000 },
-  audio_merge: { start: 80, ceiling: 82, interval: 1500 },
-  compress:    { start: 82, ceiling: 88, interval: 1500 },
-  filter:      { start: 88, ceiling: 92, interval: 3000 },
-  db_save:     { start: 92, ceiling: 94, interval: 1500 },
-  thumbnail:   { start: 94, ceiling: 96, interval: 1500 },
-  subtitle:    { start: 96, ceiling: 98, interval: 1500 },
-}
 
 function genId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID()
@@ -289,7 +275,7 @@ export default function UploadPage() {
       setPipelineStatus(status)
       if (pipeline_step) {
         setPipelineStep(pipeline_step)
-        const cfg = STEP_CONFIG[pipeline_step]
+        const cfg = UPLOAD_STEP_CONFIG[pipeline_step]
         if (cfg) setUploadProgress((p) => Math.max(p, cfg.start))
       }
       if (status === 'completed') { setUploadProgress(100); handleJobCompleted(points_earned ?? 0, share_token ?? '') }
@@ -301,7 +287,7 @@ export default function UploadPage() {
 
   useEffect(() => {
     if (!pipelineJobId || uploading || done) return
-    const cfg = STEP_CONFIG[pipelineStep]
+    const cfg = UPLOAD_STEP_CONFIG[pipelineStep]
     const ceiling = cfg?.ceiling ?? 88
     const interval = cfg?.interval ?? 1500
     const timer = setInterval(() => setUploadProgress((p) => (p < ceiling ? p + 1 : p)), interval)
