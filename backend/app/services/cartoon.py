@@ -171,11 +171,13 @@ def _render_cartoon_segment(args: tuple) -> tuple[int, str]:
     if pad_start > 0:
         cap.set(cv2.CAP_PROP_POS_FRAMES, pad_start)
 
+    # -crf 28: worker의 compress 단계와 같은 목표 화질/용량 — video_filter 지정 시 compress를
+    # 건너뛰고 이 인코더가 직접 최종 결과물을 만들기 때문(이중 인코딩 제거, full_pipeline_multi.py).
     ffmpeg_cmd = [
         "ffmpeg", "-y",
         "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{out_w}x{out_h}",
         "-r", f"{fps:.6f}", "-i", "-",
-        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast", "-threads", "2",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast", "-crf", "28", "-threads", "2",
         "-movflags", "+faststart",
         seg_path,
     ]
@@ -331,7 +333,7 @@ def _cartoonize_frame_parallel(
         "-r", f"{fps:.6f}", "-i", "-",
         "-i", input_path,
         "-map", "0:v", "-map", "1:a?",
-        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast", "-crf", "28",
         "-c:a", "copy",
         "-movflags", "+faststart",
         output_path,

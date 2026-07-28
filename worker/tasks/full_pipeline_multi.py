@@ -1,12 +1,12 @@
 """다중 미디어 업로드 파이프라인 (영상 ≤1 + 이미지 ≤N).
 
 기존 `run_full_pipeline`(단일 영상 경로)은 일절 수정하지 않는다.
-이 모듈은 `full_pipeline`의 검증된 헬퍼(_audio_merge / _compress_video /
+이 모듈은 `full_pipeline`의 검증된 헬퍼(_audio_merge / _compress_video / _probe_video_meta /
 _extract_thumbnail / _generate_share_token / SessionLocal / _get_r2_client)를
 import 재사용하고, compose 단계와 텍스트→자막 생성만 새로 추가한다.
 
-흐름: compose(순서대로 concat) → [60초 컷] → audio_merge → compress
-      → daily limit → thumbnail → subtitle(SRT 또는 텍스트) → db_save
+흐름: compose(순서대로 concat) → [60초 컷] → audio_merge → filter(있으면) → compress(필터 없거나
+      실패 시만) → daily limit → thumbnail → subtitle(SRT 또는 텍스트) → db_save
 """
 
 import json
@@ -23,6 +23,7 @@ from tasks.full_pipeline import (
     _extract_thumbnail,
     _generate_share_token,
     _get_r2_client,
+    _probe_video_meta,
 )
 from tasks.subtitle import (
     ALIGNMENT_MAP,
@@ -47,11 +48,22 @@ def _delete_quietly(r2, key: str) -> None:
         pass
 
 
-def _apply_video_filter(r2, video_key: str, video_filter: str) -> str | None:
-    """합성 영상에 필터(카툰/운동열 강조)를 적용해 새 R2 키를 반환. 실패 시 None (원본 유지).
+def _should_compress(filter_status: str) -> bool:
+    """compress 실행 여부. 필터가 없으면(skipped) 압축하고, 필터를 시도했으면 필터 인코더가
+    이미 동일 crf(28)로 직접 인코딩했으므로(_apply_video_filter) 생략한다 — 단, 필터가
+    실패했으면(failed) 압축 없는 원본이 그대로 나가지 않도록 compress로 대체한다.
+    """
+    return filter_status != "completed"
+
+
+def _apply_video_filter(r2, video_key: str, video_filter: str) -> tuple[str, int, int, dict] | None:
+    """합성 영상에 필터(카툰/운동열 강조)를 적용해 (filtered_key, pre_bytes, post_bytes,
+    video_meta)를 반환. 실패 시 None (원본 유지).
 
     backend와 동일한 렌더러(`app.services.cartoon`, `app.services.muscle_heat`)를 사용해
-    미리보기 룩과 최종 결과물을 일치시킨다.
+    미리보기 룩과 최종 결과물을 일치시킨다. 인코더가 compress와 동일 crf(28)로 직접
+    인코딩하므로 호출부(`run_multi_pipeline`)는 이 경우 별도 compress를 건너뛴다
+    (이중 인코딩 + R2 왕복 제거).
     """
     import os
     import tempfile
@@ -67,6 +79,7 @@ def _apply_video_filter(r2, video_key: str, video_filter: str) -> str | None:
         resp = r2.get_object(Bucket=R2_BUCKET_NAME, Key=video_key)
         with open(tmp_input, "wb") as f:
             f.write(resp["Body"].read())
+        pre_bytes = os.path.getsize(tmp_input)
 
         if video_filter == "cartoon":
             from app.services.cartoon import cartoonize_video
@@ -89,11 +102,14 @@ def _apply_video_filter(r2, video_key: str, video_filter: str) -> str | None:
                 exercise=exercise,
             )
 
+        post_bytes = os.path.getsize(tmp_output)
+        video_meta = _probe_video_meta(tmp_output)
+
         filtered_key = f"videos/f-{_uuid.uuid4()}.mp4"
         with open(tmp_output, "rb") as f:
             r2.put_object(Bucket=R2_BUCKET_NAME, Key=filtered_key, Body=f, ContentType="video/mp4",
                           CacheControl="public, max-age=31536000, immutable")
-        return filtered_key
+        return filtered_key, pre_bytes, post_bytes, video_meta
     except Exception as e:
         logger.warning("Video filter(%s) failed (using original): %s", video_filter, e)
         return None
@@ -156,31 +172,23 @@ def run_multi_pipeline(job: dict, status_callback=None) -> dict:
             audio_merge_failed = True
             logger.warning("[multi-pipeline] job=%s 오디오 머지 실패 — 오디오 없이 진행", job_id)
 
-    # 4) compress
+    # 4) video filter — 카툰/운동열 강조 등. 필터 인코더가 compress와 동일 crf(28)로 직접
+    #    인코딩하므로 성공하면 아래 5) compress를 건너뛴다(이중 인코딩 + R2 왕복 제거).
+    #    실패해도 원본으로 계속 진행하되, 압축 없는 원본이 나가지 않도록 compress로 대체한다.
     pre_size_bytes = 0
     post_size_bytes = 0
     video_meta: dict = {}
     compressed_key: str | None = None
-    pre_compress_key = current_key
-    if status_callback:
-        status_callback("compress")
-    compress_result = _compress_video(r2, current_key, mute_video=mute_video_audio)
-    if compress_result:
-        compressed_key, pre_size_bytes, post_size_bytes, video_meta = compress_result
-        if pre_compress_key != original_video_r2_key:
-            _delete_quietly(r2, pre_compress_key)
-        current_key = compressed_key
-        logger.info("[multi-pipeline] job=%s compressed → %s", job_id, current_key)
-
-    # 4.5) video filter — 카툰/운동열 강조 등. 실패해도 원본으로 계속 진행 (subtitle과 동일한 정책)
+    filtered_key: str | None = None
     filter_status = "skipped"
     video_filter = job.get("video_filter")
     if video_filter in ("cartoon", "heat", "cartoon_heat", "footsteps"):
         if status_callback:
             status_callback("filter")
         pre_filter_key = current_key
-        filtered_key = _apply_video_filter(r2, current_key, video_filter)
-        if filtered_key:
+        filter_result = _apply_video_filter(r2, current_key, video_filter)
+        if filter_result:
+            filtered_key, pre_size_bytes, post_size_bytes, video_meta = filter_result
             if pre_filter_key != original_video_r2_key:
                 _delete_quietly(r2, pre_filter_key)
             current_key = filtered_key
@@ -188,7 +196,22 @@ def run_multi_pipeline(job: dict, status_callback=None) -> dict:
             logger.info("[multi-pipeline] job=%s %s filter → %s", job_id, video_filter, current_key)
         else:
             filter_status = "failed"
-            logger.warning("[multi-pipeline] job=%s %s filter failed — 원본으로 진행", job_id, video_filter)
+            logger.warning(
+                "[multi-pipeline] job=%s %s filter failed — compress로 대체", job_id, video_filter,
+            )
+
+    # 5) compress — 필터가 없거나(skipped) 실패했을 때(failed)만 실행
+    if _should_compress(filter_status):
+        pre_compress_key = current_key
+        if status_callback:
+            status_callback("compress")
+        compress_result = _compress_video(r2, current_key, mute_video=mute_video_audio)
+        if compress_result:
+            compressed_key, pre_size_bytes, post_size_bytes, video_meta = compress_result
+            if pre_compress_key != original_video_r2_key:
+                _delete_quietly(r2, pre_compress_key)
+            current_key = compressed_key
+            logger.info("[multi-pipeline] job=%s compressed → %s", job_id, current_key)
 
     # 5) 일일 한도 체크 (썸네일 전)
     if status_callback:
@@ -350,6 +373,9 @@ def run_multi_pipeline(job: dict, status_callback=None) -> dict:
         if compressed_key:
             _delete_quietly(r2, compressed_key)
             logger.info("[multi-pipeline] job=%s 실패 — 고아 압축본 삭제: %s", job_id, compressed_key)
+        if filtered_key and filtered_key != compressed_key:
+            _delete_quietly(r2, filtered_key)
+            logger.info("[multi-pipeline] job=%s 실패 — 고아 필터본 삭제: %s", job_id, filtered_key)
         raise
     finally:
         db.close()

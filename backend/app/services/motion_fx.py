@@ -271,7 +271,7 @@ def render_footsteps_video(input_path: str, output_path: str) -> None:
         "-r", f"{fps:.6f}", "-i", "-",
         "-i", input_path,
         "-map", "0:v", "-map", "1:a?",
-        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast", "-crf", "28",
         "-c:a", "copy",
         "-movflags", "+faststart",
         output_path,

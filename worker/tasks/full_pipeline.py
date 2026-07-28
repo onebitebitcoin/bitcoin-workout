@@ -261,6 +261,32 @@ def _extract_thumbnail(r2, video_key: str) -> str | None:
                 os.unlink(tmp)
 
 
+def _probe_video_meta(path: str) -> dict:
+    """ffprobe로 video_meta(width/height/fps/codec/duration_sec) 추출. 실패 시 빈 dict."""
+    meta_probe = subprocess.run(
+        ["ffprobe", "-v", "quiet", "-select_streams", "v:0",
+         "-show_entries", "stream=width,height,r_frame_rate,codec_name:format=duration",
+         "-of", "json", path],
+        capture_output=True, text=True, timeout=15,
+    )
+    try:
+        probe_data = json.loads(meta_probe.stdout)
+        stream = probe_data.get("streams", [{}])[0]
+        fmt = probe_data.get("format", {})
+        fps_raw = stream.get("r_frame_rate", "0/1")
+        num, den = (fps_raw.split("/") + ["1"])[:2]
+        fps = round(int(num) / max(int(den), 1), 1)
+        return {
+            "width": stream.get("width", 0),
+            "height": stream.get("height", 0),
+            "fps": fps,
+            "codec": stream.get("codec_name", ""),
+            "duration_sec": round(float(fmt.get("duration", 0)), 1),
+        }
+    except Exception:
+        return {}
+
+
 def _compress_video(r2, video_key: str, mute_video: bool = False) -> tuple[str, int, int, dict] | None:
     """Re-encode video to reduce file size (CRF 28, ultrafast).
     Returns (compressed_key, pre_bytes, post_bytes, video_meta) or None if no benefit / failure.
@@ -299,31 +325,7 @@ def _compress_video(r2, video_key: str, mute_video: bool = False) -> tuple[str, 
             raise RuntimeError(f"ffmpeg compress: {result.stderr.decode()[-800:]}")
 
         post_bytes = os.path.getsize(tmp_output)
-
-        meta_probe = subprocess.run(
-            ["ffprobe", "-v", "quiet", "-select_streams", "v:0",
-             "-show_entries", "stream=width,height,r_frame_rate,codec_name:format=duration",
-             "-of", "json", tmp_output],
-            capture_output=True, text=True, timeout=15,
-        )
-        video_meta: dict = {}
-        try:
-            import json as _json
-            probe_data = _json.loads(meta_probe.stdout)
-            stream = probe_data.get("streams", [{}])[0]
-            fmt = probe_data.get("format", {})
-            fps_raw = stream.get("r_frame_rate", "0/1")
-            num, den = (fps_raw.split("/") + ["1"])[:2]
-            fps = round(int(num) / max(int(den), 1), 1)
-            video_meta = {
-                "width": stream.get("width", 0),
-                "height": stream.get("height", 0),
-                "fps": fps,
-                "codec": stream.get("codec_name", ""),
-                "duration_sec": round(float(fmt.get("duration", 0)), 1),
-            }
-        except Exception:
-            pass
+        video_meta = _probe_video_meta(tmp_output)
 
         if post_bytes >= pre_bytes:
             logger.info("[compress] 압축 효과 없음 (%dB → %dB), 원본 유지", pre_bytes, post_bytes)

@@ -48,3 +48,24 @@ def test_status_callback_invoked_with_compose(monkeypatch) -> None:
             status_callback=steps.append,
         )
     assert steps and steps[0] == "compose"
+
+
+def test_should_compress_skips_when_filter_completed() -> None:
+    """필터가 성공(completed)하면 compress를 생략 — 필터 인코더가 이미 동일 crf로 인코딩했으므로."""
+    from tasks.full_pipeline_multi import _should_compress
+
+    assert _should_compress("completed") is False
+
+
+def test_should_compress_runs_when_no_filter() -> None:
+    """필터를 아예 시도하지 않았으면(skipped) 기존대로 compress를 실행한다."""
+    from tasks.full_pipeline_multi import _should_compress
+
+    assert _should_compress("skipped") is True
+
+
+def test_should_compress_falls_back_when_filter_failed() -> None:
+    """필터가 실패했으면(failed) 압축 없는 원본이 나가지 않도록 compress로 대체한다."""
+    from tasks.full_pipeline_multi import _should_compress
+
+    assert _should_compress("failed") is True

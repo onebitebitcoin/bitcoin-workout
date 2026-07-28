@@ -43,7 +43,9 @@ const PIPELINE_JOB_MAX_AGE_MS = 23 * 60 * 60 * 1000
 const CONFETTI_COLORS = ['#B5FF2E', '#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#FF9FF3']
 
 // 실제 백엔드 파이프라인 단계 순서(worker/tasks/full_pipeline_multi.py의 status_callback 호출 순서)와
-// 일치시켜야 한다: compose → audio_merge → compress → filter → db_save → thumbnail → subtitle → db_save.
+// 일치시켜야 한다: compose → audio_merge → filter(있으면) → compress(필터 없거나 실패 시만)
+// → db_save → thumbnail → subtitle → db_save. 폴링이 실제 pipeline_step을 그대로 반영하므로
+// (아래 pollJob) 건너뛴 단계는 자연히 표시되지 않는다 — 이 맵에 없는 단계가 와도 안전.
 const STEP_CONFIG: Record<string, { start: number; ceiling: number; interval: number }> = {
   compose:     { start: 72, ceiling: 80, interval: 3000 },
   audio_merge: { start: 80, ceiling: 82, interval: 1500 },

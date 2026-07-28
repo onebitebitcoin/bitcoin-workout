@@ -585,11 +585,13 @@ def _render_heat_segment(args: tuple) -> tuple[int, str]:
 
     # x264 -threads auto는 코어당 ~1.5개 프레임 스레드를 띄운다. 구간마다 인코더가 하나씩
     # 떠서(k개) 렌더 프로세스 수와 별개로 코어를 오버섭스크립션한다 — 2로 고정.
+    # -crf 28: worker의 compress 단계와 같은 목표 화질/용량 — video_filter 지정 시 compress를
+    # 건너뛰고 이 인코더가 직접 최종 결과물을 만들기 때문(이중 인코딩 제거, full_pipeline_multi.py).
     ffmpeg_cmd = [
         "ffmpeg", "-y",
         "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{out_w}x{out_h}",
         "-r", f"{fps:.6f}", "-i", "-",
-        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast", "-threads", "2",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast", "-crf", "28", "-threads", "2",
         "-movflags", "+faststart",
         seg_path,
     ]
@@ -747,7 +749,7 @@ def _render_heat_sequential(
         "-r", f"{fps:.6f}", "-i", "-",
         "-i", input_path,
         "-map", "0:v", "-map", "1:a?",
-        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast", "-crf", "28",
         "-c:a", "copy",
         "-movflags", "+faststart",
         output_path,
