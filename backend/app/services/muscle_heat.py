@@ -257,19 +257,31 @@ def _global_affine(prev_gray: np.ndarray | None, gray: np.ndarray) -> np.ndarray
     return affine
 
 
-def _thermal(heat01: np.ndarray) -> np.ndarray:
-    """0..1 float 히트맵 -> BGR (INFERNO: 검정→보라→빨강→노랑→흰)."""
-    u8 = np.clip(heat01 * 255, 0, 255).astype(np.uint8)
-    return cv2.applyColorMap(u8, cv2.COLORMAP_INFERNO)
+def _alpha_lut(gain: float, lo: float) -> np.ndarray:
+    """0..255 양자화 히트값 -> 0..255 알파. lo 이하 저강도는 0(투명)."""
+    v = np.arange(256, dtype=np.float32) / 255.0
+    trimmed = np.clip((v - lo) / (1 - lo), 0, 1)
+    return np.clip(trimmed**0.85 * gain * 255, 0, 255).astype(np.uint8)
 
 
 def _overlay(base_bgr: np.ndarray, heat01: np.ndarray, gain: float = 1.4, lo: float = 0.12) -> np.ndarray:
-    """base 위에 히트맵을 알파 블렌드. lo 이하 저강도는 투명(원본 노출) → 핫스팟만 선명."""
-    thermal = _thermal(heat01)
-    trimmed = np.clip((heat01 - lo) / (1 - lo), 0, 1)
-    alpha = np.clip(trimmed**0.85 * gain, 0, 1)[..., None]
-    out = base_bgr.astype(np.float32) * (1 - alpha) + thermal.astype(np.float32) * alpha
-    return np.clip(out, 0, 255).astype(np.uint8)
+    """base 위에 히트맵을 알파 블렌드. lo 이하 저강도는 투명(원본 노출) → 핫스팟만 선명.
+
+    heat01은 base보다 작은 그리드 해상도로 들어온다(호출부가 업샘플하지 않는다) — 컬러맵
+    (applyColorMap)과 알파 곡선(pow)을 그리드 픽셀 수에서 LUT로 계산한 뒤 base 해상도로
+    업샘플한다. heat는 이미 3중 EMA로 스무딩된 값이라 그리드 해상도로 계산해도 육안 차이가
+    없다(실측 ~10x, cartoon.py의 LUT+정수블렌드와 동일 논리).
+    """
+    h, w = base_bgr.shape[:2]
+    u8 = np.clip(heat01 * 255, 0, 255).astype(np.uint8)
+    thermal = cv2.applyColorMap(u8, cv2.COLORMAP_INFERNO)
+    alpha = cv2.LUT(u8, _alpha_lut(gain, lo))
+    if u8.shape != (h, w):
+        thermal = cv2.resize(thermal, (w, h), interpolation=cv2.INTER_LINEAR)
+        alpha = cv2.resize(alpha, (w, h), interpolation=cv2.INTER_LINEAR)
+    alpha3 = cv2.merge((alpha, alpha, alpha)).astype(np.uint16)
+    out = (base_bgr.astype(np.uint16) * (255 - alpha3) + thermal.astype(np.uint16) * alpha3) // 255
+    return out.astype(np.uint8)
 
 
 def light_cartoonize(frame: np.ndarray) -> np.ndarray:
@@ -523,8 +535,7 @@ def heat_preview_frame(frame: np.ndarray, weak_cartoon: bool, exercise: str | No
     for _ in range(_PREVIEW_CONVERGE_STEPS):
         heat = state.step(small, pose)
     base = light_cartoonize(frame) if weak_cartoon else frame
-    heat_full = cv2.resize(heat, (w, h), interpolation=cv2.INTER_LINEAR)
-    return _overlay(base, heat_full)
+    return _overlay(base, heat)
 
 
 # WORKER_INSTANCES(동시에 띄운 worker.py 개수)로 나눠, 여러 인스턴스가 동시에 무거운
@@ -572,11 +583,13 @@ def _render_heat_segment(args: tuple) -> tuple[int, str]:
     if pad_start > 0:
         cap.set(cv2.CAP_PROP_POS_FRAMES, pad_start)
 
+    # x264 -threads auto는 코어당 ~1.5개 프레임 스레드를 띄운다. 구간마다 인코더가 하나씩
+    # 떠서(k개) 렌더 프로세스 수와 별개로 코어를 오버섭스크립션한다 — 2로 고정.
     ffmpeg_cmd = [
         "ffmpeg", "-y",
         "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{out_w}x{out_h}",
         "-r", f"{fps:.6f}", "-i", "-",
-        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast", "-threads", "2",
         "-movflags", "+faststart",
         seg_path,
     ]
@@ -613,8 +626,7 @@ def _render_heat_segment(args: tuple) -> tuple[int, str]:
 
             if frame_idx >= start:
                 base = light_cartoonize(frame) if weak_cartoon else frame
-                heat_full = cv2.resize(heat, (out_w, out_h), interpolation=cv2.INTER_LINEAR)
-                canvas = _overlay(base, heat_full)
+                canvas = _overlay(base, heat)
                 proc.stdin.write(canvas.tobytes())
                 processed += 1
             frame_idx += 1
@@ -773,8 +785,7 @@ def _render_heat_sequential(
             heat = state.step(small, tracker.process(det, PW, ph))
 
             base = light_cartoonize(frame) if weak_cartoon else frame
-            heat_full = cv2.resize(heat, (out_w, out_h), interpolation=cv2.INTER_LINEAR)
-            canvas = _overlay(base, heat_full)
+            canvas = _overlay(base, heat)
             proc.stdin.write(canvas.tobytes())
             processed += 1
     finally:

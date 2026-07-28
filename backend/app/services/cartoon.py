@@ -162,6 +162,8 @@ def _render_cartoon_segment(args: tuple) -> tuple[int, str]:
     """
     input_path, start, end, pad_start, out_w, out_h, fps, seg_path = args
     cv2.setNumThreads(1)
+    # x264 -threads auto는 코어당 ~1.5개 프레임 스레드를 띄운다. 구간마다 인코더가 하나씩
+    # 떠서(k개) 렌더 프로세스 수와 별개로 코어를 오버섭스크립션한다 — 2로 고정.
 
     cap = cv2.VideoCapture(input_path)
     if not cap.isOpened():
@@ -173,7 +175,7 @@ def _render_cartoon_segment(args: tuple) -> tuple[int, str]:
         "ffmpeg", "-y",
         "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{out_w}x{out_h}",
         "-r", f"{fps:.6f}", "-i", "-",
-        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast", "-threads", "2",
         "-movflags", "+faststart",
         seg_path,
     ]
