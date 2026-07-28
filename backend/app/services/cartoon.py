@@ -20,6 +20,11 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 LINE_BGR = np.array([45, 42, 48], np.uint16)  # 카툰 윤곽선 (잉크)
+_LINE_BGR_U8 = LINE_BGR.astype(np.uint8)  # 블렌드용 — cv2.multiply는 입력 dtype을 맞춰야 한다
+
+# DoG 두 번째 블러를 원본이 아니라 첫 블러 결과에 덧씌울 때의 σ.
+# 가우시안 합성: σ_total² = σ1² + σ2² → σ2 = sqrt(3.0² - 1.4²) ≈ 2.65
+_DOG_SIGMA2_CASCADE = float(np.sqrt(3.0**2 - 1.4**2))
 
 # L채널 셀 양자화 LUT: 0.8*(round(L/42.5)*42.5) + 0.2*L — 6단계 소프트 양자화
 _CEL_LUT = np.clip(
@@ -99,7 +104,10 @@ def cartoon_frame(frame: np.ndarray, gamma: float = 1.0) -> np.ndarray:
     sat = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
 
     small = cv2.resize(sat, (max(2, w // 2), max(2, h // 2)), interpolation=cv2.INTER_AREA)
-    small = cv2.bilateralFilter(small, 9, 75, 75)
+    # d=7: bilateral 비용은 d에 급격히 비례한다(half-res 1080x1920 실측 d9 11.0ms / d7 6.6ms /
+    # d5 3.1ms). d=9 대비 출력차는 0.58/255(0.23%)에 불과한데, 이 결과는 어차피 업샘플 후
+    # 셀 양자화를 거치므로 미세 차이가 더 묻힌다. d=5는 1.23/255로 커져 룩이 흔들릴 여지가 있다.
+    small = cv2.bilateralFilter(small, 7, 75, 75)
     smooth = cv2.resize(small, (w, h), interpolation=cv2.INTER_LINEAR)
 
     # 셀 셰이딩: L만 6단계 소프트 양자화 (경계 깜빡임·밴딩 완화), 색은 부드럽게 유지.
@@ -112,7 +120,9 @@ def cartoon_frame(frame: np.ndarray, gamma: float = 1.0) -> np.ndarray:
     # 잉크 라인: DoG → 이진화 → 소성분 제거 → 살짝 두껍게 → 소프트 블렌드
     gray = cv2.cvtColor(den, cv2.COLOR_BGR2GRAY)
     g1 = cv2.GaussianBlur(gray, (0, 0), 1.4)
-    g2 = cv2.GaussianBlur(gray, (0, 0), 3.0)
+    # σ=3.0을 원본에서 직접 구하는 대신 g1에 σ=2.65를 덧씌운다 — 가우시안은 합성되므로
+    # (1.4² + 2.65² ≈ 3.0²) 결과가 사실상 같고(출력차 0.04/255) 커널이 작아 더 싸다.
+    g2 = cv2.GaussianBlur(g1, (0, 0), _DOG_SIGMA2_CASCADE)
     _, line_mask = cv2.threshold(cv2.subtract(g1, g2), 4, 255, cv2.THRESH_BINARY)
     line_mask = cv2.morphologyEx(line_mask, cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))
     _, labels, stats, _ = cv2.connectedComponentsWithStats(line_mask, 8)
@@ -126,11 +136,19 @@ def cartoon_frame(frame: np.ndarray, gamma: float = 1.0) -> np.ndarray:
     # half-res(σ/면적임계 절반 재조정)로 계산하는 실험을 실측했으나 텍스트/세부선이
     # 점묘화·단절되는 화질 저하가 뚜렷해 폐기했다(ponytail: 속도보다 화질 우선, 재시도 시
     # DoG 입력을 half-res로 낮추지 말고 connectedComponents 단계만 최적화할 것).
-    # 소프트 블렌드를 uint16 정수 연산으로 처리 (float32 대비 ~27% 단축).
-    # 반올림 방식 차이로 float 버전과 최대 1레벨 오차가 날 수 있으나 육안 식별 불가.
-    alpha = cv2.GaussianBlur(line_mask, (3, 3), 0).astype(np.uint16)[..., None]
-    out = (cel.astype(np.uint16) * (255 - alpha) + LINE_BGR * alpha) // 255
-    return out.astype(np.uint8)
+    #
+    # 소프트 블렌드: numpy 브로드캐스트(uint16) 대신 OpenCV 융합 연산을 쓴다 — numpy는
+    # 곱셈/덧셈마다 1080x1920x3 임시 배열을 새로 만드는데 cv2는 SIMD로 한 번에 처리한다
+    # (실측 15.9ms → 10.6ms). 반올림 차이로 최대 1레벨 오차가 날 수 있으나 육안 식별 불가.
+    alpha = cv2.GaussianBlur(line_mask, (3, 3), 0)
+    alpha3 = cv2.merge((alpha, alpha, alpha))
+    line_layer = np.empty_like(cel)
+    line_layer[:] = _LINE_BGR_U8
+    blended = cv2.add(
+        cv2.multiply(cel, cv2.bitwise_not(alpha3), dtype=cv2.CV_16U),
+        cv2.multiply(line_layer, alpha3, dtype=cv2.CV_16U),
+    )
+    return cv2.convertScaleAbs(blended, alpha=1.0 / 255.0)
 
 
 def _worker_init() -> None:
