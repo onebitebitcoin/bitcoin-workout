@@ -31,10 +31,21 @@ _CEL_LUT = np.clip(
 
 # NlMeans 등 OpenCV 연산은 멀티스레드 확장성이 낮아(10코어 ~1.4x) 프레임 단위
 # 프로세스 병렬화가 효과적이다. 워커는 OpenCV 내부 스레딩을 꺼서 과다구독을 막는다.
-# WORKER_INSTANCES(동시에 띄운 worker.py 개수)로 나눠, 여러 인스턴스가 동시에 무거운
-# job을 처리해도 총 프로세스 수가 코어 수를 넘지 않게 한다 (기본 1 = 인스턴스 1개).
-_WORKER_INSTANCES = max(1, int(os.environ.get("WORKER_INSTANCES", "1")))
-_WORKERS = max(1, ((os.cpu_count() or 4) - 2) // _WORKER_INSTANCES)
+
+
+def _worker_pool_size() -> int:
+    """호출 시점의 병렬 프로세스 수. FFMPEG_ACTIVE_JOBS(현재 동시 처리 중인 잡 수 —
+    worker.py가 ffmpeg:slots 리스 점유 직후 설정)가 있으면 그 값으로, 없으면(단독
+    실행·테스트) WORKER_INSTANCES(정적 인스턴스 수)로 코어를 나눈다.
+
+    잡마다 값이 바뀌므로 모듈 임포트 시점이 아니라 매 호출 시점에 읽는다 — 정적
+    WORKER_INSTANCES 나눗셈은 "모든 인스턴스가 항상 바쁘다"고 가정해 잡이 하나뿐일
+    때도 코어를 남겨뒀다(예: 8코어·2인스턴스 → 잡 1개뿐이어도 3개만 사용).
+    """
+    active = os.environ.get("FFMPEG_ACTIVE_JOBS") or os.environ.get("WORKER_INSTANCES", "1")
+    return max(1, ((os.cpu_count() or 4) - 2) // max(1, int(active)))
+
+
 _CHUNK = 16  # 청크 단위 map: 전 프레임을 메모리에 들고 있지 않도록 제한
 _MIN_SEGMENT_FRAMES = 90  # ~3초@30fps 미만은 분할 실익이 없음(프로세스 기동비용이 더 큼)
 # 구간 경계 예열 프레임 수 — 감마 EMA 워밍업용. EMA가 `_GAMMA_SAMPLE_EVERY`마다만 갱신되므로
@@ -256,8 +267,8 @@ def _concat_and_mux(seg_paths: list[str], input_path: str, output_path: str) -> 
 def cartoonize_video(input_path: str, output_path: str) -> None:
     """영상 전체를 카툰 변환한다. 원본 오디오 스트림은 그대로 보존(-c:a copy).
 
-    프레임 수가 `_MIN_SEGMENT_FRAMES` 이상이면 영상을 `_WORKERS`개 구간으로 나눠 프로세스
-    풀로 병렬 렌더링한다 — 카툰 변환은 프레임 단위로 독립적이라 구간별로 디코딩·렌더링·
+    프레임 수가 `_MIN_SEGMENT_FRAMES` 이상이면 영상을 `_worker_pool_size()`개 구간으로 나눠
+    프로세스 풀로 병렬 렌더링한다 — 카툰 변환은 프레임 단위로 독립적이라 구간별로 디코딩·렌더링·
     인코딩을 통째로 병렬화할 수 있고, 그러면 부모 프로세스가 홀로 하던 디코딩과 raw 파이프
     쓰기(1080x1920 기준 프레임당 6.2MB)까지 함께 분산된다.
     짧은 영상은 구간 분할 실익이 없어 기존 프레임 단위 병렬 경로를 그대로 쓴다.
@@ -278,7 +289,7 @@ def cartoonize_video(input_path: str, output_path: str) -> None:
     cap.release()
 
     # 컨테이너가 프레임 수를 신뢰할 수 없게 보고하면(0 이하) 안전하게 프레임 병렬로 폴백.
-    k = min(_WORKERS, max(1, frame_count // _MIN_SEGMENT_FRAMES)) if frame_count > 0 else 1
+    k = min(_worker_pool_size(), max(1, frame_count // _MIN_SEGMENT_FRAMES)) if frame_count > 0 else 1
     if k <= 1:
         _cartoonize_frame_parallel(input_path, output_path, out_w, out_h, fps)
         return
@@ -359,7 +370,7 @@ def _cartoonize_frame_parallel(
     processed = 0
     read_idx = 0
     gamma_ema: float | None = None
-    pool = mp.get_context("spawn").Pool(_WORKERS, initializer=_worker_init)
+    pool = mp.get_context("spawn").Pool(_worker_pool_size(), initializer=_worker_init)
     try:
         while True:
             batch: list[tuple[np.ndarray, float]] = []

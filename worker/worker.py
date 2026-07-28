@@ -72,6 +72,10 @@ def _process_job(r, job: dict) -> None:
     set_job_status(r, job_id, status="processing")
 
     slot_token = _acquire_ffmpeg_slot(r)
+    # cartoon.py/muscle_heat.py가 이 잡의 렌더 프로세스 풀 크기를 정할 때 참고하는 스냅샷 —
+    # 잡 1개뿐이면 코어 예산을 다 쓰고, 여러 잡이 겹치면 나눠 쓴다(worker_pool_size 참고).
+    # 두 모듈 다 redis에 의존하지 않는 계약이라 여기서 값을 계산해 env로 건네준다.
+    os.environ["FFMPEG_ACTIVE_JOBS"] = str(r.zcard(FFMPEG_SLOTS_KEY))
     current_step: list[str | None] = [None]
     try:
         if job_type == "full-pipeline":

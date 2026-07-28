@@ -240,7 +240,7 @@ class TestPlanSegments:
 
 @pytest.mark.skipif(not _HAS_FFMPEG, reason="ffmpeg not installed")
 class TestRenderHeatVideoParallel:
-    """`_MIN_SEGMENT_FRAMES`/`_HEAT_WORKERS`를 낮춰 구간 병렬 경로를 강제로 태우는 E2E 테스트."""
+    """`_MIN_SEGMENT_FRAMES`를 낮추고 `_worker_pool_size`를 고정해 구간 병렬 경로를 강제로 태우는 E2E 테스트."""
 
     @pytest.fixture()
     def longer_sample_with_audio(self, tmp_path):
@@ -263,7 +263,7 @@ class TestRenderHeatVideoParallel:
         self, longer_sample_with_audio, tmp_path, weak_cartoon, monkeypatch,
     ):
         monkeypatch.setattr(muscle_heat, "_MIN_SEGMENT_FRAMES", 5)
-        monkeypatch.setattr(muscle_heat, "_HEAT_WORKERS", 2)
+        monkeypatch.setattr(muscle_heat, "_worker_pool_size", lambda: 2)
         assert len(_plan_segments(20, 2)) == 2  # 이 설정으로 실제 k=2가 나오는지 사전 확인
 
         out = tmp_path / f"out_parallel_{weak_cartoon}.mp4"
@@ -282,7 +282,7 @@ class TestRenderHeatVideoParallel:
 
     def test_invalid_input_raises_in_parallel_path_too(self, tmp_path, monkeypatch):
         monkeypatch.setattr(muscle_heat, "_MIN_SEGMENT_FRAMES", 1)
-        monkeypatch.setattr(muscle_heat, "_HEAT_WORKERS", 2)
+        monkeypatch.setattr(muscle_heat, "_worker_pool_size", lambda: 2)
         bad = tmp_path / "bad.mp4"
         bad.write_bytes(b"not a video")
         with pytest.raises((ValueError, RuntimeError)):

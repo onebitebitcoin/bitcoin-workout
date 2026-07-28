@@ -538,10 +538,21 @@ def heat_preview_frame(frame: np.ndarray, weak_cartoon: bool, exercise: str | No
     return _overlay(base, heat)
 
 
-# WORKER_INSTANCES(동시에 띄운 worker.py 개수)로 나눠, 여러 인스턴스가 동시에 무거운
-# job을 처리해도 총 프로세스 수가 코어 수를 넘지 않게 한다 (기본 1 = 인스턴스 1개).
-_WORKER_INSTANCES = max(1, int(os.environ.get("WORKER_INSTANCES", "1")))
-_HEAT_WORKERS = max(1, ((os.cpu_count() or 4) - 2) // _WORKER_INSTANCES)
+def _worker_pool_size() -> int:
+    """호출 시점의 병렬 프로세스 수. FFMPEG_ACTIVE_JOBS(현재 동시 처리 중인 잡 수 —
+    worker.py가 ffmpeg:slots 리스 점유 직후 설정)가 있으면 그 값으로, 없으면(단독
+    실행·테스트) WORKER_INSTANCES(정적 인스턴스 수)로 코어를 나눈다.
+
+    잡마다 값이 바뀌므로 모듈 임포트 시점이 아니라 매 호출 시점에 읽는다 — 정적
+    WORKER_INSTANCES 나눗셈은 "모든 인스턴스가 항상 바쁘다"고 가정해 잡이 하나뿐일
+    때도 코어를 남겨뒀다(예: 8코어·2인스턴스 → 잡 1개뿐이어도 3개만 사용).
+    (cartoon.py와 동일 로직 — 두 모듈 다 cv2/numpy/mediapipe 외 앱 의존성을 두지
+    않는 계약이라 공유 유틸 모듈을 만들지 않고 각자 둔다.)
+    """
+    active = os.environ.get("FFMPEG_ACTIVE_JOBS") or os.environ.get("WORKER_INSTANCES", "1")
+    return max(1, ((os.cpu_count() or 4) - 2) // max(1, int(active)))
+
+
 _MIN_SEGMENT_FRAMES = 90  # ~3초@30fps 미만은 분할 실익이 없음(프로세스 기동비용이 더 큼)
 _SEG_PAD_FRAMES = 24  # 구간 경계 예열 프레임 수(_STREAK_GATE=12 + 여유) — 열 EMA/스트릭 게이트 워밍업용
 
@@ -677,8 +688,8 @@ def _concat_and_mux(seg_paths: list[str], input_path: str, output_path: str) -> 
 def render_heat_video(input_path: str, output_path: str, weak_cartoon: bool, exercise: str | None = None) -> None:
     """영상 전체에 근육 히트맵을 합성한다. 원본 오디오 스트림은 그대로 보존(-c:a copy).
 
-    프레임 수가 `_MIN_SEGMENT_FRAMES` 이상이면 영상을 `_HEAT_WORKERS`개 구간으로 나눠 프로세스
-    풀로 병렬 렌더링한다 — MediaPipe `PoseLandmarker`의 VIDEO 모드는 타임스탬프 단조증가가
+    프레임 수가 `_MIN_SEGMENT_FRAMES` 이상이면 영상을 `_worker_pool_size()`개 구간으로 나눠
+    프로세스 풀로 병렬 렌더링한다 — MediaPipe `PoseLandmarker`의 VIDEO 모드는 타임스탬프 단조증가가
     필요한 상태 기반 트래커라 `cartoonize_video()`처럼 프레임 단위 풀 병렬화는 불가능하지만,
     구간 단위로는 각 구간이 독립된 트래커·히트 상태를 가지고 각자 순차 처리할 수 있다.
     짧은 영상은 프로세스 기동 비용이 더 크므로 기존 단일 프로세스 경로(`_render_heat_sequential`)를
@@ -701,7 +712,7 @@ def render_heat_video(input_path: str, output_path: str, weak_cartoon: bool, exe
     frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     cap.release()
     # 컨테이너가 프레임 수를 신뢰할 수 없게 보고하면(0 이하) 안전하게 단일 프로세스로 폴백.
-    k = min(_HEAT_WORKERS, max(1, frame_count // _MIN_SEGMENT_FRAMES)) if frame_count > 0 else 1
+    k = min(_worker_pool_size(), max(1, frame_count // _MIN_SEGMENT_FRAMES)) if frame_count > 0 else 1
 
     if k <= 1:
         _render_heat_sequential(input_path, output_path, out_w, out_h, ph, dh, fps, weak_cartoon, exercise)

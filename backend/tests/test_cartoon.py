@@ -9,7 +9,12 @@ import cv2
 import numpy as np
 import pytest
 
-from app.services.cartoon import adaptive_gamma, cartoon_frame, cartoonize_video
+from app.services.cartoon import (
+    _worker_pool_size,
+    adaptive_gamma,
+    cartoon_frame,
+    cartoonize_video,
+)
 
 _HAS_FFMPEG = shutil.which("ffmpeg") is not None
 
@@ -34,6 +39,26 @@ class TestCartoonFrame:
         out = cartoon_frame(frame)
         center = out[120, 160]
         assert center[2] > center[0]  # 빨강 채널 우세 유지
+
+
+class TestWorkerPoolSize:
+    def test_single_active_job_uses_full_budget(self, monkeypatch):
+        monkeypatch.setattr("os.cpu_count", lambda: 10)
+        monkeypatch.delenv("WORKER_INSTANCES", raising=False)
+        monkeypatch.setenv("FFMPEG_ACTIVE_JOBS", "1")
+        assert _worker_pool_size() == 8  # (10-2)//1
+
+    def test_multiple_active_jobs_split_budget(self, monkeypatch):
+        monkeypatch.setattr("os.cpu_count", lambda: 10)
+        monkeypatch.delenv("WORKER_INSTANCES", raising=False)
+        monkeypatch.setenv("FFMPEG_ACTIVE_JOBS", "2")
+        assert _worker_pool_size() == 4  # (10-2)//2
+
+    def test_falls_back_to_worker_instances_when_unset(self, monkeypatch):
+        monkeypatch.setattr("os.cpu_count", lambda: 10)
+        monkeypatch.delenv("FFMPEG_ACTIVE_JOBS", raising=False)
+        monkeypatch.setenv("WORKER_INSTANCES", "2")
+        assert _worker_pool_size() == 4  # (10-2)//2
 
 
 class TestAdaptiveGamma:
