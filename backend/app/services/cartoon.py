@@ -34,13 +34,19 @@ _CEL_LUT = np.clip(
 
 
 def _worker_pool_size() -> int:
-    """호출 시점의 병렬 프로세스 수. FFMPEG_ACTIVE_JOBS(현재 동시 처리 중인 잡 수 —
-    worker.py가 ffmpeg:slots 리스 점유 직후 설정)가 있으면 그 값으로, 없으면(단독
-    실행·테스트) WORKER_INSTANCES(정적 인스턴스 수)로 코어를 나눈다.
+    """호출 시점의 병렬 프로세스 수. FFMPEG_ACTIVE_JOBS(현재 활성 잡 수 — worker.py가
+    슬롯 획득 직후와 렌더 단계 진입 시 갱신)가 있으면 그 값으로, 없으면(단독 실행·테스트)
+    WORKER_INSTANCES(정적 인스턴스 수)로 코어를 나눈다.
 
     잡마다 값이 바뀌므로 모듈 임포트 시점이 아니라 매 호출 시점에 읽는다 — 정적
     WORKER_INSTANCES 나눗셈은 "모든 인스턴스가 항상 바쁘다"고 가정해 잡이 하나뿐일
     때도 코어를 남겨뒀다(예: 8코어·2인스턴스 → 잡 1개뿐이어도 3개만 사용).
+
+    한계: 이 값은 렌더 시작 시점의 스냅샷이다. 렌더가 도는 도중 다른 잡이 합류하면
+    그 잡은 자기 시점 기준으로 풀을 잡으므로 일시적으로 총 프로세스 수가 코어 예산을
+    넘을 수 있다(8코어·2잡 겹침 최악 6+3=9). CPU는 CFS가 나눠주므로 둘 다 느려질 뿐
+    실패하지는 않는다 — 렌더 중 재조회로 풀을 줄이려면 이미 spawn된 프로세스를
+    죽여야 해서 얻는 것보다 잃는 게 크다고 판단해 스냅샷으로 둔다.
     """
     active = os.environ.get("FFMPEG_ACTIVE_JOBS") or os.environ.get("WORKER_INSTANCES", "1")
     return max(1, ((os.cpu_count() or 4) - 2) // max(1, int(active)))

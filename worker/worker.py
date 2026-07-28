@@ -64,6 +64,24 @@ def _release_ffmpeg_slot(r, token: str) -> None:
         r.zrem(FFMPEG_SLOTS_KEY, token)
 
 
+# 무거운 렌더가 시작되는 파이프라인 단계 — 이 시점에 활성 잡 수를 다시 읽는다.
+_RENDER_STEPS = frozenset({"filter", "compress"})
+
+
+def _refresh_active_jobs(r) -> None:
+    """현재 활성 잡 수를 FFMPEG_ACTIVE_JOBS env로 내려 렌더 프로세스 풀 크기를 정하게 한다.
+
+    cartoon.py/muscle_heat.py의 `_worker_pool_size()`가 이 값을 읽는다 — 두 모듈은
+    cv2/numpy/mediapipe 외 의존성을 두지 않는 계약이라 redis를 직접 못 보므로 여기서 건넨다.
+
+    슬롯 획득 직후 한 번, 그리고 실제 렌더 단계(_RENDER_STEPS) 진입 때 다시 읽는다.
+    획득 시점 스냅샷만 쓰면 그 사이의 compose·audio_merge·R2 다운로드(수십 초~수 분)
+    동안 다른 잡이 끝나거나 시작한 것이 전혀 반영되지 않아, 렌더가 실제로 도는 시점의
+    동시성과 크게 어긋난다. 렌더 도중 합류하는 잡까지 반영하지는 못한다(구조적 한계).
+    """
+    os.environ["FFMPEG_ACTIVE_JOBS"] = str(r.zcard(FFMPEG_SLOTS_KEY))
+
+
 def _process_job(r, job: dict) -> None:
     job_id = job["job_id"]
     job_type = job.get("job_type", "merge")
@@ -72,20 +90,21 @@ def _process_job(r, job: dict) -> None:
     set_job_status(r, job_id, status="processing")
 
     slot_token = _acquire_ffmpeg_slot(r)
-    # cartoon.py/muscle_heat.py가 이 잡의 렌더 프로세스 풀 크기를 정할 때 참고하는 스냅샷 —
-    # 잡 1개뿐이면 코어 예산을 다 쓰고, 여러 잡이 겹치면 나눠 쓴다(worker_pool_size 참고).
-    # 두 모듈 다 redis에 의존하지 않는 계약이라 여기서 값을 계산해 env로 건네준다.
-    os.environ["FFMPEG_ACTIVE_JOBS"] = str(r.zcard(FFMPEG_SLOTS_KEY))
+    _refresh_active_jobs(r)
     current_step: list[str | None] = [None]
     try:
         if job_type == "full-pipeline":
             def _step_cb(step: str) -> None:
                 current_step[0] = step
+                if step in _RENDER_STEPS:
+                    _refresh_active_jobs(r)
                 set_job_status(r, job_id, pipeline_step=step)
             result = run_full_pipeline(job, status_callback=_step_cb)
         elif job_type == "multi-pipeline":
             def _step_cb(step: str) -> None:
                 current_step[0] = step
+                if step in _RENDER_STEPS:
+                    _refresh_active_jobs(r)
                 set_job_status(r, job_id, pipeline_step=step)
             result = run_multi_pipeline(job, status_callback=_step_cb)
         elif job_type == "subtitle-extract":
@@ -105,6 +124,9 @@ def _process_job(r, job: dict) -> None:
         if job_type in ("full-pipeline", "multi-pipeline"):
             notify_video_failure(job, e, 1, 0, current_step[0])
     finally:
+        # "잡 밖에서는 이 값이 없다"를 불변식으로 — 남겨두면 다음 잡이 슬롯 획득 전에
+        # 크래시했을 때 직전 잡의 스테일 값이 풀 크기 계산에 쓰인다.
+        os.environ.pop("FFMPEG_ACTIVE_JOBS", None)
         _release_ffmpeg_slot(r, slot_token)
         ack_job(r, job)
 
