@@ -7,6 +7,8 @@
 
 `cartoon.py`와 같은 제약: cv2/numpy/mediapipe 외 앱 의존성을 두지 않는다 —
 worker가 `../backend`를 sys.path에 얹어 이 모듈을 단독 import한다(`worker/config.py`).
+같은 제약을 지키는 `cartoon.py`만 예외적으로 import한다("카툰+운동열"의 카툰 베이스를
+카툰 단독 필터와 같은 렌더러로 통일하기 위해 — 복사하면 두 룩이 조용히 갈라진다).
 """
 
 from __future__ import annotations
@@ -23,6 +25,8 @@ import mediapipe as mp
 import numpy as np
 from mediapipe.tasks import python as mp_python
 from mediapipe.tasks.python import vision
+
+from app.services.cartoon import _sample_gamma, cartoon_frame
 
 logger = logging.getLogger(__name__)
 
@@ -316,32 +320,18 @@ def _overlay(base_bgr: np.ndarray, heat01: np.ndarray, gain: float = 1.4, lo: fl
     return out.astype(np.uint8)
 
 
-def light_cartoonize(frame: np.ndarray) -> np.ndarray:
-    """약한 카툰화: bilateral 평탄화 + 색 양자화(8단계) + 얇은 윤곽선.
+def cartoon_base(frame: np.ndarray, gamma: float = 1.0) -> np.ndarray:
+    """"카툰+운동열"의 카툰 베이스 — 카툰 단독 필터와 **같은** 렌더러를 쓴다.
 
-    `cartoon.py`의 `cartoon_frame`(감마/CLAHE/NlMeans 포함, 카툰 필터 단독용)보다 가볍다.
-    질감·음영을 지워 신원 식별성을 낮추면서 동작 윤곽은 유지 — "카툰+운동열" 조합 전용 베이스.
+    예전에는 이 조합만 약한 자체 구현(bilateral 2회 + 8단계 양자화 + 얇은 윤곽선)을 썼는데,
+    같은 "카툰"이라는 이름으로 두 필터의 룩이 눈에 띄게 달랐다. 이제 `cartoon.py`의
+    `cartoon_frame`을 그대로 호출한다 — 감마/CLAHE 저조도 보정, 적응 채도, L채널 셀 양자화,
+    DoG 잉크 라인이 전부 동일하게 적용된다.
+
+    gamma: 호출측이 `_sample_gamma`로 스무딩한 값을 넘긴다(프레임별 노출 변화로 밝기가
+    깜빡이지 않게). 프리뷰처럼 단일 프레임이면 기본값 1.0으로 충분하다.
     """
-    h, w = frame.shape[:2]
-    small = cv2.resize(frame, (max(2, w // 2), max(2, h // 2)))
-    for _ in range(2):
-        small = cv2.bilateralFilter(small, 9, 75, 75)
-    flat = cv2.resize(small, (w, h))
-    quantized = (flat // 32) * 32 + 16
-
-    # medianBlur는 ksize<=5까지만 OpenCV SIMD 경로를 타고 7부터 일반 히스토그램 구현으로
-    # 떨어진다 — 1080x1920 단일스레드 실측 k5 2.1ms vs k7 49.3ms(23배)로, k7은 이 함수
-    # 전체(90ms)의 55%를 혼자 먹었다. 이 블러는 adaptiveThreshold 입력 전처리(스펙클 억제)
-    # 전용이고 최종 색·질감은 아래 quantized(bilateral+양자화)에서 나오므로 익명화 강도와
-    # 무관하다. 실사 프레임 A/B: 엣지 마스크 불일치 2.0%, 최종 출력 픽셀 diff 0.15% —
-    # 오히려 k7에서 뭉개지던 작은 글자 윤곽이 살아난다.
-    gray = cv2.medianBlur(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY), 5)
-    edges = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 11, 5)
-    edges = cv2.medianBlur(edges, 3)  # 점 스펙클 제거
-
-    out = quantized.astype(np.float32)
-    out[edges == 0] *= 0.68  # 윤곽선은 은은하게
-    return out.astype(np.uint8)
+    return cartoon_frame(frame, gamma)
 
 
 def _joint_angle(pts: dict[int, tuple[float, float]], vis: dict[int, float], name: str) -> float | None:
@@ -631,7 +621,7 @@ def heat_preview_frame(frame: np.ndarray, weak_cartoon: bool, exercise: str | No
     state = _RenderState(ph, preset=preset_for_exercise(exercise))
     for _ in range(_PREVIEW_CONVERGE_STEPS):
         heat = state.step(small, pose)
-    base = light_cartoonize(frame) if weak_cartoon else frame
+    base = cartoon_base(frame) if weak_cartoon else frame
     return _overlay(base, heat)
 
 
@@ -658,7 +648,14 @@ def _worker_pool_size() -> int:
 
 
 _MIN_SEGMENT_FRAMES = 90  # ~3초@30fps 미만은 분할 실익이 없음(프로세스 기동비용이 더 큼)
-_SEG_PAD_FRAMES = 24  # 구간 경계 예열 프레임 수(_STREAK_GATE=12 + 여유) — 열 EMA/스트릭 게이트 워밍업용
+# 구간 경계 예열 프레임 수. 두 예열의 요구 길이가 달라 분리한다:
+#  - 감마 EMA(cartoon_base용): `_GAMMA_SAMPLE_EVERY`(5)마다만 갱신돼 60프레임 ≈ 12회 갱신이
+#    필요하다. 짧으면 구간 경계에서 밝기가 튄다(cartoon.py의 같은 상수 주석 참고: 24프레임이면
+#    경계 감마가 최대 0.12 어긋남). 이 구간은 디코딩 + 감마 계산만 하므로 가볍다.
+#  - 포즈/열 상태: `_STREAK_GATE`(12프레임) + 여유면 충분한데, 매 프레임 mediapipe 추론이
+#    붙어 비싸다. 그래서 감마 예열 전체가 아니라 마지막 24프레임에서만 트래커를 돌린다.
+_SEG_PAD_FRAMES = 60
+_SEG_POSE_WARMUP_FRAMES = 24
 
 
 def _heat_worker_init() -> None:
@@ -730,6 +727,8 @@ def _render_heat_segment(args: tuple) -> tuple[int, str]:
     state = _RenderState(ph, preset=preset_for_exercise(exercise))
     processed = 0
     frame_idx = pad_start
+    gamma_ema: float | None = None
+    heat = np.zeros((ph, PW), np.float32)  # 포즈 예열 전 프레임이 렌더될 일은 없지만 안전값
     try:
         while frame_idx < end:
             ok, frame = cap.read()
@@ -737,17 +736,25 @@ def _render_heat_segment(args: tuple) -> tuple[int, str]:
                 break
             if (frame.shape[1], frame.shape[0]) != (out_w, out_h):
                 frame = cv2.resize(frame, (out_w, out_h), interpolation=cv2.INTER_AREA)
-            small = cv2.resize(frame, (PW, ph), interpolation=cv2.INTER_AREA)
-            # frame_idx는 원본 영상 절대 프레임 번호(구간마다 다른 pad_start에서 시작)라
-            # 구간 경계에서도 스트라이드 위상이 어긋나지 않는다.
-            if frame_idx % POSE_STRIDE == 0:
-                det = cv2.resize(frame, (DET_W, dh), interpolation=cv2.INTER_AREA)
-                heat = state.step(small, tracker.process(det, PW, ph, frame_gap=POSE_STRIDE))
-            else:
-                heat = state.step(small, None, hold=True)
+
+            # 감마 EMA는 예열 구간 전체에서 계속 굴린다(카툰 베이스를 쓸 때만 의미 있음).
+            if weak_cartoon:
+                gamma_ema = _sample_gamma(frame, gamma_ema, frame_idx - pad_start)
+
+            # 포즈/열 상태는 마지막 _SEG_POSE_WARMUP_FRAMES 구간부터만 — 앞쪽 예열까지
+            # mediapipe를 돌리면 비싸고, 스트릭 게이트에는 그만큼이 필요하지 않다.
+            if frame_idx >= start - _SEG_POSE_WARMUP_FRAMES:
+                small = cv2.resize(frame, (PW, ph), interpolation=cv2.INTER_AREA)
+                # frame_idx는 원본 영상 절대 프레임 번호(구간마다 다른 pad_start에서 시작)라
+                # 구간 경계에서도 스트라이드 위상이 어긋나지 않는다.
+                if frame_idx % POSE_STRIDE == 0:
+                    det = cv2.resize(frame, (DET_W, dh), interpolation=cv2.INTER_AREA)
+                    heat = state.step(small, tracker.process(det, PW, ph, frame_gap=POSE_STRIDE))
+                else:
+                    heat = state.step(small, None, hold=True)
 
             if frame_idx >= start:
-                base = light_cartoonize(frame) if weak_cartoon else frame
+                base = cartoon_base(frame, gamma_ema or 1.0) if weak_cartoon else frame
                 canvas = _overlay(base, heat)
                 proc.stdin.write(canvas.tobytes())
                 processed += 1
@@ -894,6 +901,7 @@ def _render_heat_sequential(
 
     processed = 0
     frame_idx = 0
+    gamma_ema: float | None = None
     tracker = _PoseTracker(video_mode=True)
     state = _RenderState(ph, preset=preset_for_exercise(exercise))
     try:
@@ -904,6 +912,8 @@ def _render_heat_sequential(
             if (frame.shape[1], frame.shape[0]) != (out_w, out_h):
                 frame = cv2.resize(frame, (out_w, out_h), interpolation=cv2.INTER_AREA)
             small = cv2.resize(frame, (PW, ph), interpolation=cv2.INTER_AREA)
+            if weak_cartoon:
+                gamma_ema = _sample_gamma(frame, gamma_ema, frame_idx)
             if frame_idx % POSE_STRIDE == 0:
                 det = cv2.resize(frame, (DET_W, dh), interpolation=cv2.INTER_AREA)
                 heat = state.step(small, tracker.process(det, PW, ph, frame_gap=POSE_STRIDE))
@@ -911,7 +921,7 @@ def _render_heat_sequential(
                 heat = state.step(small, None, hold=True)
             frame_idx += 1
 
-            base = light_cartoonize(frame) if weak_cartoon else frame
+            base = cartoon_base(frame, gamma_ema or 1.0) if weak_cartoon else frame
             canvas = _overlay(base, heat)
             proc.stdin.write(canvas.tobytes())
             processed += 1

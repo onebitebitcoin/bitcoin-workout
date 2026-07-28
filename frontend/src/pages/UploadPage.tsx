@@ -51,7 +51,7 @@ function saveJob(jobId: string) {
   localStorage.setItem(PIPELINE_JOB_KEY, JSON.stringify({ jobId, savedAt: Date.now() }))
 }
 
-function loadJob(): string | null {
+function loadJob(): { jobId: string; savedAt: number } | null {
   try {
     const raw = localStorage.getItem(PIPELINE_JOB_KEY)
     if (!raw) return null
@@ -60,7 +60,9 @@ function loadJob(): string | null {
       localStorage.removeItem(PIPELINE_JOB_KEY)
       return null
     }
-    return jobId
+    // savedAt은 경과 시간 타이머의 기준점이기도 하다 — 앱 전환·새로고침으로 복귀했을 때
+    // 0초부터 다시 세면 이미 3분 걸린 잡이 "5초 경과"로 보여 혼란스럽다.
+    return { jobId, savedAt }
   } catch {
     localStorage.removeItem(PIPELINE_JOB_KEY)
     return null
@@ -129,6 +131,12 @@ export default function UploadPage() {
   const [pipelineStep, setPipelineStep] = useState<string>('')
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const uploadAbortRef = useRef<AbortController | null>(null)
+
+  // 처리 화면 경과 시간 — 진행률이 필터 렌더 구간에서 오래 머물러 멈춘 것처럼 보이는 문제를
+  // 정직한 숫자로 보완한다. Date.now() 차이로 계산하므로 앱 전환으로 타이머가 throttle돼도
+  // 복귀 시 올바른 값이 나온다.
+  const startedAtRef = useRef<number | null>(null)
+  const [elapsedSec, setElapsedSec] = useState(0)
 
   const audioBlobRef = useRef<Blob | null>(null)
   const audioMimeTypeRef = useRef('audio/webm')
@@ -231,8 +239,8 @@ export default function UploadPage() {
   }, [step, subtitleSource, hasVideo])
 
   useEffect(() => {
-    const savedJobId = loadJob()
-    if (savedJobId) { setPipelineJobId(savedJobId); setPipelineStatus('pending') }
+    const saved = loadJob()
+    if (saved) { setPipelineJobId(saved.jobId); setPipelineStatus('pending'); startedAtRef.current = saved.savedAt }
     // e.persisted=true면 bfcache로 들어가는 것(홈 버튼/앱 전환 등 백그라운드 전환 포함) —
     // 페이지가 완전히 사라지는 게 아니므로 업로드를 끊지 않는다. 실제 unload(뒤로가기로
     // 다른 사이트 이동, 탭 종료 등)일 때만 abort.
@@ -293,6 +301,21 @@ export default function UploadPage() {
     const timer = setInterval(() => setUploadProgress((p) => (p < ceiling ? p + 1 : p)), interval)
     return () => clearInterval(timer)
   }, [pipelineJobId, uploading, done, pipelineStep])
+
+  // 경과 시간 카운터 — 업로드 시작(또는 복구된 잡의 저장 시각)부터 1초 단위로 갱신
+  useEffect(() => {
+    const active = uploading || Boolean(pipelineJobId)
+    if (!active || done) {
+      startedAtRef.current = null
+      setElapsedSec(0)
+      return
+    }
+    if (startedAtRef.current === null) startedAtRef.current = Date.now()
+    const tick = () => setElapsedSec(Math.max(0, Math.floor((Date.now() - (startedAtRef.current ?? Date.now())) / 1000)))
+    tick()
+    const timer = setInterval(tick, 1000)
+    return () => clearInterval(timer)
+  }, [uploading, pipelineJobId, done])
 
   useEffect(() => {
     if (!pipelineJobId || done) return
@@ -551,8 +574,13 @@ export default function UploadPage() {
           <div className="h-1.5 w-full rounded-full bg-theme-surface2">
             <div className="h-1.5 rounded-full bg-accent transition-all duration-500" style={{ width: `${uploadProgress}%` }} />
           </div>
-          <span className="text-xs text-theme-muted">{uploadProgress}%</span>
+          {/* 퍼센트 대신 경과 시간 — 필터 렌더 구간에서 진행률이 오래 머무르면 멈춘 것처럼
+              보이는데, 계속 올라가는 초 카운터가 "진행 중"임을 정직하게 알려준다. */}
+          <span className="text-xs tabular-nums text-theme-muted">{t('processing.elapsed', { seconds: elapsedSec })}</span>
         </div>
+        <p className="max-w-xs text-center text-xs leading-relaxed text-theme-muted">
+          {t('processing.hint')}
+        </p>
         {error && (
           <div className="w-full max-w-sm rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-400 text-center">
             {error}

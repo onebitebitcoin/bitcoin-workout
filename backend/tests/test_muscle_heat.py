@@ -21,8 +21,8 @@ from app.services.muscle_heat import (
     _plan_segments,
     _RenderState,
     _unrotate_norm,
+    cartoon_base,
     heat_preview_frame,
-    light_cartoonize,
     preset_for_exercise,
     render_heat_video,
 )
@@ -66,20 +66,28 @@ class TestPresetForExercise:
         assert PRESETS["core"] == {"core"}
 
 
-class TestLightCartoonize:
+class TestCartoonBase:
     def test_shape_and_no_mutation(self):
         frame = _textured_frame()
         original = frame.copy()
-        out = light_cartoonize(frame)
+        out = cartoon_base(frame)
         assert out.shape == frame.shape
         assert np.array_equal(frame, original)
 
     def test_color_preserved(self):
         frame = np.zeros((240, 320, 3), dtype=np.uint8)
         frame[:, :, 2] = 200  # 빨강 프레임
-        out = light_cartoonize(frame)
+        out = cartoon_base(frame)
         center = out[120, 160]
         assert center[2] > center[0]  # 빨강 채널 우세 유지
+
+    def test_matches_standalone_cartoon_filter(self):
+        """"카툰+운동열"의 카툰 베이스는 카툰 단독 필터와 픽셀 단위로 같아야 한다 —
+        예전엔 조합 전용 약한 구현을 써서 같은 이름의 두 필터 룩이 눈에 띄게 달랐다."""
+        from app.services.cartoon import cartoon_frame
+
+        frame = _textured_frame()
+        assert np.array_equal(cartoon_base(frame, 0.8), cartoon_frame(frame, 0.8))
 
 
 def _overhead_pose(ph: int = 200, pw: int = PW):
@@ -456,8 +464,14 @@ class TestPlanSegments:
         assert _plan_segments(100, 0) == [(0, 100, 0)]
 
     def test_even_split_with_pad(self):
-        segs = _plan_segments(120, 3)
-        assert segs == [(0, 40, 0), (40, 80, 16), (80, 120, 56)]
+        # pad는 `_SEG_PAD_FRAMES`(감마 EMA 예열 길이)에서 파생되므로 상수로부터 계산한다 —
+        # 하드코딩하면 예열 길이를 조정할 때마다 무관한 테스트가 깨진다.
+        pad = muscle_heat._SEG_PAD_FRAMES
+        assert _plan_segments(120, 3) == [
+            (0, 40, 0),
+            (40, 80, max(0, 40 - pad)),
+            (80, 120, max(0, 80 - pad)),
+        ]
 
     def test_segments_cover_all_frames_without_gap_or_overlap(self):
         segs = _plan_segments(100, 3)
@@ -472,7 +486,7 @@ class TestPlanSegments:
         assert [e - s for s, e, _ in segs] == [33, 33, 34]
 
     def test_pad_never_negative_and_first_segment_unpadded(self):
-        segs = _plan_segments(10, 5)  # base=2 < _SEG_PAD_FRAMES(24)
+        segs = _plan_segments(10, 5)  # base=2 << _SEG_PAD_FRAMES — pad가 음수로 새지 않아야 한다
         assert segs[0][2] == 0
         assert all(pad >= 0 for _, _, pad in segs)
 
