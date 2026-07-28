@@ -341,13 +341,15 @@ def _cartoonize_frame_parallel(
     if not cap.isOpened():
         raise ValueError(f"cannot open video: {input_path}")
 
+    # -threads 2: 이 경로는 아래에서 _worker_pool_size()개 렌더 프로세스를 동시에 띄운다
+    # (구간 병렬과 동일한 오버섭스크립션 — x264 auto는 코어당 ~1.5스레드).
     ffmpeg_cmd = [
         "ffmpeg", "-y",
         "-f", "rawvideo", "-pix_fmt", "bgr24", "-s", f"{out_w}x{out_h}",
         "-r", f"{fps:.6f}", "-i", "-",
         "-i", input_path,
         "-map", "0:v", "-map", "1:a?",
-        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast", "-crf", "28",
+        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-preset", "veryfast", "-crf", "28", "-threads", "2",
         "-c:a", "copy",
         "-movflags", "+faststart",
         output_path,

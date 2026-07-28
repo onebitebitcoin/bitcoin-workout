@@ -48,6 +48,16 @@ def _delete_quietly(r2, key: str) -> None:
         pass
 
 
+def _cleanup_orphan_render(r2, job_id: str, compressed_key: str | None, filtered_key: str | None) -> None:
+    """필터/압축 렌더가 R2에 이미 업로드된 뒤 파이프라인이 실패하면 고아 파일을 정리한다."""
+    if compressed_key:
+        _delete_quietly(r2, compressed_key)
+        logger.info("[multi-pipeline] job=%s 실패 — 고아 압축본 삭제: %s", job_id, compressed_key)
+    if filtered_key and filtered_key != compressed_key:
+        _delete_quietly(r2, filtered_key)
+        logger.info("[multi-pipeline] job=%s 실패 — 고아 필터본 삭제: %s", job_id, filtered_key)
+
+
 def _should_compress(filter_status: str) -> bool:
     """compress 실행 여부. 필터가 없으면(skipped) 압축하고, 필터를 시도했으면 필터 인코더가
     이미 동일 crf(28)로 직접 인코딩했으므로(_apply_video_filter) 생략한다 — 단, 필터가
@@ -213,13 +223,18 @@ def run_multi_pipeline(job: dict, status_callback=None) -> dict:
             current_key = compressed_key
             logger.info("[multi-pipeline] job=%s compressed → %s", job_id, current_key)
 
-    # 5) 일일 한도 체크 (썸네일 전)
+    # 5) 일일 한도 체크 (썸네일 전) — 필터/압축 렌더가 이미 R2에 업로드된 뒤라, 여기서
+    # 예외가 나면 아래 db_save의 except 블록(고아 파일 정리)이 이 시점의 예외는 못 잡는다
+    # (별개의 try/finally라 전파가 그대로 함수 밖으로 나감). 같은 정리를 여기서도 수행.
     if status_callback:
         status_callback("db_save")
     db = SessionLocal()
     try:
         if get_daily_upload_count(db, user_id) >= DAILY_MAX_UPLOADS:
             raise RuntimeError("하루 업로드 한도 초과")
+    except Exception:
+        _cleanup_orphan_render(r2, job_id, compressed_key, filtered_key)
+        raise
     finally:
         db.close()
 
@@ -370,12 +385,7 @@ def run_multi_pipeline(job: dict, status_callback=None) -> dict:
             "filter_status": filter_status,
         }
     except Exception:
-        if compressed_key:
-            _delete_quietly(r2, compressed_key)
-            logger.info("[multi-pipeline] job=%s 실패 — 고아 압축본 삭제: %s", job_id, compressed_key)
-        if filtered_key and filtered_key != compressed_key:
-            _delete_quietly(r2, filtered_key)
-            logger.info("[multi-pipeline] job=%s 실패 — 고아 필터본 삭제: %s", job_id, filtered_key)
+        _cleanup_orphan_render(r2, job_id, compressed_key, filtered_key)
         raise
     finally:
         db.close()
