@@ -57,7 +57,11 @@ def notify_video_success(job: dict, result: dict) -> None:
         f"• 유형: {merge_type}{image_warn}{audio_warn}\n"
         f"• 영상: {meta_line}\n"
         f"• 처리 시간: {elapsed}초\n"
-        f"• 압축: {_fmt_mb(pre)} → {_fmt_mb(post)} ({ratio})\n"
+        # "압축"이 아니라 "용량": 필터가 적용된 잡은 compress를 건너뛰고 필터 렌더 전후
+        # 크기가 실리는데(full_pipeline_multi.py), 필터는 압축과 달리 파일을 키울 수도 있어
+        # (post>=pre 가드 없음 — 룩 변경이 목적이라 있어서도 안 된다) "압축 119%" 같은
+        # 모순된 알림이 나갔다. 두 경로 모두에 맞는 중립적 라벨로 통일.
+        f"• 용량: {_fmt_mb(pre)} → {_fmt_mb(post)} ({ratio})\n"
         f"• job: <code>{job_id}</code>\n"
         f"• url: {cdn_url}\n"
         f"🕐 {_now_kst()}"

@@ -262,14 +262,20 @@ def _extract_thumbnail(r2, video_key: str) -> str | None:
 
 
 def _probe_video_meta(path: str) -> dict:
-    """ffprobe로 video_meta(width/height/fps/codec/duration_sec) 추출. 실패 시 빈 dict."""
-    meta_probe = subprocess.run(
-        ["ffprobe", "-v", "quiet", "-select_streams", "v:0",
-         "-show_entries", "stream=width,height,r_frame_rate,codec_name:format=duration",
-         "-of", "json", path],
-        capture_output=True, text=True, timeout=15,
-    )
+    """ffprobe로 video_meta(width/height/fps/codec/duration_sec) 추출. 실패 시 빈 dict.
+
+    subprocess.run도 반드시 try 안에 둔다 — 밖에 두면 TimeoutExpired/FileNotFoundError가
+    그대로 전파되고, 이 함수를 부르는 `_apply_video_filter`의 except가 그걸 삼켜
+    filter_status="failed"로 만든다. 즉 ffprobe 타임아웃 하나 때문에 이미 성공한 수 분짜리
+    필터 렌더 결과물이 통째로 버려지고 compress 폴백으로 떨어진다.
+    """
     try:
+        meta_probe = subprocess.run(
+            ["ffprobe", "-v", "quiet", "-select_streams", "v:0",
+             "-show_entries", "stream=width,height,r_frame_rate,codec_name:format=duration",
+             "-of", "json", path],
+            capture_output=True, text=True, timeout=15,
+        )
         probe_data = json.loads(meta_probe.stdout)
         stream = probe_data.get("streams", [{}])[0]
         fmt = probe_data.get("format", {})

@@ -215,7 +215,11 @@ def run_multi_pipeline(job: dict, status_callback=None) -> dict:
         pre_compress_key = current_key
         if status_callback:
             status_callback("compress")
-        compress_result = _compress_video(r2, current_key, mute_video=mute_video_audio)
+        # mute_video=False 고정: 멀티 경로는 compose_items(mute_video=...)가 이미 원본 오디오를
+        # 무음 트랙으로 대체했다(compose.py `_encode_video_clip`). 여기서 다시 `-an`을 주면
+        # 그 위에 머지된 사용자 녹음 보이스오버까지 지워져, 같은 설정의 잡이 필터 적용 여부에
+        # 따라(필터 경로는 `-c:a copy`라 보존) 오디오가 갈린다.
+        compress_result = _compress_video(r2, current_key, mute_video=False)
         if compress_result:
             compressed_key, pre_size_bytes, post_size_bytes, video_meta = compress_result
             if pre_compress_key != original_video_r2_key:
@@ -270,12 +274,22 @@ def run_multi_pipeline(job: dict, status_callback=None) -> dict:
         )
         if generated_srt.strip():
             subtitle_srt_r2_key = f"subtitles/{user_id}/{uuid.uuid4()}.srt"
-            r2.put_object(
-                Bucket=R2_BUCKET_NAME, Key=subtitle_srt_r2_key,
-                Body=generated_srt.encode("utf-8"),
-                ContentType="application/x-subrip; charset=utf-8",
-                CacheControl="private, max-age=86400",
-            )
+            try:
+                r2.put_object(
+                    Bucket=R2_BUCKET_NAME, Key=subtitle_srt_r2_key,
+                    Body=generated_srt.encode("utf-8"),
+                    ContentType="application/x-subrip; charset=utf-8",
+                    CacheControl="private, max-age=86400",
+                )
+            except Exception as e:
+                # 이 구간은 고아 정리 블록(db_save의 except) 밖이라, 여기서 예외를 그대로
+                # 올리면 이미 R2에 올라간 필터/압축 렌더 결과물이 영구 고아로 남는다.
+                # 자막 실패는 업로드를 막지 않는다는 기존 정책(아래 burn 실패 처리와 동일)에
+                # 맞춰 자막만 건너뛴다.
+                logger.warning(
+                    "[multi-pipeline] job=%s 생성 SRT 업로드 실패 — 자막 없이 진행: %s", job_id, e,
+                )
+                subtitle_srt_r2_key = None
 
     if subtitle_srt_r2_key:
         result = burn_user_srt(
