@@ -491,11 +491,10 @@ def _muscle_layer(
 class _RenderState:
     """프레임 간 유지되는 트래킹 상태(관절 각도·EMA·잔열). 영상 1개당 인스턴스 1개."""
 
-    def __init__(self, ph: int, pw: int = PW, preset: set[str] | None = None, stride: int = 1) -> None:
+    def __init__(self, ph: int, pw: int = PW, preset: set[str] | None = None) -> None:
         self.ph = ph
         self.pw = pw
         self.preset = preset  # 운동 종목 근육군 프리셋 (None = 균등)
-        self.stride = stride  # POSE_STRIDE — _muscle_layer의 델타 정규화에 전달
         self.prev_pts: dict[int, tuple[float, float]] | None = None
         self.prev_angs: dict[str, float] = {}
         self.prev_gray: np.ndarray | None = None
@@ -503,6 +502,12 @@ class _RenderState:
         self.last_muscle = np.zeros((ph, pw), np.float32)  # hold=True 프레임이 재사용할 마지막 근육 캔버스
         self.e_ema = np.zeros((ph, pw), np.float32)
         self.heat = np.zeros((ph, pw), np.float32)
+        # prev_pts/prev_angs가 캡처된 이후 경과한 비디오 프레임 수(hold 프레임·검출 실패 모두 누적,
+        # 성공 검출에서 1로 리셋). POSE_STRIDE 고정값 대신 이 값을 _muscle_layer(stride=...)에 넘긴다 —
+        # 검출 드롭아웃이 이어지면 실제 간격이 POSE_STRIDE보다 커지는데 고정값으로 나누면 각속도/
+        # 이동속도 델타가 실제 경과 프레임 수만큼 과대평가돼 복귀 프레임에 열이 폭발적으로 튄다(실측
+        # 확인: 14프레임 드롭아웃 후 고정 나눗셈은 정상상태 대비 최대 ~3.7배).
+        self.frames_since_pose = 1
 
     def step(
         self,
@@ -517,32 +522,43 @@ class _RenderState:
         크래시 없이 그레이스풀 폴백(운동열 없이 베이스 화면만 출력).
 
         hold=True: POSE_STRIDE로 포즈 추론 자체를 건너뛴 프레임(진짜 검출 실패와 다름) —
-        마지막으로 그린 근육 캔버스(`last_muscle`)를 그대로 재사용한다. 실패(pose=None)처럼
-        0으로 채우면 잔열이 매 스킵 프레임마다 꺼졌다 켜지며 깜빡이고 정상상태 히트 강도가
-        (실측) 연속 검출 대비 최대 ~31% 낮게 수렴한다 — hold는 그 문제를 피하려는 것으로,
-        진짜 미검출(사람이 실제로 사라짐)은 hold=False 경로로 여전히 즉시 0 처리해 잔열이
-        정상적으로 감쇠하게 둔다.
-        """
-        gray = cv2.cvtColor(small_bgr, cv2.COLOR_BGR2GRAY)
-        affine = _global_affine(self.prev_gray, gray)
+        마지막으로 그린 근육 캔버스(`last_muscle`)를 그대로 재사용하고, gray 변환·
+        `_global_affine`(goodFeaturesToTrack+LK, 프레임당 ~2~3ms) 계산도 함께 건너뛴다 —
+        hold 분기는 결과를 쓰지 않으므로 계산 자체가 순수 낭비였다. `prev_gray`도 갱신하지
+        않는데, 그래야 다음 검출 프레임의 `_global_affine`이 "마지막 검출 프레임 → 지금"
+        구간 전체(=frames_since_pose 프레임)를 커버해 `prev_pts`가 실제로 몇 프레임 전
+        값인지와 정확히 일치한다 — 매 프레임 갱신했다면 최신 1프레임 이동만 반영해 그보다
+        오래된 prev_pts 기준 이동속도 보조항(_joint_speed)이 카메라 팬을 과소보정했다.
 
+        실패(pose=None)처럼 0으로 채우면 잔열이 매 스킵 프레임마다 꺼졌다 켜지며 깜빡이고
+        정상상태 히트 강도가(실측) 연속 검출 대비 최대 ~31% 낮게 수렴한다 — hold는 그 문제를
+        피하려는 것으로, 진짜 미검출(사람이 실제로 사라짐)은 hold=False 경로로 여전히 즉시
+        0 처리해 잔열이 정상적으로 감쇠하게 둔다.
+        """
         if hold:
             muscle = self.last_muscle
-        elif pose is not None:
-            pts, vis, seg = pose
-            muscle, angs = _muscle_layer(
-                pts, vis, seg, self.ph, self.pw, self.prev_pts, self.prev_angs, self.eff_ema, affine,
-                preset=self.preset, stride=self.stride,
-            )
-            self.prev_pts, self.prev_angs = pts, angs
-            self.last_muscle = muscle
+            self.frames_since_pose += 1
         else:
-            muscle = np.zeros((self.ph, self.pw), np.float32)
-            self.last_muscle = muscle
+            gray = cv2.cvtColor(small_bgr, cv2.COLOR_BGR2GRAY)
+            affine = _global_affine(self.prev_gray, gray)
+
+            if pose is not None:
+                pts, vis, seg = pose
+                muscle, angs = _muscle_layer(
+                    pts, vis, seg, self.ph, self.pw, self.prev_pts, self.prev_angs, self.eff_ema, affine,
+                    preset=self.preset, stride=self.frames_since_pose,
+                )
+                self.prev_pts, self.prev_angs = pts, angs
+                self.last_muscle = muscle
+                self.frames_since_pose = 1
+            else:
+                muscle = np.zeros((self.ph, self.pw), np.float32)
+                self.last_muscle = muscle
+                self.frames_since_pose += 1
+            self.prev_gray = gray
 
         self.e_ema = 0.55 * muscle + 0.45 * self.e_ema
         self.heat = np.maximum(self.heat * DECAY, ALPHA * self.e_ema)
-        self.prev_gray = gray
         return self.heat
 
 
@@ -667,7 +683,7 @@ def _render_heat_segment(args: tuple) -> tuple[int, str]:
     stderr_thread.start()
 
     tracker = _PoseTracker(video_mode=True)
-    state = _RenderState(ph, preset=preset_for_exercise(exercise), stride=POSE_STRIDE)
+    state = _RenderState(ph, preset=preset_for_exercise(exercise))
     processed = 0
     frame_idx = pad_start
     try:
@@ -835,7 +851,7 @@ def _render_heat_sequential(
     processed = 0
     frame_idx = 0
     tracker = _PoseTracker(video_mode=True)
-    state = _RenderState(ph, preset=preset_for_exercise(exercise), stride=POSE_STRIDE)
+    state = _RenderState(ph, preset=preset_for_exercise(exercise))
     try:
         while True:
             ok, frame = cap.read()

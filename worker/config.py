@@ -18,9 +18,10 @@ QUEUE_NAME: str = f"queue:merge-jobs:{ENVIRONMENT}"
 JOB_TTL: int = 86400  # 24시간
 MAX_FFMPEG_CONCURRENT: int = int(os.environ.get("MAX_FFMPEG_CONCURRENT", "2"))
 MAX_JOB_RETRIES: int = int(os.environ.get("MAX_JOB_RETRIES", "2"))
-# 동시에 띄우는 worker.py 인스턴스 수 — cartoon.py/muscle_heat.py가 이 값으로 job당
-# 내부 프로세스 풀 크기를 나눠 8코어 과다구독을 막는다 (WORKER_INSTANCES개 인스턴스가
-# 동시에 무거운 job을 처리해도 총 프로세스 수가 코어 수를 넘지 않도록).
+# 동시에 띄우는 worker.py 인스턴스 수 — cartoon.py/muscle_heat.py의 _worker_pool_size()가
+# job당 내부 프로세스 풀 크기를 정할 때 쓰는 값이다. 단, 실시간 활성 잡 수(worker.py가
+# ffmpeg:slots 리스 점유 직후 FFMPEG_ACTIVE_JOBS env로 주입)가 있으면 그쪽이 우선이고,
+# 이 값은 그게 없을 때(단독 실행·테스트)만 쓰는 폴백이다 — 정적 상한이 아니다.
 WORKER_INSTANCES: int = int(os.environ.get("WORKER_INSTANCES", "1"))
 
 _backend_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../backend"))

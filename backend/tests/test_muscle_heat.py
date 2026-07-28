@@ -204,6 +204,45 @@ class TestMuscleLayerStrideNormalization:
 
         assert eff_ema_unnormalized["gluteL"] > eff_ema_correct["gluteL"]
 
+    def test_detection_dropout_recovery_does_not_spike_vs_continuous(self):
+        """리뷰 회귀 재현: 검출이 여러 프레임 연속으로 실패했다가 복귀할 때,
+        `_RenderState.frames_since_pose`가 고정 POSE_STRIDE 대신 실제 경과 프레임 수를
+        추적해야 복귀 프레임의 effort가 폭발하지 않는다. 이 테스트는 `_RenderState.step()`
+        전체(고정 stride였다면 실패했을 경로)를 통해 검증한다 — `_muscle_layer` 단위
+        테스트만으로는 gap==stride인 경우만 보고 이 경로를 놓친다."""
+        step_deg = np.degrees(0.020)
+
+        # 연속 검출: 매 프레임 성공(hold 없음) — 정상상태 effort
+        steady = _RenderState(ph=200)
+        dummy = np.zeros((200, PW, 3), np.uint8)
+        angle = 179.0
+        for _ in range(6):
+            pts, vis = _hip_angle_pose(angle)
+            steady.step(dummy, (pts, vis, None))
+            angle -= step_deg
+        steady_eff = steady.eff_ema["gluteL"]
+        assert steady_eff > 0.0  # 사전 확인
+
+        # 드롭아웃 후 복귀: 같은 각속도로 진행하다가 중간에 14프레임 미검출(pose=None,
+        # hold=False — 실제 검출 실패) 후 복귀. frames_since_pose가 15로 정확히 추적되면
+        # 복귀 프레임의 effort가 steady_eff와 같은 자릿수여야 한다(포화로 튀지 않음).
+        recovering = _RenderState(ph=200)
+        angle = 179.0
+        for _ in range(3):
+            pts, vis = _hip_angle_pose(angle)
+            recovering.step(dummy, (pts, vis, None))
+            angle -= step_deg
+        for _ in range(14):
+            recovering.step(dummy, None, hold=False)
+            angle -= step_deg  # 실제로는 계속 진행 중이지만 검출을 못 하는 상황을 흉내
+        pts, vis = _hip_angle_pose(angle)
+        recovering.step(dummy, (pts, vis, None))
+        recovered_eff = recovering.eff_ema["gluteL"]
+
+        # 고정 stride=2였다면 14프레임 누적 델타를 2로만 나눠 완전 포화(0.45 근처)했을 것.
+        # frames_since_pose=15로 정확히 나누면 steady_eff와 같은 자릿수에 머문다.
+        assert recovered_eff < steady_eff * 3  # 여유를 둔 상한 — 포화(0.45)와는 확실히 구분됨
+
 
 class TestRenderStateHold:
     """hold=True(POSE_STRIDE 스킵 프레임)는 마지막 근육 캔버스를 재사용해야 하고,
@@ -212,7 +251,7 @@ class TestRenderStateHold:
     오적용) 두 가지 회귀가 생긴다."""
 
     def test_hold_reuses_last_muscle_canvas(self):
-        state = _RenderState(ph=200, stride=2)
+        state = _RenderState(ph=200)
         dummy = np.zeros((200, PW, 3), np.uint8)
         state.step(dummy, _overhead_pose())  # 정적 부하로 muscle 캔버스 채움
         held_muscle = state.last_muscle.copy()
@@ -223,13 +262,31 @@ class TestRenderStateHold:
         assert state.e_ema.max() > 0  # 0으로 꺼지지 않고 이전 근육 캔버스가 계속 반영됨
 
     def test_true_detection_failure_still_zeroes_immediately(self):
-        state = _RenderState(ph=200, stride=2)
+        state = _RenderState(ph=200)
         dummy = np.zeros((200, PW, 3), np.uint8)
         state.step(dummy, _overhead_pose())
         assert state.last_muscle.max() > 0
 
         state.step(dummy, None, hold=False)  # 진짜 미검출 — freeze 아님
         assert state.last_muscle.max() == 0
+
+    def test_hold_does_not_advance_prev_gray_or_frames_since_pose_resets_on_success(self):
+        """hold 프레임은 frames_since_pose를 누적만 하고 prev_gray를 갱신하지 않는다 —
+        다음 검출 성공 시 frames_since_pose가 실제 경과 프레임 수(hold 횟수+1)와 일치하고,
+        검출 즉시 1로 리셋되는지 확인한다."""
+        state = _RenderState(ph=200)
+        dummy = np.zeros((200, PW, 3), np.uint8)
+        state.step(dummy, _overhead_pose())
+        assert state.frames_since_pose == 1
+        gray_after_detect = state.prev_gray.copy()
+
+        state.step(dummy, None, hold=True)
+        state.step(dummy, None, hold=True)
+        assert state.frames_since_pose == 3  # 검출 후 hold 2회
+        assert np.array_equal(state.prev_gray, gray_after_detect)  # hold는 prev_gray를 안 건드림
+
+        state.step(dummy, _overhead_pose())
+        assert state.frames_since_pose == 1  # 검출 성공 즉시 리셋
 
 
 class TestStreakGateAttempts:
