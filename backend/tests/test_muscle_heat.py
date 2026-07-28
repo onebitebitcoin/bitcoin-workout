@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 import json
 import shutil
 import subprocess
@@ -12,10 +13,8 @@ import pytest
 
 import app.services.muscle_heat as muscle_heat
 from app.services.muscle_heat import (
-    _GAP_TOLERANCE,
-    _GAP_TOLERANCE_ATTEMPTS,
+    _PROBE_INTERVAL,
     _STREAK_GATE,
-    _STREAK_GATE_ATTEMPTS,
     PRESETS,
     PW,
     _muscle_layer,
@@ -185,8 +184,14 @@ class TestMuscleLayerStrideNormalization:
         eff_ema_s2: dict[str, float] = {}
         _muscle_layer(pts2, vis2, None, 200, PW, pts0, angs0, eff_ema_s2, None, stride=2)
 
-        assert eff_ema_s1["gluteL"] > 0.0  # 데드밴드 위 — 유의미한 신호인지 사전 확인
-        assert eff_ema_s2["gluteL"] == pytest.approx(eff_ema_s1["gluteL"], rel=1e-6)
+        # eff_ema 초기값이 0이므로 저장된 값 = ema_alpha(stride) * raw_effort —
+        # 계수를 되나눠 EMA 보정과 분리한 raw effort끼리 비교한다(여기서 보려는 건
+        # 각속도 델타 정규화이고, EMA 계수 보정은 TestEmaAlphaStrideCompensation 담당).
+        raw_s1 = eff_ema_s1["gluteL"] / muscle_heat._ema_alpha(1)
+        raw_s2 = eff_ema_s2["gluteL"] / muscle_heat._ema_alpha(2)
+
+        assert raw_s1 > 0.0  # 데드밴드 위 — 유의미한 신호인지 사전 확인
+        assert raw_s2 == pytest.approx(raw_s1, rel=1e-6)
 
     def test_stride_one_without_normalization_would_double_count(self):
         # 위 테스트의 대조군: stride 보정을 안 하면(=stride=1로 2프레임분 델타를 넣으면)
@@ -289,20 +294,89 @@ class TestRenderStateHold:
         assert state.frames_since_pose == 1  # 검출 성공 즉시 리셋
 
 
-class TestStreakGateAttempts:
-    """_STREAK_GATE/_GAP_TOLERANCE는 '검출 시도 횟수' 단위 상수다. POSE_STRIDE로 시도
-    빈도 자체가 줄었으므로, 원래 프레임(wall-clock) 도메인 의미를 보존하려면 시도 횟수
-    임계값도 stride만큼 나눠야 한다 — 나누지 않으면 게이트 통과에 필요한 실제 시간이
-    stride배로 늘어난다(회귀 시나리오)."""
+class _FakeDetectResult:
+    """mediapipe 없이 _PoseTracker 게이트 로직만 구동하기 위한 최소 결과 객체."""
 
-    def test_attempts_scaled_down_by_stride(self):
-        assert _STREAK_GATE_ATTEMPTS == max(1, _STREAK_GATE // muscle_heat.POSE_STRIDE)
-        assert _GAP_TOLERANCE_ATTEMPTS == max(1, _GAP_TOLERANCE // muscle_heat.POSE_STRIDE)
+    def __init__(self, has_pose: bool) -> None:
+        self.pose_landmarks = [[object()] * 33] if has_pose else []
+        self.segmentation_masks = None
 
-    def test_never_zero_even_at_high_stride(self):
-        # 극단적인 stride에서도 게이트가 0이 되어 즉시 통과해버리면 오탐 차단이 무력화된다.
-        assert max(1, _STREAK_GATE // 100) >= 1
-        assert max(1, _GAP_TOLERANCE // 100) >= 1
+
+def _tracker_with_fake_detect(schedule: list[bool]):
+    """schedule[비디오 프레임 인덱스] = 검출 성공 여부. 실제 _PoseTracker에 가짜 detect를 주입한다.
+
+    반환: (tracker, set_frame, probe_log) — probe_log에는 (fail_streak, rot_idx) 튜플이 쌓인다.
+    """
+    tracker = muscle_heat._PoseTracker(video_mode=True)
+    probe_log: list[tuple[int, int]] = []
+    cursor = {"frame": 0}
+
+    def fake_detect(det_bgr, rot_idx, frame_gap=1):
+        probe_log.append((tracker._fail_streak, rot_idx))
+        return _FakeDetectResult(schedule[cursor["frame"]])
+
+    tracker._detect = fake_detect
+    tracker._extract = lambda result, rot, gw, gh: ("POSE", {}, None)
+    return tracker, cursor, probe_log
+
+
+class TestPoseTrackerFrameDomainGates:
+    """_STREAK_GATE/_GAP_TOLERANCE/_PROBE_INTERVAL은 전부 비디오 프레임 단위 상수다.
+    POSE_STRIDE로 추론을 건너뛰어도 스트릭이 frame_gap을 누적하므로 게이트의 wall-clock
+    의미가 stride와 무관하게 유지되어야 한다 — stride로 나눈 파생 상수를 쓰던 이전 구현은
+    정수 나눗셈 손실과 '나누는 걸 잊은 상수'(_PROBE_INTERVAL) 문제가 있었다."""
+
+    @pytest.mark.parametrize("stride", [1, 2, 3])
+    def test_heat_activates_after_streak_gate_video_frames_regardless_of_stride(self, stride):
+        schedule = [True] * 60
+        tracker, cursor, _ = _tracker_with_fake_detect(schedule)
+
+        activated_at = None
+        dummy = np.zeros((10, 10, 3), np.uint8)
+        for f in range(0, len(schedule), stride):
+            cursor["frame"] = f
+            if tracker.process(dummy, PW, 100, frame_gap=stride) is not None:
+                activated_at = f
+                break
+
+        # 활성화 시점이 _STREAK_GATE 비디오 프레임 격자 근처여야 한다 — 첫 호출부터 gap을
+        # 통째로 더하므로 최대 stride만큼 이르고, 격자 스냅으로 최대 stride만큼 늦을 수 있다.
+        # 핵심은 stride배로 늘어나지 않는 것(파생 상수 방식의 회귀 시나리오).
+        assert activated_at is not None
+        assert _STREAK_GATE - stride <= activated_at < _STREAK_GATE + stride
+
+    @pytest.mark.parametrize("stride", [1, 2])
+    def test_rotation_probe_cadence_is_video_frame_based(self, stride):
+        schedule = [False] * 60  # 사람 없는 영상 — 계속 미검출
+        tracker, cursor, probe_log = _tracker_with_fake_detect(schedule)
+
+        dummy = np.zeros((10, 10, 3), np.uint8)
+        for f in range(0, len(schedule), stride):
+            cursor["frame"] = f
+            tracker.process(dummy, PW, 100, frame_gap=stride)
+
+        # rot != 0 호출이 회전 프로브. 프로브가 일어난 시점의 fail_streak(=경과 비디오 프레임)
+        probe_frames = sorted({fs for fs, rot in probe_log if rot != 0})
+        # 첫 실패 직후 1회 + 이후 _PROBE_INTERVAL 프레임 간격 — 간격이 stride에 비례해
+        # 늘어나면(미스케일 회귀) 이 상한을 넘는다.
+        gaps = [b - a for a, b in itertools.pairwise(probe_frames)]
+        assert gaps, "프로브가 한 번밖에 안 일어났다"
+        assert max(gaps) <= _PROBE_INTERVAL + stride
+
+
+class TestEmaAlphaStrideCompensation:
+    """per-캡슐 eff_ema는 검출 프레임에서만 갱신되므로, stride만큼 갱신 빈도가 줄어든 것을
+    계수로 보정해야 wall-clock 시정수가 유지된다."""
+
+    def test_stride_one_is_unchanged(self):
+        assert muscle_heat._ema_alpha(1) == pytest.approx(muscle_heat._EFF_EMA_ALPHA)
+
+    @pytest.mark.parametrize("stride", [2, 3, 4])
+    def test_compensated_alpha_matches_repeated_application(self, stride):
+        # stride회 연속 적용한 잔여 비율과, 보정 계수 1회 적용의 잔여 비율이 같아야 한다.
+        residual_repeated = (1 - muscle_heat._EFF_EMA_ALPHA) ** stride
+        residual_single = 1 - muscle_heat._ema_alpha(stride)
+        assert residual_single == pytest.approx(residual_repeated)
 
 
 class TestHeatPreviewFrame:

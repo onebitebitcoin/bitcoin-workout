@@ -47,11 +47,13 @@ _GAP_TOLERANCE = 2   # 이 이하의 짧은 검출 끊김은 streak 유지 — �
 POSE_STRIDE = 2  # 비디오 렌더 루프(_render_heat_segment/_render_heat_sequential)에서 격프레임마다만
                  # mediapipe 포즈 추론을 실행 — 나머지 프레임은 마지막 근육 캔버스를 그대로 유지(freeze)
                  # 해 렌더한다(`_RenderState.step(..., hold=True)`). heat/cartoon_heat의 지배적 비용이
-                 # 포즈 추론이라 실측 확인 후 도입(성능 리포트 P6). 아래 두 값은 위 _STREAK_GATE/
-                 # _GAP_TOLERANCE가 "검출 시도 횟수" 단위이므로 stride만큼 나눠 원래 프레임(wall-clock)
-                 # 도메인 의미를 보존한다 — _PoseTracker는 이 값만 참조하고 원본 상수는 문서용으로 남긴다.
-_STREAK_GATE_ATTEMPTS = max(1, _STREAK_GATE // POSE_STRIDE)
-_GAP_TOLERANCE_ATTEMPTS = max(1, _GAP_TOLERANCE // POSE_STRIDE)
+                 # 포즈 추론이라 실측 확인 후 도입(성능 리포트 P6).
+                 #
+                 # 위 _STREAK_GATE/_GAP_TOLERANCE/_PROBE_INTERVAL은 전부 "비디오 프레임" 단위 상수다.
+                 # _PoseTracker는 스트릭을 시도 횟수가 아니라 `frame_gap` 누적(=비디오 프레임 수)으로
+                 # 세므로 stride가 몇이든 이 상수들을 그대로 쓴다 — stride로 나눈 파생 상수를 두면
+                 # ① 정수 나눗셈 손실로 게이트가 조용히 어긋나고(예: stride=5면 12//5=2 → 실제 10프레임)
+                 # ② _PROBE_INTERVAL처럼 나누는 걸 잊은 상수만 wall-clock 기준 stride배 느려진다.
 
 # 관절 각도 정의: 이름 -> (A, 꼭짓점, B). 각도 = ∠A-꼭짓점-B (MediaPipe Pose 33 랜드마크 인덱스)
 ANGLES: dict[str, tuple[int, int, int]] = {
@@ -159,8 +161,11 @@ class _PoseTracker:
         self._lmks: dict[str, vision.PoseLandmarker] = {}
         self._ts: dict[str, int] = {"land": 0, "port": 0}
         self._rot = 0          # _ROTS 인덱스
+        # 아래 세 카운터는 전부 "비디오 프레임 수" 단위다(process()의 frame_gap을 누적) —
+        # POSE_STRIDE로 추론을 건너뛰어도 게이트 상수들의 wall-clock 의미가 보존된다.
         self._fail_streak = 0
-        self._det_streak = 0   # 연속 검출 수 — _STREAK_GATE 도달 전에는 열 비활성
+        self._det_streak = 0            # 연속 검출 프레임 수 — _STREAK_GATE 도달 전에는 열 비활성
+        self._frames_since_probe = 0    # 마지막 회전 프로브 이후 경과 — _PROBE_INTERVAL 주기 판정용
 
     @staticmethod
     def _family(rot_idx: int) -> str:
@@ -213,16 +218,24 @@ class _PoseTracker:
     ) -> tuple[dict[int, tuple[float, float]], dict[int, float], np.ndarray | None] | None:
         """검출 입력(det_bgr, DET_W 폭)에서 포즈를 찾아 (그리드 좌표 pts, vis, 세그) 반환. 실패 시 None.
 
-        frame_gap: 렌더 루프가 POSE_STRIDE로 프레임을 건너뛰고 호출한 경우 그 간격(비디오
-        프레임 수). `_fail_streak`/`_det_streak`는 "검출 시도 횟수" 단위라 gap과 무관하게
-        1씩 증가하고, 게이트 비교는 모듈 상수 `_STREAK_GATE_ATTEMPTS`/`_GAP_TOLERANCE_ATTEMPTS`
-        (stride로 이미 나눠둔 값)를 쓴다 — wall-clock 의미 보존.
+        frame_gap: 이번 호출이 직전 호출로부터 몇 비디오 프레임 지났는지(POSE_STRIDE로 건너뛴
+        프레임 포함). 스트릭 카운터를 1이 아니라 이 값만큼 올려 `_STREAK_GATE`/`_GAP_TOLERANCE`/
+        `_PROBE_INTERVAL`을 원래의 비디오 프레임 단위로 그대로 쓴다.
+
+        한계: stride>1이면 건너뛴 프레임의 검출 여부를 알 수 없으므로, 실패 1회를 stride
+        프레임 끊김으로 간주한다(보수적 근사). 3프레임 끊김이 샘플링 위상에 따라 2회로도
+        1회로도 관측될 수 있어 _GAP_TOLERANCE 경계 부근은 여전히 위상에 따라 갈린다 —
+        stride 샘플링의 구조적 한계라 관용도를 0으로 낮추지 않는 한 완전히 없앨 수 없고,
+        그렇게 하면 원래 방지하려던 "순간 놓침에 게이트 재대기"가 되살아난다.
         """
         result = self._detect(det_bgr, self._rot, frame_gap)
         if not result.pose_landmarks:
-            self._fail_streak += 1
-            # 프로브 스로틀: 첫 실패와 이후 매 N프레임만 나머지 회전 시도
-            if self._fail_streak == 1 or self._fail_streak % _PROBE_INTERVAL == 0:
+            first_fail = self._fail_streak == 0
+            self._fail_streak += frame_gap
+            self._frames_since_probe += frame_gap
+            # 프로브 스로틀: 첫 실패와 이후 _PROBE_INTERVAL 프레임마다만 나머지 회전 시도
+            if first_fail or self._frames_since_probe >= _PROBE_INTERVAL:
+                self._frames_since_probe = 0
                 for k in range(len(_ROTS)):
                     if k == self._rot:
                         continue
@@ -232,16 +245,17 @@ class _PoseTracker:
                         result = probe
                         break
         if not result.pose_landmarks:
-            # 짧은 끊김(_GAP_TOLERANCE_ATTEMPTS 이하)은 streak 유지 — 프로브 복구·순간 놓침으로
+            # 짧은 끊김(_GAP_TOLERANCE 프레임 이하)은 streak 유지 — 프로브 복구·순간 놓침으로
             # 게이트가 재대기하지 않게 한다. 최종 실패가 길어질 때만 리셋.
-            if self._fail_streak > _GAP_TOLERANCE_ATTEMPTS:
+            if self._fail_streak > _GAP_TOLERANCE:
                 self._det_streak = 0
             return None
 
         self._fail_streak = 0
-        self._det_streak += 1
+        self._frames_since_probe = 0
+        self._det_streak += frame_gap
         # 시간적 일관성 게이트 — 산발적 오탐 차단. 프리뷰(IMAGE 모드, 단일 프레임)는 예외.
-        if self._video_mode and self._det_streak < _STREAK_GATE_ATTEMPTS:
+        if self._video_mode and self._det_streak < _STREAK_GATE:
             return None
         return self._extract(result, self._rot, grid_w, grid_h)
 
@@ -315,7 +329,13 @@ def light_cartoonize(frame: np.ndarray) -> np.ndarray:
     flat = cv2.resize(small, (w, h))
     quantized = (flat // 32) * 32 + 16
 
-    gray = cv2.medianBlur(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY), 7)
+    # medianBlur는 ksize<=5까지만 OpenCV SIMD 경로를 타고 7부터 일반 히스토그램 구현으로
+    # 떨어진다 — 1080x1920 단일스레드 실측 k5 2.1ms vs k7 49.3ms(23배)로, k7은 이 함수
+    # 전체(90ms)의 55%를 혼자 먹었다. 이 블러는 adaptiveThreshold 입력 전처리(스펙클 억제)
+    # 전용이고 최종 색·질감은 아래 quantized(bilateral+양자화)에서 나오므로 익명화 강도와
+    # 무관하다. 실사 프레임 A/B: 엣지 마스크 불일치 2.0%, 최종 출력 픽셀 diff 0.15% —
+    # 오히려 k7에서 뭉개지던 작은 글자 윤곽이 살아난다.
+    gray = cv2.medianBlur(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY), 5)
     edges = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 11, 5)
     edges = cv2.medianBlur(edges, 3)  # 점 스펙클 제거
 
@@ -387,6 +407,21 @@ def _preset_scale(prefix: str, preset: set[str] | None) -> float:
     return _PRESET_SUPPRESS
 
 
+_EFF_EMA_ALPHA = 0.5  # per-캡슐 EMA 반영률(프레임당 기준으로 튜닝된 값)
+
+
+def _ema_alpha(stride: int) -> float:
+    """stride 프레임마다 한 번만 갱신될 때 프레임당 `_EFF_EMA_ALPHA`와 같은 시정수를 내는 계수.
+
+    per-캡슐 eff_ema는 `_muscle_layer` 안에 있어 포즈를 실제로 검출한 프레임에서만 갱신된다
+    (step()의 e_ema/heat는 hold 프레임에서도 매 프레임 돌아 stride 영향이 없다). 보정하지
+    않으면 갱신 빈도가 1/stride로 줄어든 만큼 wall-clock 시정수가 stride배 길어진다
+    (stride=2: 48ms→96ms, stride=4: 192ms). 잔여 비율 (1-α)를 stride제곱으로 누적시키는
+    등가 계수 = 1-(1-α)**stride. stride=1이면 정확히 `_EFF_EMA_ALPHA`.
+    """
+    return 1.0 - (1.0 - _EFF_EMA_ALPHA) ** stride
+
+
 def _muscle_layer(
     pts: dict[int, tuple[float, float]],
     vis: dict[int, float],
@@ -408,12 +443,14 @@ def _muscle_layer(
     K_LIN/DB_LIN은 모두 "프레임당" 단위로 튜닝된 상수라, stride>1이면 원시 델타(수 프레임에
     걸쳐 누적된 이동량)를 프레임당으로 되돌린 뒤(나눗셈) 데드밴드를 적용해야 임계값 의미가
     유지된다 — 데드밴드 자체는 측정 잡음 크기라 stride와 무관하므로 나누지 않는다.
+    아래 per-캡슐 EMA 계수도 같은 이유로 보정한다(`_ema_alpha`).
     """
     mid_sho = ((pts[11][0] + pts[12][0]) / 2, (pts[11][1] + pts[12][1]) / 2)
     mid_hip = ((pts[23][0] + pts[24][0]) / 2, (pts[23][1] + pts[24][1]) / 2)
     torso = max(20.0, float(np.hypot(mid_sho[0] - mid_hip[0], mid_sho[1] - mid_hip[1])))
 
     angs = {name: _joint_angle(pts, vis, name) for name in ANGLES}
+    ema_a = _ema_alpha(stride)
 
     def effort(drivers: list[str], gain: float, aux: list[int] | None, db: float) -> float:
         """각속도 기반 + (팔만) 이동속도 보조. 각도는 카메라 흔들림에 불변."""
@@ -449,7 +486,7 @@ def _muscle_layer(
             continue
         scale = _preset_scale(name[:-1], preset)  # uarmL -> uarm
         e = max(effort(drivers, gain, aux, DB_ANG_LOW if lower_body else DB_ANG), floors.get(name, 0.0)) * scale
-        e = eff_ema[name] = 0.5 * e + 0.5 * eff_ema.get(name, 0.0)
+        e = eff_ema[name] = ema_a * e + (1.0 - ema_a) * eff_ema.get(name, 0.0)
         if e < 0.12:
             continue
         radius = max(3, int(radius_ratio * torso))
@@ -464,7 +501,7 @@ def _muscle_layer(
 
     if all(vis.get(i, 0) >= VIS_MIN for i in (11, 12, 23, 24)):  # 코어: 어깨-엉덩이 사각형
         e = effort(CORE_ANGLES, 0.75, None, DB_ANG_LOW) * _preset_scale("core", preset)
-        e = eff_ema["core"] = 0.5 * e + 0.5 * eff_ema.get("core", 0.0)
+        e = eff_ema["core"] = ema_a * e + (1.0 - ema_a) * eff_ema.get("core", 0.0)
         if e >= 0.12:
             poly = np.array([pts[11], pts[12], pts[24], pts[23]], np.int32)
             layer = np.zeros((ph, pw), np.float32)
