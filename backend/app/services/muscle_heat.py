@@ -241,7 +241,22 @@ class _PoseTracker:
         stride 샘플링의 구조적 한계라 관용도를 0으로 낮추지 않는 한 완전히 없앨 수 없고,
         그렇게 하면 원래 방지하려던 "순간 놓침에 게이트 재대기"가 되살아난다.
         """
-        result = self._detect(det_bgr, self._rot, frame_gap)
+        # 비회전(rot=0)을 항상 먼저 시도한다 — `_extract`가 회전 프레임에서는 세그 마스크를
+        # 읽지 못하므로(mediapipe C++ FATAL, 위 주석) 회전으로 검출하면 "사람 확실한 픽셀만"
+        # 컷이 통째로 빠져 히트맵이 몸 밖(옆 사람·기구)으로 새어 나간다.
+        # sticky 회전만 쓰면 일시적 실패 한 번으로 영구히 회전 모드에 갇힌다 — 실사 가로
+        # 영상 실측에서 rot=0 단독 검출률이 87%인데도 seg 확보가 21%까지 떨어졌다.
+        # rot=0을 먼저 태우면 seg 확보 99%, 검출률도 355→359로 오르고, 회전 실패 때마다
+        # 돌던 4회 프로브가 사라져 검출 호출 수는 오히려 378→364로 줄었다.
+        result = self._detect(det_bgr, 0, frame_gap)
+        tried = {0}
+        if result.pose_landmarks:
+            self._rot = 0  # 회전에 갇히지 않도록 성공 시 즉시 복귀
+        elif self._rot != 0:
+            # 직전에 성공했던 회전으로 폴백(플랭크·푸쉬업 등 수평 자세)
+            result = self._detect(det_bgr, self._rot, frame_gap)
+            tried.add(self._rot)
+
         if not result.pose_landmarks:
             first_fail = self._fail_streak == 0
             self._fail_streak += frame_gap
@@ -250,7 +265,7 @@ class _PoseTracker:
             if first_fail or self._frames_since_probe >= _PROBE_INTERVAL:
                 self._frames_since_probe = 0
                 for k in range(len(_ROTS)):
-                    if k == self._rot:
+                    if k in tried:
                         continue
                     probe = self._detect(det_bgr, k, frame_gap)
                     if probe.pose_landmarks:
