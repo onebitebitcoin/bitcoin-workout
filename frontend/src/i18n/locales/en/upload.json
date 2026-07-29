@@ -127,7 +127,7 @@
     "waiting": "Just a moment...",
     "reset": "Start over",
     "elapsed": "{{seconds}}s elapsed",
-    "hint": "Usually takes 100–200 seconds. You can switch apps — the upload keeps running."
+    "hint": "Can take up to 3 minutes. You can switch apps — the upload keeps running."
   },
   "done": {
     "title": "Workout complete",
