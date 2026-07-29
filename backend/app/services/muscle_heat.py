@@ -79,19 +79,22 @@ ANGLES: dict[str, tuple[int, int, int]] = {
 # 근육 캡슐: (이름, a관절, b관절, 반지름/torso, 각도 드라이버, 게인, 이동속도 보조 관절)
 # 기본은 "관절이 굽혀지는 각속도" = 실제로 일하는 근육.
 # 팔 계열만 이동속도 보조(에어바이크처럼 편 팔로 미는 동작). 몸통/하체는 각속도 전용(딥스 오탐 방지).
+# 반지름은 실사 검증(스포터가 등을 잡아주는 클립) 후 원래 값의 ×0.65로 축소했다 — 넓게 퍼진
+# 흐릿한 열이 아니라 근육 굵기에 가까운 또렷한 핫스팟으로 보이고, 부수적으로 타인(스포터 등)이
+# 캡슐 반경 안에 들어와 같이 물드는 범위도 줄어든다.
 CAPS: list[tuple[str, int, int, float, list[str], float, list[int] | None]] = [
-    ("uarmL", 11, 13, 0.15, ["elbowL", "shoL"], 1.0, [13, 15]),
-    ("uarmR", 12, 14, 0.15, ["elbowR", "shoR"], 1.0, [14, 16]),
-    ("farmL", 13, 15, 0.12, ["elbowL"], 0.9, [15]),
-    ("farmR", 14, 16, 0.12, ["elbowR"], 0.9, [16]),
-    ("deltL", 11, 11, 0.15, ["shoL"], 1.0, [13]),
-    ("deltR", 12, 12, 0.15, ["shoR"], 1.0, [14]),
-    ("thighL", 23, 25, 0.20, ["kneeL", "hipL"], 1.0, None),
-    ("thighR", 24, 26, 0.20, ["kneeR", "hipR"], 1.0, None),
-    ("calfL", 25, 27, 0.13, ["kneeL"], 0.6, None),
-    ("calfR", 26, 28, 0.13, ["kneeR"], 0.6, None),
-    ("gluteL", 23, 23, 0.12, ["hipL"], 0.9, None),
-    ("gluteR", 24, 24, 0.12, ["hipR"], 0.9, None),
+    ("uarmL", 11, 13, 0.10, ["elbowL", "shoL"], 1.0, [13, 15]),
+    ("uarmR", 12, 14, 0.10, ["elbowR", "shoR"], 1.0, [14, 16]),
+    ("farmL", 13, 15, 0.08, ["elbowL"], 0.9, [15]),
+    ("farmR", 14, 16, 0.08, ["elbowR"], 0.9, [16]),
+    ("deltL", 11, 11, 0.10, ["shoL"], 1.0, [13]),
+    ("deltR", 12, 12, 0.10, ["shoR"], 1.0, [14]),
+    ("thighL", 23, 25, 0.13, ["kneeL", "hipL"], 1.0, None),
+    ("thighR", 24, 26, 0.13, ["kneeR", "hipR"], 1.0, None),
+    ("calfL", 25, 27, 0.085, ["kneeL"], 0.6, None),
+    ("calfR", 26, 28, 0.085, ["kneeR"], 0.6, None),
+    ("gluteL", 23, 23, 0.08, ["hipL"], 0.9, None),
+    ("gluteR", 24, 24, 0.08, ["hipR"], 0.9, None),
 ]
 CORE_ANGLES = ["hipL", "hipR"]  # 코어 = 몸통 굽힘(힙 각도) 변화만. 단순 이동은 무시
 
@@ -100,7 +103,10 @@ CORE_ANGLES = ["hipL", "hipR"]  # 코어 = 몸통 굽힘(힙 각도) 변화만. 
 # 한쪽 팔만 빨간 그림이 된다.
 # 부하 임계(0.12)만으로는 실사에서 캡슐 10개가 동시에 켜져 몸 전체가 균일하게 달아올랐다.
 # "가장 많이 쓰는 부위"를 보여주는 게 이 필터의 목적이므로 상위 몇 개만 남긴다.
-TOP_MUSCLE_GROUPS = 2
+# 2였다가 1로 축소 — 실측 추세(제한없음→3→2로 좁힐수록 프레임간 변화량이 6.58→5.97→5.00로
+# 오히려 감소, 순위 경합에 의한 깜빡임이 현실화되지 않음)를 근거로 1까지 좁혀도 안정적이라
+# 판단. "가장 열심히 쓰는 부위 딱 하나"만 남겨야 어디가 일하는지 한눈에 들어온다.
+TOP_MUSCLE_GROUPS = 1
 
 # 근육군 프리셋 — Gemini가 영상을 보고 이 딕셔너리의 키 중 하나를 직접 골라주면(`exercise_classify.py`)
 # "이 근육군만" 게인을 살리고 나머지는 강하게 감쇠(_PRESET_SUPPRESS)한다. 각속도 휴리스틱만으론
@@ -325,13 +331,18 @@ def _global_affine(prev_gray: np.ndarray | None, gray: np.ndarray) -> np.ndarray
 
 
 def _alpha_lut(gain: float, lo: float) -> np.ndarray:
-    """0..255 양자화 히트값 -> 0..255 알파. lo 이하 저강도는 0(투명)."""
+    """0..255 양자화 히트값 -> 0..255 알파. lo 이하 저강도는 0(투명).
+
+    지수 0.85→1.3: 중간 강도를 더 어둡게 눌러 대비를 세운다 — 진짜 강한 부위만 밝게
+    나오고 애매한 강도는 거의 안 보이게 된다. 최대값(heat=1.0)의 밝기는 지수와 무관하게
+    gain*255로 그대로라 피크 밝기는 변하지 않는다.
+    """
     v = np.arange(256, dtype=np.float32) / 255.0
     trimmed = np.clip((v - lo) / (1 - lo), 0, 1)
-    return np.clip(trimmed**0.85 * gain * 255, 0, 255).astype(np.uint8)
+    return np.clip(trimmed**1.3 * gain * 255, 0, 255).astype(np.uint8)
 
 
-def _overlay(base_bgr: np.ndarray, heat01: np.ndarray, gain: float = 1.4, lo: float = 0.12) -> np.ndarray:
+def _overlay(base_bgr: np.ndarray, heat01: np.ndarray, gain: float = 1.4, lo: float = 0.20) -> np.ndarray:
     """base 위에 히트맵을 알파 블렌드. lo 이하 저강도는 투명(원본 노출) → 핫스팟만 선명.
 
     heat01은 base보다 작은 그리드 해상도로 들어온다(호출부가 업샘플하지 않는다) — 컬러맵
@@ -570,9 +581,16 @@ def _muscle_layer(
         head_mask = cv2.GaussianBlur(head_mask, (31, 31), 0)
         muscle *= 1.0 - np.clip(head_mask, 0, 1)
 
-    muscle = cv2.GaussianBlur(muscle, (21, 21), 0)
+    # (21,21)→(11,11): 블러가 곧 "캡슐 밖으로 번지는 거리"라 축소하면 핫스팟 가장자리가
+    # 또렷해지고, 반지름 축소(CAPS)와 같은 방향으로 타인에게 번지는 범위도 줄어든다.
+    muscle = cv2.GaussianBlur(muscle, (11, 11), 0)
     if seg is not None:
-        muscle *= np.clip((seg - 0.25) / 0.75, 0, 1)  # 사람 확실한 픽셀만 (기물·배경 컷)
+        # 임계 0.25→0.5: 접촉/경계 영역(예: 스포터 손이 등에 닿는 지점)은 모델 확신도가
+        # 낮은 경우가 많다 — 임계를 올리면 이런 애매한 영역이 먼저 잘려나가 타인 번짐이
+        # 줄어든다. MediaPipe 세그멘테이션은 "사람인가"만 구분하는 시맨틱 마스크라(추적
+        # 대상 개인을 구분하는 인스턴스 마스크가 아님) 접촉 지점을 완전히 분리하지는
+        # 못한다 — 두 사람이 닿아 있으면 하나의 "사람" 덩어리로 인식되는 게 구조적 한계.
+        muscle *= np.clip((seg - 0.5) / 0.5, 0, 1)  # 사람 확실한 픽셀만 (기물·배경·경계부 컷)
     return muscle, angs
 
 
