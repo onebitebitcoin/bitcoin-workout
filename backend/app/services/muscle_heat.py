@@ -95,6 +95,13 @@ CAPS: list[tuple[str, int, int, float, list[str], float, list[int] | None]] = [
 ]
 CORE_ANGLES = ["hipL", "hipR"]  # 코어 = 몸통 굽힘(힙 각도) 변화만. 단순 이동은 무시
 
+# 한 프레임에 열을 그릴 근육군 최대 개수(`_muscle_layer` 2단계). 좌우 쌍은 한 군으로 센다
+# (uarmL+uarmR = uarm 1개) — 대부분의 운동은 좌우가 함께 일하므로 캡슐 단위로 자르면
+# 한쪽 팔만 빨간 그림이 된다.
+# 부하 임계(0.12)만으로는 실사에서 캡슐 10개가 동시에 켜져 몸 전체가 균일하게 달아올랐다.
+# "가장 많이 쓰는 부위"를 보여주는 게 이 필터의 목적이므로 상위 몇 개만 남긴다.
+TOP_MUSCLE_GROUPS = 2
+
 # 근육군 프리셋 — Gemini가 영상을 보고 이 딕셔너리의 키 중 하나를 직접 골라주면(`exercise_classify.py`)
 # "이 근육군만" 게인을 살리고 나머지는 강하게 감쇠(_PRESET_SUPPRESS)한다. 각속도 휴리스틱만으론
 # 스미스 스쿼트에서 팔 캡슐이 1.0으로 오발화하는 등 부위 오귀속이 큰데(측정 실증), 근육군을 알면
@@ -487,6 +494,11 @@ def _muscle_layer(
 
     floors = _static_load_floors(pts, vis)
     muscle = np.zeros((ph, pw), np.float32)
+
+    # 1단계: 모든 캡슐의 부하를 계산만 해둔다(그리기는 2단계에서 상위 근육군만).
+    # eff_ema는 여기서 전 캡슐에 대해 갱신해야 한다 — 그리지 않는 캡슐도 상태를 이어가야
+    # 다음 프레임에 순위가 바뀌어 등장할 때 EMA가 0에서 다시 쌓이지 않는다.
+    pending: list[tuple[str, float, tuple[int, int], tuple[int, int], int, bool]] = []
     for name, a, b, radius_ratio, drivers, gain, aux in CAPS:
         lower_body = name[0] in "tcg"  # thigh/calf/glute — 다리는 프레임 밖 추정이 잦음
         vmin = 0.7 if lower_body else VIS_MIN
@@ -503,24 +515,49 @@ def _muscle_layer(
         e = eff_ema[name] = ema_a * e + (1.0 - ema_a) * eff_ema.get(name, 0.0)
         if e < 0.12:
             continue
-        radius = max(3, int(radius_ratio * torso))
+        pending.append((
+            name, e,
+            (int(pts[a][0]), int(pts[a][1])),
+            (int(pts[b][0]), int(pts[b][1])),
+            max(3, int(radius_ratio * torso)),
+            a == b,
+        ))
+
+    core_e = 0.0
+    if all(vis.get(i, 0) >= VIS_MIN for i in (11, 12, 23, 24)):  # 코어: 어깨-엉덩이 사각형
+        e = effort(CORE_ANGLES, 0.75, None, DB_ANG_LOW) * _preset_scale("core", preset)
+        e = eff_ema["core"] = ema_a * e + (1.0 - ema_a) * eff_ema.get("core", 0.0)
+        if e >= 0.12:
+            core_e = e
+
+    # 2단계: 가장 활발한 근육군만 남긴다. 임계(0.12)만으로는 실사에서 캡슐 10개가 동시에
+    # 켜져 "운동열"인데 몸 전체가 균일하게 달아오른다 — 어디가 일하는지 알 수 없다.
+    # 좌우를 개별로 세지 않고 접두사(uarmL/uarmR -> uarm)로 묶어 순위를 매기는 게 핵심:
+    # 대부분의 운동은 좌우가 함께 일하므로 캡슐 단위로 자르면 한쪽 팔만 빨간 그림이 된다.
+    group_peak: dict[str, float] = {}
+    for name, e, *_ in pending:
+        prefix = name[:-1]
+        group_peak[prefix] = max(group_peak.get(prefix, 0.0), e)
+    if core_e:
+        group_peak["core"] = core_e
+    top_groups = set(sorted(group_peak, key=lambda g: group_peak[g], reverse=True)[:TOP_MUSCLE_GROUPS])
+
+    # 3단계: 상위 근육군에 속한 캡슐만 그린다.
+    for name, e, pa, pb, radius, is_point in pending:
+        if name[:-1] not in top_groups:
+            continue
         layer = np.zeros((ph, pw), np.float32)
-        pa = (int(pts[a][0]), int(pts[a][1]))
-        pb = (int(pts[b][0]), int(pts[b][1]))
-        if a == b:
+        if is_point:
             cv2.circle(layer, pa, radius, e, -1)
         else:
             cv2.line(layer, pa, pb, e, radius * 2)
         muscle = np.maximum(muscle, layer)
 
-    if all(vis.get(i, 0) >= VIS_MIN for i in (11, 12, 23, 24)):  # 코어: 어깨-엉덩이 사각형
-        e = effort(CORE_ANGLES, 0.75, None, DB_ANG_LOW) * _preset_scale("core", preset)
-        e = eff_ema["core"] = ema_a * e + (1.0 - ema_a) * eff_ema.get("core", 0.0)
-        if e >= 0.12:
-            poly = np.array([pts[11], pts[12], pts[24], pts[23]], np.int32)
-            layer = np.zeros((ph, pw), np.float32)
-            cv2.fillPoly(layer, [poly], float(e))
-            muscle = np.maximum(muscle, layer)
+    if core_e and "core" in top_groups:
+        poly = np.array([pts[11], pts[12], pts[24], pts[23]], np.int32)
+        layer = np.zeros((ph, pw), np.float32)
+        cv2.fillPoly(layer, [poly], float(core_e))
+        muscle = np.maximum(muscle, layer)
 
     if vis.get(0, 0) >= 0.3:  # 얼굴 제외 마스크 — 열이 얼굴을 덮지 않게
         head_x, head_y = pts[0]
