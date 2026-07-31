@@ -16,9 +16,7 @@ def sanitize_srt(srt_text: str) -> str:
     lines = srt_text.splitlines()
     cleaned: list[str] = []
     for line in lines:
-        if _TIMESTAMP_RE.search(line):
-            cleaned.append(line)
-        elif line.strip().isdigit():
+        if _TIMESTAMP_RE.search(line) or line.strip().isdigit():
             cleaned.append(line)
         else:
             # HTML 태그 제거

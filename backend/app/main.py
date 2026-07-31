@@ -2,10 +2,9 @@ import html
 import json
 import logging
 import re
+from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
-
-from contextlib import asynccontextmanager
 
 import anyio
 from fastapi import FastAPI, Request
@@ -15,9 +14,21 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from app.models.post import Post
-from app.routes import admin, auth, challenges, comments, feed, history, notifications, rewards, survey, users, videos
-from app.services.r2 import ensure_r2_cors
+from app.routes import (
+    admin,
+    auth,
+    challenges,
+    comments,
+    feed,
+    history,
+    notifications,
+    rewards,
+    survey,
+    users,
+    videos,
+)
 from app.services.notify import notify_backend_error
+from app.services.r2 import ensure_r2_cors
 
 logging.basicConfig(
     level=logging.INFO,
@@ -279,6 +290,7 @@ if _static_dir.exists():
         if m and _is_crawler(request):
             share_token = m.group(1)
             from sqlalchemy.orm import selectinload as _sil
+
             from app.database import SessionLocal
             db = SessionLocal()
             try:

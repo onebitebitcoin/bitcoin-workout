@@ -12,10 +12,7 @@ from app.models.post import Post
 from app.models.reward import RewardPoint
 from app.models.user import User
 from app.routes.auth import get_current_user
-from app.services.reward import POINTS_PER_COMMENT, REWARD_STATUS_FIXED, add_points, _parse_tz
-from app.services.notification import create_notification
 from app.services.error_codes import (
-    api_error,
     E_BANNED,
     E_COMMENT_DAILY_LIMIT,
     E_COMMENT_NOT_FOUND,
@@ -23,6 +20,14 @@ from app.services.error_codes import (
     E_COMMENT_TOO_SHORT,
     E_FORBIDDEN,
     E_POST_NOT_FOUND,
+    api_error,
+)
+from app.services.notification import create_notification
+from app.services.reward import (
+    POINTS_PER_COMMENT,
+    REWARD_STATUS_FIXED,
+    _parse_tz,
+    add_points,
 )
 
 router = APIRouter(prefix="/api/v1/feed", tags=["comments"])

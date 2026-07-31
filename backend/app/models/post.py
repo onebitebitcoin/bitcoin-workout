@@ -34,6 +34,6 @@ class Post(Base):
         index=True,
     )
 
-    user: Mapped["User"] = relationship("User", back_populates="posts")  # noqa: F821
-    video: Mapped["Video"] = relationship("Video", back_populates="post")  # noqa: F821
-    comments: Mapped[list["Comment"]] = relationship("Comment", back_populates="post")  # noqa: F821
+    user: Mapped[User] = relationship("User", back_populates="posts")  # noqa: F821
+    video: Mapped[Video] = relationship("Video", back_populates="post")  # noqa: F821
+    comments: Mapped[list[Comment]] = relationship("Comment", back_populates="post")  # noqa: F821

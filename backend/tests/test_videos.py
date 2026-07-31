@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from unittest.mock import patch
 import os
 import tempfile
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -854,7 +854,8 @@ def test_confirm_upload_subtitle_language_invalid(mock_cdn, client: TestClient) 
 @patch("app.routes.videos.r2_service.upload_fileobj", return_value=("videos/langpipe.mp4", "https://cdn/lp.mp4"))
 def test_upload_pipeline_subtitle_language_passed_to_enqueue(mock_upload, mock_enqueue, mock_redis, client: TestClient) -> None:
     """upload-pipeline이 subtitle_language를 enqueue payload에 전달한다."""
-    from unittest.mock import MagicMock, patch as mpatch
+    from unittest.mock import MagicMock
+    from unittest.mock import patch as mpatch
     mock_r = MagicMock()
     mock_redis.return_value = mock_r
 

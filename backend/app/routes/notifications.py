@@ -1,15 +1,14 @@
 from __future__ import annotations
 
+from fastapi import APIRouter, Depends
 from sqlalchemy import update
 from sqlalchemy.orm import Session
-
-from fastapi import APIRouter, Depends
 
 from app.database import get_db
 from app.models.notification import Notification
 from app.models.user import User
 from app.routes.auth import get_current_user
-from app.services.error_codes import api_error, E_NOTIFICATION_NOT_FOUND
+from app.services.error_codes import E_NOTIFICATION_NOT_FOUND, api_error
 
 router = APIRouter(prefix="/api/v1/notifications", tags=["notifications"])
 
@@ -63,7 +62,7 @@ def unread_count(
     """안 읽은 알림 개수 (폴링 전용 경량 엔드포인트)."""
     count = (
         db.query(Notification)
-        .filter(Notification.user_id == current_user.id, Notification.is_read == False)  # noqa: E712
+        .filter(Notification.user_id == current_user.id, Notification.is_read == False)
         .count()
     )
     return {"data": {"count": count}}
@@ -77,7 +76,7 @@ def read_all(
     """내 알림 전체 읽음 처리."""
     result = db.execute(
         update(Notification)
-        .where(Notification.user_id == current_user.id, Notification.is_read == False)  # noqa: E712
+        .where(Notification.user_id == current_user.id, Notification.is_read == False)
         .values(is_read=True)
     )
     db.commit()

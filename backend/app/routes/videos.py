@@ -1,12 +1,22 @@
 import json
+import logging
 import os
 import re
 import tempfile
-import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Header, Query, UploadFile
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Form,
+    Header,
+    Query,
+    UploadFile,
+)
+from sqlalchemy import func as sqlfunc
 from sqlalchemy.orm import Session, selectinload
 
 from app.config import settings as app_settings
@@ -17,9 +27,9 @@ from app.models.notification import Notification
 from app.models.post import Post
 from app.models.post_like import PostLike
 from app.models.post_view import PostView
+from app.models.reward import RewardPoint
 from app.models.user import User
 from app.models.video import Video
-from sqlalchemy import func as sqlfunc
 from app.routes.auth import get_active_user, get_current_user, get_optional_user
 from app.routes.challenges import increment_challenge_upload
 from app.schemas.video import (
@@ -30,22 +40,8 @@ from app.schemas.video import (
     PresignedUrlResponse,
     SubtitleLanguage,
 )
-from app.models.reward import RewardPoint
 from app.services import r2 as r2_service
-from app.services.subtitles import sanitize_srt
-from app.services.share_token import generate_share_token
-from app.services.job_queue import enqueue_full_upload_pipeline, enqueue_image_merge_job, enqueue_merge_job, enqueue_multi_pipeline, enqueue_subtitle_extract_job, fail_job, get_job_status, reserve_job_id
-from app.services.reward import (
-    DAILY_MAX_UPLOADS,
-    REWARD_STATUS_QUEUED,
-    add_points,
-    get_daily_upload_count,
-    points_for_tags,
-    revoke_queued_upload_reward,
-    _parse_tz,
-)
 from app.services.error_codes import (
-    api_error,
     E_AUDIO_DURATION_INVALID,
     E_AUDIO_UPLOAD_FAILED,
     E_FILE_TOO_LARGE,
@@ -63,7 +59,29 @@ from app.services.error_codes import (
     E_VIDEO_NOT_FOUND,
     E_VIDEO_PROCESS_FAILED,
     E_VIDEO_TOO_LARGE,
+    api_error,
 )
+from app.services.job_queue import (
+    enqueue_full_upload_pipeline,
+    enqueue_image_merge_job,
+    enqueue_merge_job,
+    enqueue_multi_pipeline,
+    enqueue_subtitle_extract_job,
+    fail_job,
+    get_job_status,
+    reserve_job_id,
+)
+from app.services.reward import (
+    DAILY_MAX_UPLOADS,
+    REWARD_STATUS_QUEUED,
+    _parse_tz,
+    add_points,
+    get_daily_upload_count,
+    points_for_tags,
+    revoke_queued_upload_reward,
+)
+from app.services.share_token import generate_share_token
+from app.services.subtitles import sanitize_srt
 
 logger = logging.getLogger(__name__)
 

@@ -5,21 +5,25 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, File, Query, UploadFile
 from PIL import Image
-from sqlalchemy import cast, func, String
+from sqlalchemy import String, cast, func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload
 
+from app.config import settings as app_settings
 from app.database import get_db
 from app.models.challenge import Challenge, ChallengeParticipation
 from app.models.post import Post
 from app.models.user import User
 from app.models.video import Video
 from app.routes.auth import get_current_user, get_optional_user
-from app.schemas.challenge import ChallengeCreateRequest, ChallengeSchema, ChallengeUpdateRequest, EarnedTitleSchema
-from app.config import settings as app_settings
+from app.schemas.challenge import (
+    ChallengeCreateRequest,
+    ChallengeSchema,
+    ChallengeUpdateRequest,
+    EarnedTitleSchema,
+)
 from app.services import r2 as r2_service
 from app.services.error_codes import (
-    api_error,
     E_ADMIN_REQUIRED,
     E_CHALLENGE_ALREADY_COMPLETED,
     E_CHALLENGE_ALREADY_JOINED,
@@ -37,6 +41,7 @@ from app.services.error_codes import (
     E_IMAGE_FORMAT_INVALID,
     E_MANAGER_REQUIRED,
     E_PARTICIPATION_NOT_FOUND,
+    api_error,
 )
 
 logger = logging.getLogger(__name__)
@@ -177,9 +182,9 @@ def list_challenges(
     current_user: User | None = Depends(get_optional_user),
 ) -> dict:
     if closed:
-        query = db.query(Challenge).filter(Challenge.is_active == False)  # noqa: E712
+        query = db.query(Challenge).filter(Challenge.is_active == False)
     else:
-        query = db.query(Challenge).filter(Challenge.is_active == True)  # noqa: E712
+        query = db.query(Challenge).filter(Challenge.is_active == True)
     if q:
         query = query.filter(Challenge.title.ilike(f"%{q}%"))
     if category:
@@ -207,7 +212,7 @@ def list_challenges(
 
 
 def _assert_reward_title_unique(db: Session, reward_title: str, exclude_id: int | None = None) -> None:
-    q = db.query(Challenge).filter(Challenge.reward_title == reward_title, Challenge.is_active == True)  # noqa: E712
+    q = db.query(Challenge).filter(Challenge.reward_title == reward_title, Challenge.is_active == True)
     if exclude_id is not None:
         q = q.filter(Challenge.id != exclude_id)
     if q.first():
@@ -319,7 +324,7 @@ def my_created_challenges(
             db.query(ChallengeParticipation.challenge_id, func.count(ChallengeParticipation.id))
             .filter(
                 ChallengeParticipation.challenge_id.in_(ids),
-                ChallengeParticipation.completed_at != None,  # noqa: E711
+                ChallengeParticipation.completed_at != None,
             )
             .group_by(ChallengeParticipation.challenge_id)
             .all()
@@ -369,7 +374,7 @@ def my_titles(
         db.query(ChallengeParticipation)
         .filter(
             ChallengeParticipation.user_id == current_user.id,
-            ChallengeParticipation.completed_at != None,  # noqa: E711
+            ChallengeParticipation.completed_at != None,
         )
         .order_by(ChallengeParticipation.completed_at.desc())
         .all()

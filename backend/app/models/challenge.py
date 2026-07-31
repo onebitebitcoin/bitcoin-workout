@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text, func
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -35,7 +35,7 @@ class Challenge(Base):
         nullable=False,
     )
 
-    participations: Mapped[list["ChallengeParticipation"]] = relationship(
+    participations: Mapped[list[ChallengeParticipation]] = relationship(
         "ChallengeParticipation", back_populates="challenge"
     )
 
@@ -57,5 +57,5 @@ class ChallengeParticipation(Base):
         nullable=False,
     )
 
-    user: Mapped["User"] = relationship("User", back_populates="challenge_participations")  # noqa: F821
-    challenge: Mapped["Challenge"] = relationship("Challenge", back_populates="participations")
+    user: Mapped[User] = relationship("User", back_populates="challenge_participations")  # noqa: F821
+    challenge: Mapped[Challenge] = relationship("Challenge", back_populates="participations")

@@ -2,8 +2,9 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, Query
 from pydantic import BaseModel
-from sqlalchemy import and_, func as sqlfunc, or_
-from sqlalchemy.orm import Session, selectinload, joinedload
+from sqlalchemy import and_, or_
+from sqlalchemy import func as sqlfunc
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.database import SessionLocal, get_db
 from app.models.challenge import ChallengeParticipation
@@ -15,6 +16,7 @@ from app.models.user import User
 from app.models.video import Video
 from app.routes.auth import get_active_user, get_optional_user
 from app.routes.auth import get_current_user as get_required_user
+from app.services.error_codes import E_FORBIDDEN, E_USER_NOT_FOUND, api_error
 from app.services.notification import create_notification
 from app.services.referral import generate_referral_code
 from app.services.reward import (
@@ -30,7 +32,6 @@ from app.services.reward import (
     get_weekly_queued_points,
     settle_queued_rewards,
 )
-from app.services.error_codes import api_error, E_USER_NOT_FOUND, E_FORBIDDEN
 
 router = APIRouter(prefix="/api/v1/users", tags=["users"])
 
@@ -518,7 +519,7 @@ def list_followers(
     rows = (
         db.query(User)
         .join(Follow, Follow.follower_id == User.id)
-        .filter(Follow.following_id == user_id, User.is_banned == False)  # noqa: E712
+        .filter(Follow.following_id == user_id, User.is_banned == False)
         .order_by(Follow.created_at.desc())
         .limit(limit)
         .offset(offset)
@@ -539,7 +540,7 @@ def list_following(
     rows = (
         db.query(User)
         .join(Follow, Follow.following_id == User.id)
-        .filter(Follow.follower_id == user_id, User.is_banned == False)  # noqa: E712
+        .filter(Follow.follower_id == user_id, User.is_banned == False)
         .order_by(Follow.created_at.desc())
         .limit(limit)
         .offset(offset)

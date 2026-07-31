@@ -10,16 +10,16 @@ from app.models.comment import Comment
 from app.models.post import Post
 from app.models.post_like import PostLike
 from app.models.post_view import PostView
-from app.models.video import Video
 from app.models.user import User
+from app.models.video import Video
 from app.routes.auth import get_current_user, get_optional_user
 from app.schemas.video import PostSchema
-from app.services.reward import _utc_today_start
-from app.services.notification import create_notification
 from app.services.error_codes import (
-    api_error,
     E_POST_NOT_FOUND,
+    api_error,
 )
+from app.services.notification import create_notification
+from app.services.reward import _utc_today_start
 
 router = APIRouter(prefix="/api/v1/feed", tags=["feed"])
 

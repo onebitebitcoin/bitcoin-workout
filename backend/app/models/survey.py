@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, String, Text, func
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy import sql as expression
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -41,7 +41,7 @@ class Survey(Base):
         nullable=False,
     )
 
-    responses: Mapped[list["SurveyResponse"]] = relationship(
+    responses: Mapped[list[SurveyResponse]] = relationship(
         "SurveyResponse", back_populates="survey", cascade="all, delete-orphan"
     )
 
@@ -72,4 +72,4 @@ class SurveyResponse(Base):
         nullable=False,
     )
 
-    survey: Mapped["Survey"] = relationship("Survey", back_populates="responses")
+    survey: Mapped[Survey] = relationship("Survey", back_populates="responses")

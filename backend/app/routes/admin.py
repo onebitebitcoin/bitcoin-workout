@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy import case, func, or_
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.database import get_db
 from app.models.admin_log import AdminLog
 from app.models.app_links import AppLinks
@@ -17,21 +18,11 @@ from app.models.post import Post
 from app.models.post_like import PostLike
 from app.models.post_view import PostView
 from app.models.reward import RewardPoint
-from app.models.video import Video
 from app.models.user import User
-from app.config import settings
-from app.services import r2 as r2_service
+from app.models.video import Video
 from app.schemas.video import VideoSchema
-from app.services.reward import (
-    REWARD_STATUS_FIXED,
-    UTC,
-    hashrate_filters,
-    get_week_range,
-    revoke_queued_upload_reward,
-    settle_queued_rewards,
-)
+from app.services import r2 as r2_service
 from app.services.error_codes import (
-    api_error,
     E_ADMIN_API_KEY_DELETE,
     E_ADMIN_REQUIRED,
     E_ADMIN_SELF_DELETE,
@@ -40,6 +31,15 @@ from app.services.error_codes import (
     E_UPLOAD_URL_FAILED,
     E_USER_NOT_FOUND,
     E_VIDEO_NOT_FOUND,
+    api_error,
+)
+from app.services.reward import (
+    REWARD_STATUS_FIXED,
+    UTC,
+    get_week_range,
+    hashrate_filters,
+    revoke_queued_upload_reward,
+    settle_queued_rewards,
 )
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
@@ -58,8 +58,7 @@ def require_admin(
     auth = request.headers.get("Authorization", "")
     if not auth.startswith("Bearer "):
         raise api_error(401, E_AUTH_REQUIRED, "인증이 필요합니다")
-    from app.services.auth import decode_token
-    from app.services.auth import get_user_by_id
+    from app.services.auth import decode_token, get_user_by_id
     user_id = decode_token(auth.removeprefix("Bearer "))
     if user_id is None:
         raise api_error(401, E_AUTH_INVALID_TOKEN, "유효하지 않은 토큰입니다")

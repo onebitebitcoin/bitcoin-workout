@@ -31,7 +31,8 @@ def _age_queued_rewards(db: Session) -> None:
     settle cutoff simultaneously, so we settle directly to keep created_at this week.
     """
     from datetime import datetime, timedelta, timezone
-    from app.services.reward import get_week_range, UTC, REWARD_STATUS_FIXED
+
+    from app.services.reward import REWARD_STATUS_FIXED, UTC, get_week_range
 
     now = datetime.now(timezone.utc)
     week_start, _ = get_week_range(UTC)
@@ -310,8 +311,10 @@ def test_hashrate_requires_auth(client: TestClient) -> None:
 
 
 def test_hashrate_week_range_clipped_by_month() -> None:
-    from datetime import datetime, timezone as _tz
+    from datetime import datetime
+    from datetime import timezone as _tz
     from unittest.mock import patch as _patch
+
     from app.services.reward import get_hashrate_week_range
 
     # 2026-07-02(목) UTC: ISO 주 시작은 6/29(월)이지만 월 시작 7/1로 잘려야 한다

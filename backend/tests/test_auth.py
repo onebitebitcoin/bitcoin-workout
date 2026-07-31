@@ -170,7 +170,7 @@ def test_password_not_stored_plaintext(client: TestClient) -> None:
 
 
 def test_google_oauth_state_verification_fails_closed_without_redis(monkeypatch) -> None:
-    import app.services.google_oauth as google_oauth
+    from app.services import google_oauth
 
     def raise_redis_unavailable():
         raise RuntimeError("redis unavailable")

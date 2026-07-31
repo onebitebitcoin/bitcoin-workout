@@ -22,6 +22,7 @@ from app.schemas.user import (
     UpdateProfileRequest,
     UserSchema,
 )
+from app.services import r2 as r2_service
 from app.services.auth import (
     create_access_token,
     create_refresh_token,
@@ -31,14 +32,7 @@ from app.services.auth import (
     hash_password,
     verify_password,
 )
-from app.services import r2 as r2_service
-from app.services.google_oauth import exchange_code, generate_oauth_state, get_google_auth_url, get_google_user_info, verify_oauth_state
-from app.services.lnauth import encode_lnurl, generate_k1, verify_signature
-from app.services.rate_limit import check_rate_limit
-from app.services.notify import notify_new_user
-from app.services.referral import generate_referral_code
 from app.services.error_codes import (
-    api_error,
     E_AUTH_EMAIL_TAKEN,
     E_AUTH_INVALID_CREDENTIALS,
     E_AUTH_INVALID_TOKEN,
@@ -51,7 +45,19 @@ from app.services.error_codes import (
     E_GOOGLE_AUTH_UNAVAILABLE,
     E_IMAGE_FORMAT_INVALID,
     E_USER_NOT_FOUND,
+    api_error,
 )
+from app.services.google_oauth import (
+    exchange_code,
+    generate_oauth_state,
+    get_google_auth_url,
+    get_google_user_info,
+    verify_oauth_state,
+)
+from app.services.lnauth import encode_lnurl, generate_k1, verify_signature
+from app.services.notify import notify_new_user
+from app.services.rate_limit import check_rate_limit
+from app.services.referral import generate_referral_code
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 

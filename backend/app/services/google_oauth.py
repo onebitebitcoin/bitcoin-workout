@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-import httpx
 import logging
 import secrets
 from urllib.parse import urlencode
+
+import httpx
 
 from app.config import settings
 

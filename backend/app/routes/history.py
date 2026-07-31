@@ -1,7 +1,6 @@
 from calendar import monthrange
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
-from typing import Optional
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, Depends, Query
@@ -9,8 +8,8 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.post import Post
-from app.models.video import Video
 from app.models.user import User
+from app.models.video import Video
 from app.routes.auth import get_current_user as get_required_user
 
 router = APIRouter(prefix="/api/v1/history", tags=["history"])
@@ -43,9 +42,9 @@ def _compute_streak(workout_dates: set[str], today_local: str) -> int:
 
 @router.get("")
 def get_history(
-    year: Optional[int] = None,
-    month: Optional[int] = None,
-    timezone_name: Optional[str] = Query(None, alias="timezone"),
+    year: int | None = None,
+    month: int | None = None,
+    timezone_name: str | None = Query(None, alias="timezone"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_required_user),
 ) -> dict:

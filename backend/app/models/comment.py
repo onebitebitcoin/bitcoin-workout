@@ -26,5 +26,5 @@ class Comment(Base):
         nullable=False,
     )
 
-    user: Mapped["User"] = relationship("User", back_populates="comments")  # noqa: F821
-    post: Mapped["Post"] = relationship("Post", back_populates="comments")  # noqa: F821
+    user: Mapped[User] = relationship("User", back_populates="comments")  # noqa: F821
+    post: Mapped[Post] = relationship("Post", back_populates="comments")  # noqa: F821

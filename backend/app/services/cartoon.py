@@ -268,8 +268,7 @@ def _concat_and_mux(seg_paths: list[str], input_path: str, output_path: str) -> 
     """구간 mp4들을 무손실로 이어붙이고(-c:v copy) 원본 오디오를 한 번만 입힌다."""
     concat_list = output_path + ".concat.txt"
     with open(concat_list, "w") as f:
-        for p in seg_paths:
-            f.write(f"file '{p}'\n")
+        f.writelines(f"file '{p}'\n" for p in seg_paths)
     try:
         cmd = [
             "ffmpeg", "-y",

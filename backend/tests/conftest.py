@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from unittest.mock import patch
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -20,8 +21,8 @@ os.environ["REDIS_URL"] = ""
 os.environ["GOOGLE_CLIENT_ID"] = ""
 os.environ["GOOGLE_CLIENT_SECRET"] = ""
 
-from app.database import Base, get_db  # noqa: E402
-from app.main import app  # noqa: E402
+from app.database import Base, get_db
+from app.main import app
 
 TEST_DB_URL = "sqlite:///:memory:"
 engine = create_engine(

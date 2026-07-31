@@ -27,4 +27,4 @@ class RewardPoint(Base):
         nullable=False,
     )
 
-    user: Mapped["User"] = relationship("User", back_populates="reward_points")  # noqa: F821
+    user: Mapped[User] = relationship("User", back_populates="reward_points")  # noqa: F821
