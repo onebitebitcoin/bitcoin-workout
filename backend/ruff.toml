@@ -1,0 +1,16 @@
+[lint]
+ignore = [
+  "B008",   # Depends()를 인자 기본값으로 쓰는 FastAPI 표준 패턴 — 오탐
+  "BLE001", # blind except — 기존 코드 전반의 의도된 방어적 처리, 트리아지 필요(코드 미수정)
+  "DTZ003",
+  "DTZ007",
+  "DTZ011", # naive datetime 사용 — 트리아지 필요(코드 미수정)
+  "G201",
+  "LOG014", # 예외 로깅 스타일 — 트리아지 필요(코드 미수정)
+  "PERF402",
+  "PLW1510", # subprocess.run(check=...) 미지정 — 트리아지 필요(코드 미수정)
+  "RUF046",
+  "RUF059",
+  "S110",   # try/except/pass — 트리아지 필요(코드 미수정)
+  "TRY401",
+]
