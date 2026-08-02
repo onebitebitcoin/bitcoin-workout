@@ -363,7 +363,7 @@ def run_multi_pipeline(job: dict, status_callback=None) -> dict:
         has_video = any(it.get("kind") == "video" for it in items)
         rp = add_points(
             db, user_id,
-            points_for_tags(job.get("tags", []), has_video=has_video),
+            points_for_tags(job.get("tags", [])),
             "upload", reference_id=video.id,
         )
         points_earned = rp.points if rp else 0.0

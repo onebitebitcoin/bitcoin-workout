@@ -270,18 +270,6 @@ def test_reward_summary_ignores_client_timezone_header(client: TestClient, db: S
     assert res.json()["data"]["current_week_points"] == 0.5
 
 
-def test_points_for_tags_image_only_weights() -> None:
-    from app.services.reward import (
-        POINTS_LIGHT_IMAGE_ONLY,
-        POINTS_SWEATY_IMAGE_ONLY,
-        points_for_tags,
-    )
-
-    assert points_for_tags(["땀 흘리는 운동"], has_video=False) == POINTS_SWEATY_IMAGE_ONLY
-    assert points_for_tags(["가벼운 활동"], has_video=False) == POINTS_LIGHT_IMAGE_ONLY
-    assert points_for_tags([], has_video=False) == POINTS_SWEATY_IMAGE_ONLY
-
-
 def test_hashrate_empty_week(client: TestClient) -> None:
     token, _ = _reg(client, "hash0@x.com", "hashzero")
     res = client.get("/api/v1/users/me/hashrate", headers=_auth(token))

@@ -9,23 +9,19 @@ from app.models.video import Video
 
 POINTS_LIGHT_ACTIVITY = 0.25
 POINTS_SWEATY_EXERCISE = 0.5
-POINTS_LIGHT_IMAGE_ONLY = 0.1
-POINTS_SWEATY_IMAGE_ONLY = 0.3
 POINTS_PER_COMMENT = 0.01
 
 LIGHT_ACTIVITY_LABEL = "가벼운 활동"
 
 
-def points_for_tags(tags: list[str], has_video: bool = True) -> float:
+def points_for_tags(tags: list[str]) -> float:
     """Return upload points based on the main category tag.
 
-    has_video=False(이미지만 인증)면 감액 가중치를 적용한다.
+    영상/이미지 인증 구분 없이 동일 요율로 적립한다.
     """
     is_light = bool(tags) and tags[0] == LIGHT_ACTIVITY_LABEL
-    if has_video:
-        return POINTS_LIGHT_ACTIVITY if is_light else POINTS_SWEATY_EXERCISE
-    return POINTS_LIGHT_IMAGE_ONLY if is_light else POINTS_SWEATY_IMAGE_ONLY
-DAILY_MAX_UPLOADS = 2
+    return POINTS_LIGHT_ACTIVITY if is_light else POINTS_SWEATY_EXERCISE
+DAILY_MAX_UPLOADS = 20
 REWARD_STATUS_QUEUED = "queued"
 REWARD_STATUS_FIXED = "fixed"
 REWARD_STATUS_REVOKED = "revoked"
