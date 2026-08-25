@@ -26,17 +26,6 @@ export function SkeletonAvatar({ size = 32 }: { size?: number }) {
   )
 }
 
-export function SkeletonLeaderboardItem() {
-  return (
-    <div className="flex items-center gap-3 px-4 py-3">
-      <SkeletonLine className="w-6 h-4" />
-      <SkeletonAvatar size={32} />
-      <SkeletonLine className="flex-1 h-4" />
-      <SkeletonLine className="w-14 h-4" />
-    </div>
-  )
-}
-
 export function SkeletonCalendarGrid() {
   return (
     <div className="grid grid-cols-7 gap-1">

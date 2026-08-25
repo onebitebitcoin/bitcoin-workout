@@ -19,7 +19,7 @@
 
 - 제품: 운동 쇼츠를 공유하고 스코어/비트코인 리워드를 받는 Stack Health / 운동하고 비트코인 받자 플랫폼
 - 핵심 명제: 비트코인 리워드는 진입 후크이며, 진짜 동기는 커뮤니티와 성장 피드백이다.
-- Phase A 목표: MVP 런칭, 영상 업로드 + 피드 + 리워드 claim + 어드민 운영 도구
+- Phase A 목표: MVP 런칭, 영상 업로드 + 피드 + 챌린지 + 어드민 운영 도구
 - 주요 문서:
   - `docs/INDEX.md` — **파일 탐색 전 필수로 읽는 탐색 인덱스** (작업 유형 → 파일 매핑)
   - `docs/ARCHITECTURE.md` — 시스템 아키텍처 (구성도, 데이터 흐름, 배포)
@@ -44,7 +44,7 @@
 - `frontend/src/pages/` — 주요 페이지.
 - `frontend/src/api/` — API client/types.
 - `backend/app/main.py` — FastAPI app, 라우터 등록, 정적 SPA fallback.
-- `backend/app/routes/` — auth/feed/videos/rewards/comments/admin API.
+- `backend/app/routes/` — auth/feed/videos/comments/challenges/admin API.
 - `backend/app/models/` — SQLAlchemy 모델.
 - `backend/tests/` — pytest API 테스트.
 

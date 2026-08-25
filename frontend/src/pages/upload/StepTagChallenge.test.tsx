@@ -114,7 +114,7 @@ describe('StepTagChallenge', () => {
     expect(mockedGet).not.toHaveBeenCalled()
   })
 
-  it('proceeds without checking the daily limit for light-activity category', async () => {
+  it('proceeds for light-activity category without calling the API', async () => {
     const onNext = vi.fn()
     render(<StepTagChallenge {...buildProps({ mainCategory: '가벼운 활동', onNext })} />)
     await userEvent.click(screen.getByRole('button', { name: /다음/ }))
@@ -122,22 +122,11 @@ describe('StepTagChallenge', () => {
     expect(onNext).toHaveBeenCalled()
   })
 
-  it('checks the daily limit for sweaty-exercise category and blocks when reached', async () => {
-    mockedGet.mockResolvedValueOnce({ data: { data: { reached: true } } })
-    const onNext = vi.fn()
-    const setLimitError = vi.fn()
-    render(<StepTagChallenge {...buildProps({ mainCategory: '땀 흘리는 운동', onNext, setLimitError })} />)
-    await userEvent.click(screen.getByRole('button', { name: /다음/ }))
-    await waitFor(() => expect(mockedGet).toHaveBeenCalledWith('/videos/daily-limit'))
-    expect(setLimitError).toHaveBeenCalledWith('오늘 운동 영상 업로드 한도(3개)에 도달했습니다.')
-    expect(onNext).not.toHaveBeenCalled()
-  })
-
-  it('proceeds for sweaty-exercise category when the daily limit is not reached', async () => {
-    mockedGet.mockResolvedValueOnce({ data: { data: { reached: false } } })
+  it('proceeds for sweaty-exercise category without calling the API', async () => {
     const onNext = vi.fn()
     render(<StepTagChallenge {...buildProps({ mainCategory: '땀 흘리는 운동', onNext })} />)
     await userEvent.click(screen.getByRole('button', { name: /다음/ }))
     await waitFor(() => expect(onNext).toHaveBeenCalled())
+    expect(mockedGet).not.toHaveBeenCalled()
   })
 })

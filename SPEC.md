@@ -14,7 +14,6 @@
 
 ### 핵심 가치
 - 운동 습관 형성 + 운동 기록 공유
-- 땀방울(포인트) 적립으로 챌린지 달성 및 타이틀 획득
 - 커뮤니티와 함께하는 동기 부여
 
 ### MVP 목표
@@ -26,7 +25,7 @@
 
 ## 2. 타임존 정책
 
-> **이 규칙을 어기면 히스토리 캘린더, 스트릭, 포인트 정산이 날짜 경계에서 어긋납니다.**
+> **이 규칙을 어기면 히스토리 캘린더와 스트릭이 날짜 경계에서 어긋납니다.**
 
 ### 원칙
 
@@ -48,18 +47,17 @@
 
 ### 글로벌 UTC 비즈니스 기준
 
-서비스의 정산·제한·랭킹 기준은 국가별 로컬 자정이 아니라 **글로벌 UTC 캘린더**입니다.
+서비스의 집계 기준은 국가별 로컬 자정이 아니라 **글로벌 UTC 캘린더**입니다.
 사용자에게 보여주는 날짜/시간만 브라우저 또는 `X-Client-Timezone` 기준 로컬 타임으로 변환합니다.
 
 | 항목 | 설명 |
 |------|------|
-| 주간 라벨 (`2026-W21`) | UTC 기준 월요일 00:00 시작 |
-| 월간 랭킹/통계 | UTC 기준 매월 1일 00:00 시작 |
-| 일일 업로드 제한 | UTC 자정 기준 리셋 |
-| claim 마감일 | UTC 월요일 00:00 |
+| 주간 경계 | UTC 기준 월요일 00:00 시작 |
+| 월간 통계 | UTC 기준 매월 1일 00:00 시작 |
+| 조회수 일일 중복 제거 | UTC 자정 기준 리셋 |
 | 화면 표시 | API의 UTC ISO datetime을 사용자 로컬 타임존으로 변환해 표시 |
 
-`X-Client-Timezone`은 표시/캘린더용 보조 정보이며, 보상 정산·업로드 제한·랭킹 집계 기간을 바꾸면 안 됩니다.
+`X-Client-Timezone`은 표시/캘린더용 보조 정보이며, 집계 기간을 바꾸면 안 됩니다.
 
 ---
 
@@ -74,7 +72,6 @@
 | 영상 저장 | Cloudflare R2 (presigned URL 직접 업로드) |
 | 영상 서빙 | Cloudflare CDN (R2 퍼블릭 도메인) |
 | 배포 | Docker + 자체 서버 (FastAPI가 React 빌드 파일도 서빙) |
-| Lightning 지급 | 운영자 수동 송금 (기본) / Blink API 자동결제 (옵션) |
 | 인증 | JWT (python-jose) + Google OAuth (옵션) + LNAuth (옵션) |
 | 아이콘 | lucide-react |
 | HTTP 클라이언트 | TanStack Query (React Query v5) |
@@ -110,9 +107,6 @@ APP_BASE_URL=http://localhost:8000
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 
-# Blink API (선택 — 미설정 시 수동 송금 모드)
-BLINK_API_KEY=
-
 # Redis (선택 — 미설정 시 백엔드 직접 ffmpeg fallback)
 REDIS_URL=redis://localhost:6379/0
 ```
@@ -132,8 +126,6 @@ stack_health/
 │   │   │   ├── user.py
 │   │   │   ├── video.py
 │   │   │   ├── post.py
-│   │   │   ├── reward.py
-│   │   │   ├── claim.py
 │   │   │   ├── comment.py
 │   │   │   ├── challenge.py
 │   │   │   ├── lnauth_challenge.py
@@ -143,7 +135,6 @@ stack_health/
 │   │   │   ├── auth.py
 │   │   │   ├── videos.py
 │   │   │   ├── feed.py
-│   │   │   ├── rewards.py
 │   │   │   ├── comments.py
 │   │   │   ├── challenges.py
 │   │   │   ├── history.py
@@ -152,8 +143,6 @@ stack_health/
 │   │   ├── services/
 │   │   │   ├── auth.py
 │   │   │   ├── r2.py
-│   │   │   ├── reward.py
-│   │   │   ├── blink.py
 │   │   │   ├── google_oauth.py
 │   │   │   ├── lnauth.py
 │   │   │   └── job_queue.py
@@ -217,37 +206,6 @@ tags            TEXT                       -- JSON 배열: ["홈트", "러닝"]
 like_count      INTEGER DEFAULT 0
 view_count      INTEGER DEFAULT 0
 created_at      TIMESTAMPTZ DEFAULT now()   -- UTC
-```
-
-### reward_points
-```sql
-id              INTEGER PRIMARY KEY
-user_id         INTEGER REFERENCES users(id)
-week_label      TEXT NOT NULL              -- 예: 2026-W21
-points          FLOAT NOT NULL
-reason          TEXT NOT NULL              -- upload | comment | like_given | view_given
-                                           -- like_given / view_given: 0pt, 좋아요/조회 추적 전용
-reference_id    INTEGER                    -- post_id 또는 video_id
-status          TEXT DEFAULT 'fixed'       -- queued | fixed | revoked
-                                           -- queued: 업로드 후 24h 대기 (어뷰징 방지)
-                                           -- fixed: 24h 경과 후 확정
-                                           -- revoked: 영상 삭제로 취소됨
-created_at      TIMESTAMPTZ DEFAULT now()   -- UTC
-```
-
-### lightning_claims
-```sql
-id              INTEGER PRIMARY KEY
-user_id         INTEGER REFERENCES users(id)
-week_label      TEXT NOT NULL
-points_used     FLOAT NOT NULL
-satoshi_amount  INTEGER NOT NULL
-ln_address      TEXT NOT NULL
-status          TEXT DEFAULT 'pending'     -- pending | paid | cancelled
-payment_memo    TEXT
-created_at      TIMESTAMPTZ DEFAULT now()   -- UTC
-updated_at      TIMESTAMPTZ DEFAULT now()   -- UTC
-UNIQUE(user_id, week_label)               -- 주당 1회 클레임 강제
 ```
 
 ### comments
@@ -411,15 +369,14 @@ Response: { "data": { "r2_key": str, "cdn_url": str } }
 ```
 
 #### POST `/api/v1/videos/confirm` 🔒
-R2 업로드 완료 후 DB 저장 + 포인트 적립 큐 등록.
+R2 업로드 완료 후 DB 저장.
 ```json
 Request:  { "r2_key": str, "duration_sec": int, "caption"?: str, "tags"?: [str], "challenge_id"?: int }
-Response: { "data": { "post": PostSchema, "points_earned": float } }
+Response: { "data": { "post": PostSchema } }
 ```
 검증:
 - `duration_sec`: 5초 이상, 30초 이하
 - `tags`: `["홈트", "러닝", "요가", "웨이트", "기타"]` 중 선택 (복수 가능)
-- 포인트 적립: `+0.5pt` (queued 상태로 생성 → 24h 후 fixed 전환)
 
 #### POST `/api/v1/videos/merge-audio` 🔒
 영상과 오디오 파일을 ffmpeg로 병합하는 잡을 큐에 등록.
@@ -456,13 +413,13 @@ Response: { "data": { "posts": [PostSchema], "next_cursor": int | null } }
 ```json
 Response: { "data": { "liked": bool, "like_count": int } }
 ```
-- 토글 방식 (좋아요 추적 전용, 포인트 미적립)
+- 토글 방식
 
 #### POST `/api/v1/feed/{post_id}/view` 🔒
 ```json
 Response: { "data": { "view_count": int } }
 ```
-- 조회수 카운트 (하루 동일 영상 중복 view 제외, 포인트 미적립)
+- 조회수 카운트 (하루 동일 영상 중복 view 제외)
 
 ---
 
@@ -535,61 +492,9 @@ Response: { "data": { "challenge": ChallengeSchema } }
 
 ---
 
-### Rewards
-
-#### GET `/api/v1/rewards/summary` 🔒
-이번 주 포인트 현황.
-```json
-Response: {
-  "data": {
-    "week_label": "2026-W21",
-    "current_week_points": 3.5,
-    "queued_week_points": 0.5,
-    "satoshi_amount": 0,
-    "claimable": true,
-    "claim_deadline": "2026-05-25T23:59:59",
-    "next_claim_date": "2026-05-26T00:00:00"
-  }
-}
-```
-- `satoshi_amount`: 주간 reward pool 기반으로 동적 산정 (포인트 × 고정 환율 아님)
-- `claimable`: 이번 주 미청구 상태면 true (최소 sats 한도 없음)
-
-#### POST `/api/v1/rewards/claim` 🔒
-```json
-Request:  { "ln_address"?: str }
-Response: { "data": { "claim": ClaimSchema } }
-```
-검증:
-- 이번 주 이미 claim한 경우 `409 Conflict`
-- `ln_address` 미등록 시 `400`
-
-**결제 모드**:
-- `BLINK_API_KEY` 설정됨 → Blink API로 자동 Lightning 송금
-- `BLINK_API_KEY` 미설정 → `status=pending`으로 저장, 운영자 수동 송금
-
-#### GET `/api/v1/rewards/claims` 🔒
-```json
-Response: { "data": { "claims": [ClaimSchema] } }
-```
-
----
-
 ### Admin (관리자 전용)
 
 관리자 인증: JWT 토큰 + `is_admin=true` 필요 🛡️
-
-#### GET `/api/v1/admin/claims`
-```
-Query: status?: pending|paid|cancelled, limit?: int
-Response: { "data": { "claims": [ClaimWithUserSchema] } }
-```
-
-#### PATCH `/api/v1/admin/claims/{claim_id}/mark-paid` 🛡️
-```json
-Request:  { "payment_memo"?: str }
-Response: { "data": { "claim": ClaimSchema } }
-```
 
 #### GET `/api/v1/admin/videos` 🛡️
 콘텐츠 모더레이션용 영상 목록.
@@ -613,46 +518,7 @@ Response: { "status": "ok", "version": "0.26.1" }
 
 ---
 
-## 8. 포인트 시스템
-
-### 적립 규칙
-| 행동 | 포인트 | 비고 |
-|------|--------|------|
-| 영상 업로드 | +0.5pt | queued → 24h 후 fixed |
-| 댓글 작성 | +0.1pt | 즉시 fixed |
-| 좋아요 | 0pt | 토글 추적 전용 |
-| 조회 | 0pt | 중복 방지 추적 전용 |
-| **일일 업로드 횟수 상한** | 3회 | 초과 시 429 |
-
-> 일일 총 포인트 상한 없음.
-
-### 포인트 → Sats 환산
-- **동적 산정**: `1pt = N sats`는 고정값이 아님
-- 주간 reward pool(sats)을 전체 참여자 포인트 합산으로 나눠 비율 결정
-- 운영자가 주간 pool을 설정하고, admin에서 lottery/distribution 실행
-
-### 어뷰징 방지: 업로드 포인트 24h 대기
-- 업로드 직후 포인트는 `status=queued`로 생성
-- `settle_queued_rewards()`가 24h 경과분을 `status=fixed`로 전환
-- 영상이 24h 이내에 삭제/거부되면 `status=revoked`로 취소
-- `get_weekly_points()`: fixed 포인트만 합산 (queued 제외)
-
-### 주간 claim 사이클
-- 집계 기간: 월요일 00:00 ~ 일요일 23:59:59 (UTC)
-- claim 가능: 이번 주 미청구 상태면 언제든지 (최소 sats 한도 없음)
-- 주당 1회만 claim 가능 (`UNIQUE(user_id, week_label)`)
-- 미claim 포인트: 다음 주로 이월 / close_week 실행 시 1/7로 감소
-
-### 주간 정산 (Admin)
-1. 운영자가 주간 reward pool(sats) 결정
-2. `POST /admin/mining/distribute` → lottery 실행
-   - `total_pool = sum(claim.satoshi_amount)` 재분배
-   - 해시파워(포인트 비율) 기반 확률적 추첨 (N=1008 draws)
-3. `POST /admin/mining/close-week` → 미청구자 포인트 1/7 감소
-
----
-
-## 9. 영상 업로드 규칙
+## 8. 영상 업로드 규칙
 
 | 항목 | 제한 |
 |------|------|
@@ -673,7 +539,6 @@ Response: { "status": "ok", "version": "0.26.1" }
 | `/` | 피드 (풀스크린 세로형 영상) | 불필요 (좋아요·업로드는 요구) |
 | `/login` | 로그인 / 회원가입 | — |
 | `/upload` | 영상 업로드 (다단계 wizard) | 필요 |
-| `/rewards` | 포인트 현황 + claim | 필요 |
 | `/profile` | 내 프로필 + 설정 | 필요 |
 | `/history` | 운동 히스토리 캘린더 | 필요 |
 | `/challenges` | 챌린지 목록 + 참여 | 필요 |
@@ -712,10 +577,8 @@ Response: { "status": "ok", "version": "0.26.1" }
 - 좋아요, 조회수
 - 댓글
 - 챌린지 시스템 (생성, 참여, 타이틀)
-- 포인트 적립 (업로드 0.5pt / 댓글 0.1pt, 24h queued 어뷰징 방지)
 - 운동 히스토리 캘린더 + streak
-- 주간 Lightning claim (자동 Blink / 운영자 수동 송금)
-- 운영자 대시보드 (claim 처리, 영상/사용자 관리, AdminLog)
+- 운영자 대시보드 (영상/사용자 관리, AdminLog)
 
 ### v2 (미구현)
 - 추천 알고리즘
@@ -731,21 +594,6 @@ Response: { "status": "ok", "version": "0.26.1" }
 ---
 
 ## 13. 운영 SOP
-
-### 주간 BTC 지급 프로세스
-
-#### 모드 A: Blink 자동결제 (`BLINK_API_KEY` 설정됨)
-1. 사용자가 `/rewards/claim` 호출 시 Blink API가 자동 송금
-2. 실패 시 `status=pending`으로 남음
-3. 매주 월요일 오전 `/admin/claims?status=pending` 조회로 실패건 확인
-4. 실패건은 수동 송금 후 `/admin/claims/{id}/mark-paid` 호출
-
-#### 모드 B: 운영자 수동 송금 (`BLINK_API_KEY` 미설정)
-1. 매주 월요일 00:00 이후 `/admin/claims?status=pending` 조회
-2. 각 사용자의 `ln_address`와 `satoshi_amount` 확인
-3. 운영자 Lightning 지갑 앱에서 직접 송금
-4. 송금 완료 후 `/admin/claims/{id}/mark-paid` 호출 (payment_memo 선택)
-5. 실패 시 사용자에게 재claim 안내
 
 ### 콘텐츠 모더레이션
 - `/admin/videos` 에서 최신 영상 확인

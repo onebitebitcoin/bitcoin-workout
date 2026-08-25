@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { Home, Plus, UserCircle, Users, Dumbbell, Bell } from 'lucide-react'
+import { Home, Plus, UserCircle, Dumbbell, Bell } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../store/auth'
 import LogoMark from './LogoMark'
@@ -51,10 +51,6 @@ export default function SideNav() {
           <span>{t('nav.upload')}</span>
         </button>
 
-        <NavLink to="/leaderboard" className={navItem}>
-          <Users size={20} strokeWidth={1.5} />
-          <span>{t('nav.users')}</span>
-        </NavLink>
 
         <NavLink to="/notifications" className={navItem}>
           <span className="relative">

@@ -30,20 +30,10 @@ from app.schemas.video import (
     PresignedUrlResponse,
     SubtitleLanguage,
 )
-from app.models.reward import RewardPoint
 from app.services import r2 as r2_service
 from app.services.subtitles import sanitize_srt
 from app.services.share_token import generate_share_token
 from app.services.job_queue import enqueue_full_upload_pipeline, enqueue_image_merge_job, enqueue_merge_job, enqueue_multi_pipeline, enqueue_subtitle_extract_job, fail_job, get_job_status, reserve_job_id
-from app.services.reward import (
-    DAILY_MAX_UPLOADS,
-    REWARD_STATUS_QUEUED,
-    add_points,
-    get_daily_upload_count,
-    points_for_tags,
-    revoke_queued_upload_reward,
-    _parse_tz,
-)
 from app.services.error_codes import (
     api_error,
     E_AUDIO_DURATION_INVALID,
@@ -57,7 +47,6 @@ from app.services.error_codes import (
     E_POST_NOT_FOUND,
     E_QUEUE_FAILED,
     E_USER_NOT_FOUND,
-    E_VIDEO_DAILY_LIMIT,
     E_VIDEO_DURATION_INVALID,
     E_VIDEO_FORMAT_INVALID,
     E_VIDEO_NOT_FOUND,
@@ -155,9 +144,6 @@ async def upload_video(
     if content_type not in r2_service.ALLOWED_CONTENT_TYPES:
         raise api_error(400, E_VIDEO_FORMAT_INVALID, f"지원하지 않는 파일 형식입니다: {content_type}")
 
-    if get_daily_upload_count(db, current_user.id, _parse_tz(x_client_timezone)) >= DAILY_MAX_UPLOADS:
-        raise api_error(429, E_VIDEO_DAILY_LIMIT, f"하루 업로드 한도({DAILY_MAX_UPLOADS}회)를 초과했습니다")
-
     logger.info("upload_video: user_id=%s filename=%s content_type=%s", current_user.id, file.filename, content_type)
     r2_key, cdn_url = r2_service.upload_fileobj(file.file, content_type, file.filename or "video.mp4", current_user.id)
     return {"data": {"r2_key": r2_key, "cdn_url": cdn_url}}
@@ -178,9 +164,6 @@ def confirm_upload(
         raise api_error(403, E_FORBIDDEN, "접근 권한이 없습니다")
 
     tags = req.tags or []
-
-    if get_daily_upload_count(db, current_user.id, _parse_tz(x_client_timezone)) >= DAILY_MAX_UPLOADS:
-        raise api_error(429, E_VIDEO_DAILY_LIMIT, f"하루 업로드 한도({DAILY_MAX_UPLOADS}회)를 초과했습니다")
 
     cdn_url = r2_service.get_cdn_url(req.r2_key)
 
@@ -212,9 +195,6 @@ def confirm_upload(
     if req.challenge_id:
         increment_challenge_upload(db, current_user.id, req.challenge_id)
 
-    rp = add_points(db, current_user.id, points_for_tags(tags), "upload", reference_id=video.id)
-    points_earned = rp.points if rp else 0
-
     db.commit()
     db.refresh(post)
     db.refresh(video)
@@ -242,24 +222,7 @@ def confirm_upload(
         profile_color=(current_user.app_settings or {}).get("profile_color"),
         challenge_id=post.challenge_id,
     )
-    return {"data": {"post": post_schema, "points_earned": points_earned}}
-
-
-@router.get("/daily-limit")
-def get_daily_limit(
-    current_user: User = Depends(get_active_user),
-    db: Session = Depends(get_db),
-    x_client_timezone: str = Header(default="UTC"),
-) -> dict:
-    """오늘 업로드 횟수 및 한도 조회."""
-    count = get_daily_upload_count(db, current_user.id, _parse_tz(x_client_timezone))
-    return {
-        "data": {
-            "count": count,
-            "limit": DAILY_MAX_UPLOADS,
-            "reached": count >= DAILY_MAX_UPLOADS,
-        }
-    }
+    return {"data": {"post": post_schema}}
 
 
 @router.get("/my-posts")
@@ -471,40 +434,6 @@ def update_post(
 
     if "tags" in fields and fields["tags"] is not None:
         new_tags = [t for t in fields["tags"] if isinstance(t, str) and t.strip()]
-        old_tags = _parse_tags(post.tags)
-        old_main = old_tags[0] if old_tags else None
-        new_main = new_tags[0] if new_tags else None
-
-        if new_main != old_main:
-            # 메인 카테고리 변경 → 포인트 재산정 (queued만 허용)
-            queued = (
-                db.query(RewardPoint)
-                .filter(
-                    RewardPoint.reason == "upload",
-                    RewardPoint.reference_id == post.video_id,
-                    RewardPoint.status == REWARD_STATUS_QUEUED,
-                )
-                .first()
-            )
-            fixed_exists = (
-                db.query(RewardPoint)
-                .filter(
-                    RewardPoint.reason == "upload",
-                    RewardPoint.reference_id == post.video_id,
-                    RewardPoint.status != REWARD_STATUS_QUEUED,
-                )
-                .first()
-            )
-            if fixed_exists and not queued:
-                raise api_error(
-                    400, E_FORBIDDEN,
-                    "포인트가 확정되어 운동 종류를 변경할 수 없습니다 (설명·세부태그·시간은 수정 가능)",
-                )
-            if queued:
-                new_points = points_for_tags(new_tags)
-                if queued.points != new_points:
-                    queued.points = new_points
-
         post.tags = json.dumps(new_tags, ensure_ascii=False)
 
     db.commit()
@@ -574,7 +503,6 @@ def delete_post(
 
     db.delete(post)
     if video:
-        revoke_queued_upload_reward(db, video.id)
         db.delete(video)
     db.commit()
 
@@ -987,9 +915,6 @@ async def upload_pipeline(
 
     tags_list = _parse_tags(tags)
 
-    if get_daily_upload_count(db, current_user.id, _parse_tz(x_client_timezone)) >= DAILY_MAX_UPLOADS:
-        raise api_error(429, E_VIDEO_DAILY_LIMIT, f"하루 업로드 한도({DAILY_MAX_UPLOADS}회)를 초과했습니다")
-
     video_path, _video_size = await _spool_upload_to_temp(file, r2_service.MAX_FILE_SIZE, "영상")
 
     audio_path: str | None = None
@@ -1060,13 +985,8 @@ def get_upload_job_status(
     _assert_job_owner(job, current_user)
 
     status = job.get("status", "unknown")
-    points_earned = 0.0
     share_token = ""
     if status == "completed":
-        try:
-            points_earned = float(job.get("points_earned", "0"))
-        except (ValueError, TypeError):
-            points_earned = 0.0
         post_id = job.get("post_id", "")
         if post_id:
             try:
@@ -1084,7 +1004,6 @@ def get_upload_job_status(
             "cdn_url": job.get("cdn_url", ""),
             "post_id": job.get("post_id", ""),
             "share_token": share_token,
-            "points_earned": points_earned,
             "audio_merge_failed": job.get("audio_merge_failed", "") == "True",
             "subtitle_status": job.get("subtitle_status", ""),
             "subtitle_url": job.get("subtitle_url", ""),
@@ -1305,9 +1224,6 @@ async def upload_multi(
         raise api_error(400, E_IMAGE_FORMAT_INVALID, f"이미지는 최대 {MAX_MEDIA_IMAGES}장까지 업로드할 수 있습니다")
     if n_video + n_image != len(files) or (n_video + n_image) == 0:
         raise api_error(400, E_VIDEO_FORMAT_INVALID, "지원하지 않는 미디어 구성입니다")
-
-    if get_daily_upload_count(db, current_user.id, _parse_tz(x_client_timezone)) >= DAILY_MAX_UPLOADS:
-        raise api_error(429, E_VIDEO_DAILY_LIMIT, f"하루 업로드 한도({DAILY_MAX_UPLOADS}회)를 초과했습니다")
 
     tags_list = _parse_tags(tags)
 

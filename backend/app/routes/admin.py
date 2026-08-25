@@ -1,10 +1,9 @@
-import json
 from datetime import datetime, timezone
 from typing import Literal
 
 from fastapi import APIRouter, Depends, Header, Request
 from pydantic import BaseModel
-from sqlalchemy import case, func, or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -16,20 +15,11 @@ from app.models.notification import Notification
 from app.models.post import Post
 from app.models.post_like import PostLike
 from app.models.post_view import PostView
-from app.models.reward import RewardPoint
 from app.models.video import Video
 from app.models.user import User
 from app.config import settings
 from app.services import r2 as r2_service
 from app.schemas.video import VideoSchema
-from app.services.reward import (
-    REWARD_STATUS_FIXED,
-    UTC,
-    hashrate_filters,
-    get_week_range,
-    revoke_queued_upload_reward,
-    settle_queued_rewards,
-)
 from app.services.error_codes import (
     api_error,
     E_ADMIN_API_KEY_DELETE,
@@ -127,7 +117,6 @@ def reject_video(
     if video is None:
         raise api_error(404, E_VIDEO_NOT_FOUND, "영상을 찾을 수 없습니다")
 
-    revoke_queued_upload_reward(db, video.id)
     video.status = "rejected"
     db.commit()
     db.refresh(video)
@@ -145,7 +134,6 @@ def delete_video(
         raise api_error(404, E_VIDEO_NOT_FOUND, "영상을 찾을 수 없습니다")
 
     r2_key = video.r2_key
-    revoke_queued_upload_reward(db, video.id)
 
     post = db.query(Post).filter(Post.video_id == video_id).first()
     if post:
@@ -181,10 +169,6 @@ def list_users(
     db: Session = Depends(get_db),
     _: User | None = Depends(require_admin),
 ) -> dict:
-    settled_count = settle_queued_rewards(db)
-    if settled_count:
-        db.commit()
-
     query = db.query(User)
     if search:
         query = query.filter(
@@ -200,7 +184,6 @@ def list_users(
     user_ids = [u.id for u in users]
 
     video_counts: dict = {}
-    point_totals: dict = {}
     challenge_counts: dict = {}
     referred_counts: dict = {}
     inviter_names: dict = {}
@@ -209,15 +192,6 @@ def list_users(
             db.query(Video.user_id, func.count(Video.id))
             .filter(Video.user_id.in_(user_ids), Video.status == "active")
             .group_by(Video.user_id)
-            .all()
-        )
-        point_totals = dict(
-            db.query(RewardPoint.user_id, func.sum(RewardPoint.points))
-            .filter(
-                RewardPoint.user_id.in_(user_ids),
-                RewardPoint.status == REWARD_STATUS_FIXED,
-            )
-            .group_by(RewardPoint.user_id)
             .all()
         )
         challenge_counts = dict(
@@ -257,7 +231,6 @@ def list_users(
             "is_admin": u.is_admin,
             "auth_provider": _auth_provider(u),
             "video_count": video_counts.get(u.id, 0),
-            "total_points": point_totals.get(u.id, 0),
             "challenge_count": challenge_counts.get(u.id, 0),
             "referred_count": referred_counts.get(u.id, 0),
             "referred_by_username": inviter_names.get(u.referred_by_id) if u.referred_by_id else None,
@@ -322,7 +295,6 @@ def delete_user(
         db.query(Video).filter(Video.user_id == user_id).delete(synchronize_session=False)
 
     db.query(Comment).filter(Comment.user_id == user_id).delete(synchronize_session=False)
-    db.query(RewardPoint).filter(RewardPoint.user_id == user_id).delete(synchronize_session=False)
     db.query(ChallengeParticipation).filter(ChallengeParticipation.user_id == user_id).delete(synchronize_session=False)
     # 타 게시물에 누른 좋아요/조회 행 삭제 (FK: post_like.user_id, post_view.user_id)
     db.query(PostLike).filter(PostLike.user_id == user_id).delete(synchronize_session=False)
@@ -357,10 +329,6 @@ def get_user_detail(
     db: Session = Depends(get_db),
     _: User | None = Depends(require_admin),
 ) -> dict:
-    settled_count = settle_queued_rewards(db, user_id)
-    if settled_count:
-        db.commit()
-
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:
         raise api_error(404, E_USER_NOT_FOUND, "사용자를 찾을 수 없습니다")
@@ -378,16 +346,6 @@ def get_user_detail(
         .filter(ChallengeParticipation.user_id == user_id)
         .order_by(ChallengeParticipation.joined_at.desc())
         .all()
-    )
-
-    total_points = (
-        db.query(func.sum(RewardPoint.points))
-        .filter(
-            RewardPoint.user_id == user_id,
-            RewardPoint.status == REWARD_STATUS_FIXED,
-        )
-        .scalar()
-        or 0
     )
 
     return {
@@ -421,7 +379,6 @@ def get_user_detail(
                 }
                 for p in participations
             ],
-            "total_points": round(float(total_points), 2),
         }
     }
 
@@ -459,174 +416,6 @@ def admin_list_challenges(
                 for c in challenges
             ],
             "total": len(challenges),
-        }
-    }
-
-
-@router.get("/hashrate")
-def admin_hashrate(
-    db: Session = Depends(get_db),
-    _: User | None = Depends(require_admin),
-) -> dict:
-    """이번 주 활동 사용자별 포인트·비중(%) 목록.
-
-    프로필 해시레이트(/users/me/hashrate)와 동일 기준 — 집계 조건은
-    hashrate_filters() 단일 원본을 공유한다.
-    """
-    rows = (
-        db.query(
-            RewardPoint.user_id,
-            User.username,
-            func.sum(RewardPoint.points).label("points"),
-            func.sum(case((RewardPoint.reason == "upload", 1), else_=0)).label("upload_count"),
-            func.sum(
-                case(
-                    (RewardPoint.reason == "comment", 1),
-                    (RewardPoint.reason == "comment_revoke", -1),
-                    else_=0,
-                )
-            ).label("comment_count"),
-        )
-        .join(User, User.id == RewardPoint.user_id)
-        .filter(*hashrate_filters())
-        .group_by(RewardPoint.user_id, User.username)
-        .order_by(func.sum(RewardPoint.points).desc(), RewardPoint.user_id.asc())
-        .all()
-    )
-    # ponytail: 페이지네이션 없음 — 주간 활동 사용자 규모가 수십 명 수준. 수백 명 넘으면 추가.
-    total = float(sum(row.points for row in rows))
-    items = [
-        {
-            "rank": idx + 1,
-            "user_id": row.user_id,
-            "username": row.username,
-            "points": round(float(row.points), 2),
-            "upload_count": int(row.upload_count),
-            "comment_count": int(row.comment_count),
-            "percent": round(float(row.points) / total * 100, 1) if total > 0 else 0.0,
-        }
-        for idx, row in enumerate(rows)
-    ]
-    return {"data": {"items": items, "total_points": round(total, 2)}}
-
-
-@router.get("/hashrate/{user_id}")
-def admin_hashrate_user_detail(
-    user_id: int,
-    db: Session = Depends(get_db),
-    _: User | None = Depends(require_admin),
-) -> dict:
-    """이번 주 특정 사용자의 활동 상세 — 업로드 영상·댓글 목록 (포인트 항목 기준)."""
-    target = db.get(User, user_id)
-    if target is None:
-        raise api_error(404, E_USER_NOT_FOUND, "사용자를 찾을 수 없습니다")
-
-    rows = (
-        db.query(RewardPoint)
-        .filter(RewardPoint.user_id == user_id, *hashrate_filters())
-        .order_by(RewardPoint.created_at.desc())
-        .all()
-    )
-
-    # ponytail: 주간 개인 활동은 수십 건 수준이라 건별 조회로 충분. 느려지면 일괄 join.
-    uploads = []
-    comments = []
-    for rp in rows:
-        if rp.reason == "upload":
-            video = db.get(Video, rp.reference_id) if rp.reference_id else None
-            post = video.post if video else None
-            uploads.append({
-                "post_id": post.id if post else None,
-                "caption": post.caption if post else None,
-                "tags": json.loads(post.tags) if post and post.tags else [],
-                "thumbnail_url": post.thumbnail_url if post else None,
-                "share_token": post.share_token if post else None,
-                "points": rp.points,
-                "status": rp.status,
-                "created_at": rp.created_at,
-            })
-        elif rp.reason in ("comment", "comment_revoke"):
-            comment = db.get(Comment, rp.reference_id) if rp.reference_id else None
-            comments.append({
-                "content": comment.content if comment else None,  # None = 삭제된 댓글
-                "post_id": comment.post_id if comment else None,
-                "points": rp.points,
-                "created_at": rp.created_at,
-            })
-
-    total = float(sum(rp.points for rp in rows))
-    return {
-        "data": {
-            "user_id": user_id,
-            "username": target.username,
-            "total_points": round(total, 2),
-            "uploads": uploads,
-            "comments": comments,
-        }
-    }
-
-
-@router.get("/weekly-summary")
-def weekly_summary(
-    page: int = 1,
-    limit: int = 20,
-    db: Session = Depends(get_db),
-    _: User | None = Depends(require_admin),
-    x_client_timezone: str = Header(default="UTC"),
-) -> dict:
-    _ = x_client_timezone  # Accepted for API compatibility; admin settlement uses UTC globally.
-    week_start_utc, week_end_utc = get_week_range(UTC)
-
-    settled_count = settle_queued_rewards(db)
-    if settled_count:
-        db.commit()
-
-    base_query = (
-        db.query(
-            RewardPoint.user_id,
-            User.username,
-            func.sum(RewardPoint.points).label("weekly_points"),
-        )
-        .join(User, User.id == RewardPoint.user_id)
-        .filter(
-            RewardPoint.created_at >= week_start_utc,
-            RewardPoint.created_at < week_end_utc,
-            RewardPoint.status == REWARD_STATUS_FIXED,
-            User.is_banned.is_(False),
-        )
-        .group_by(RewardPoint.user_id, User.username)
-    )
-
-    total_users: int = base_query.count()
-
-    offset = (page - 1) * limit
-    rows = (
-        base_query
-        .order_by(func.sum(RewardPoint.points).desc(), RewardPoint.user_id.asc())
-        .offset(offset)
-        .limit(limit + 1)
-        .all()
-    )
-
-    has_next = len(rows) > limit
-    rows = rows[:limit]
-
-    items = [
-        {
-            "rank": offset + idx + 1,
-            "user_id": row.user_id,
-            "username": row.username,
-            "weekly_points": row.weekly_points,
-        }
-        for idx, row in enumerate(rows)
-    ]
-
-    return {
-        "data": {
-            "items": items,
-            "page": page,
-            "has_next": has_next,
-            "total_users": total_users,
         }
     }
 

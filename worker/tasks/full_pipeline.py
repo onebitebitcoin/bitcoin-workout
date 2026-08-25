@@ -357,7 +357,6 @@ def run_full_pipeline(job: dict, status_callback=None) -> dict:
     from app.models.user import User
     from app.models.video import Video
     from app.routes.challenges import increment_challenge_upload
-    from app.services.reward import DAILY_MAX_UPLOADS, add_points, get_daily_upload_count, points_for_tags
 
     start_time = time.time()
     r2 = _get_r2_client()
@@ -434,13 +433,6 @@ def run_full_pipeline(job: dict, status_callback=None) -> dict:
     # 일일 한도 체크 — 썸네일 추출 전에 검사해 orphan 방지
     if status_callback:
         status_callback("db_save")
-    db = SessionLocal()
-    try:
-        if get_daily_upload_count(db, user_id) >= DAILY_MAX_UPLOADS:
-            raise RuntimeError("하루 업로드 한도 초과")
-    finally:
-        db.close()
-
     if status_callback:
         status_callback("thumbnail")
     thumb_key = _extract_thumbnail(r2, current_key)
@@ -531,12 +523,6 @@ def run_full_pipeline(job: dict, status_callback=None) -> dict:
         if challenge_id is not None:
             increment_challenge_upload(db, user_id, int(challenge_id))
 
-        rp = add_points(
-            db, user_id, points_for_tags(job.get("tags", [])), "upload",
-            reference_id=video.id,
-        )
-        points_earned = rp.points if rp else 0.0
-
         user = db.query(User).filter(User.id == user_id).first()
         username = user.username if user else str(user_id)
         email = user.email if user else ""
@@ -551,11 +537,10 @@ def run_full_pipeline(job: dict, status_callback=None) -> dict:
             merge_type = "video + audio"
         else:
             merge_type = "video"
-        logger.info("[full-pipeline] job=%s 완료, post_id=%s points=%s elapsed=%.1fs", job_id, post.id, points_earned, elapsed_sec)
+        logger.info("[full-pipeline] job=%s 완료, post_id=%s elapsed=%.1fs", job_id, post.id, elapsed_sec)
         return {
             "post_id": str(post.id),
             "cdn_url": cdn_url,
-            "points_earned": str(points_earned),
             "username": username,
             "email": email or "",
             "elapsed_sec": round(elapsed_sec, 1),

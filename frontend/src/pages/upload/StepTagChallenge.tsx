@@ -1,7 +1,6 @@
 import { ChevronRight, Trophy, X, Search, Check, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { Challenge } from '../../api/types'
-import client from '../../api/client'
 
 export const MAIN_CATEGORIES = ['가벼운 활동', '땀 흘리는 운동'] as const
 export type MainCategory = typeof MAIN_CATEGORIES[number]
@@ -52,17 +51,6 @@ export default function StepTagChallenge({
     if (!mainCategory) {
       setLimitError(t('tagChallenge.categoryRequired'))
       return
-    }
-    if (mainCategory === '땀 흘리는 운동') {
-      try {
-        const res = await client.get<{ data: { reached: boolean } }>('/videos/daily-limit')
-        if (res.data.data.reached) {
-          setLimitError(t('tagChallenge.dailyLimitReached'))
-          return
-        }
-      } catch {
-        // 네트워크 오류 시 통과 (서버에서 재검사)
-      }
     }
     onNext()
   }

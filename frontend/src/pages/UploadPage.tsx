@@ -17,22 +17,6 @@ import StepSubtitle, { type SubtitleSource } from './upload/StepSubtitle'
 import StepMeta, { type MainCategory } from './upload/StepMeta'
 import { srtToTextLines } from '../utils/subtitles'
 
-function useCountUp(target: number, duration = 800) {
-  const [val, setVal] = useState(0)
-  useEffect(() => {
-    if (target === 0) { setVal(0); return }
-    const start = performance.now()
-    const tick = (now: number) => {
-      const progress = Math.min((now - start) / duration, 1)
-      setVal(target * progress)
-      if (progress < 1) requestAnimationFrame(tick)
-      else setVal(target)
-    }
-    requestAnimationFrame(tick)
-  }, [target, duration])
-  return val
-}
-
 const STEPS_KEYS = ['media', 'subtitle', 'meta'] as const
 const MAX_RECORD_SECONDS = 60
 const PREFERRED_AUDIO_MIME_TYPES = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'] as const
@@ -121,8 +105,6 @@ export default function UploadPage() {
   const [uploadProgress, setUploadProgress] = useState(0)
   const [done, setDone] = useState(false)
   const [shareToken, setShareToken] = useState('')
-  const [pointsEarned, setPointsEarned] = useState(0)
-  const displayPoints = useCountUp(pointsEarned)
   const [error, setError] = useState('')
   const [limitError, setLimitError] = useState('')
 
@@ -264,9 +246,9 @@ export default function UploadPage() {
     if (pollTimerRef.current) { clearInterval(pollTimerRef.current); pollTimerRef.current = null }
   }, [])
 
-  const handleJobCompleted = useCallback((pts: number, token: string) => {
-    stopPolling(); clearJob(); setPointsEarned(pts); setShareToken(token); setDone(true)
-    for (const key of ['my-stats', 'my-posts', 'my-weekly-points', 'history', 'leaderboard-week', 'challenges', 'my-challenges-upload', 'feed'])
+  const handleJobCompleted = useCallback((token: string) => {
+    stopPolling(); clearJob(); setShareToken(token); setDone(true)
+    for (const key of ['my-stats', 'my-posts', 'history', 'challenges', 'my-challenges-upload', 'feed'])
       qc.invalidateQueries({ queryKey: [key] }).catch(() => undefined)
   }, [stopPolling, qc])
 
@@ -276,17 +258,17 @@ export default function UploadPage() {
 
   const pollJob = useCallback(async (jobId: string) => {
     try {
-      const res = await client.get<{ data: { status: string; pipeline_step?: string; points_earned?: number; share_token?: string; error?: string } }>(
+      const res = await client.get<{ data: { status: string; pipeline_step?: string; share_token?: string; error?: string } }>(
         `/videos/upload-job/${jobId}`,
       )
-      const { status, pipeline_step, points_earned, share_token, error: jobError } = res.data.data
+      const { status, pipeline_step, share_token, error: jobError } = res.data.data
       setPipelineStatus(status)
       if (pipeline_step) {
         setPipelineStep(pipeline_step)
         const cfg = UPLOAD_STEP_CONFIG[pipeline_step]
         if (cfg) setUploadProgress((p) => Math.max(p, cfg.start))
       }
-      if (status === 'completed') { setUploadProgress(100); handleJobCompleted(points_earned ?? 0, share_token ?? '') }
+      if (status === 'completed') { setUploadProgress(100); handleJobCompleted(share_token ?? '') }
       else if (status === 'failed') abortJob(jobError || t('error.processingError'))
     } catch (err) {
       if (isAxiosError(err) && err.response?.status === 404) abortJob(t('error.jobNotFound'))
@@ -536,11 +518,6 @@ export default function UploadPage() {
             <span className="text-sm font-semibold text-theme-primary">{t('done.title')}</span>
           </div>
           {caption && <p className="text-sm text-theme-muted mb-4">"{caption}"</p>}
-          <div className="flex items-center justify-between rounded-xl bg-theme-surface2 px-4 py-3">
-            <span className="text-xs text-theme-muted">{t('done.sweatLabel')}</span>
-            <span className="text-lg font-bold text-accent">+{displayPoints.toFixed(1)} L</span>
-          </div>
-          <p className="text-xs text-theme-subtle mt-3 leading-relaxed">{t('done.pendingNote')}</p>
         </div>
         <div className="flex w-full max-w-sm flex-col gap-3 relative z-20">
           <button

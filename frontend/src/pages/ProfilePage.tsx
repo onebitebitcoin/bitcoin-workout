@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  Droplets, ShieldCheck, Settings, Share2, Bell, Zap,
+  ShieldCheck, Settings, Share2, Bell,
   ChevronLeft, ChevronRight, Flame, Heart, Eye, MessageCircle, ArrowLeft, Trash2, Pencil,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../store/auth'
 import { shareProfileLink } from '../lib/share'
 import { useUnreadNotifications } from '../hooks/useUnreadNotifications'
-import type { MyStats, HistoryResponse, HistoryWorkoutPost, MonthlyPointsResponse, HashrateResponse } from '../api/types'
+import type { MyStats, HistoryResponse, HistoryWorkoutPost } from '../api/types'
 import client from '../api/client'
 import LoadingScreen from '../components/LoadingScreen'
 import UserAvatar from '../components/UserAvatar'
@@ -17,18 +17,6 @@ import { SkeletonCalendarGrid } from '../components/Skeleton'
 
 import { getDaysInMonth, getFirstDayIndex, pad2 } from '../utils/calendar'
 
-function getCurrentWeekInfo() {
-  const now = new Date()
-  const day = now.getDay() || 7
-  const monday = new Date(now)
-  monday.setDate(now.getDate() - day + 1)
-  const sunday = new Date(monday)
-  sunday.setDate(monday.getDate() + 6)
-  const jan4 = new Date(monday.getFullYear(), 0, 4)
-  const weekNo = Math.ceil(((monday.getTime() - jan4.getTime()) / 86400000 + jan4.getDay() + 1) / 7)
-  const fmt = (d: Date) => `${d.getMonth() + 1}/${String(d.getDate()).padStart(2, '0')}`
-  return { weekNo, range: `${fmt(monday)}~${fmt(sunday)}` }
-}
 
 export default function ProfilePage() {
   const { t } = useTranslation('profile')
@@ -45,9 +33,6 @@ export default function ProfilePage() {
   const [videoIdx, setVideoIdx] = useState(0)
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null)
 
-  type SweatPeriod = 'week' | 'month' | 'all'
-  const [sweatPeriod, setSweatPeriod] = useState<SweatPeriod>('week')
-  const [displayedSweat, setDisplayedSweat] = useState<number>(0)
 
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([])
@@ -95,18 +80,7 @@ export default function ProfilePage() {
     return () => observer.disconnect()
   }, [selectedDate, selectedPosts])
 
-  const { data: hashrate } = useQuery<HashrateResponse>({
-    queryKey: ['my-hashrate'],
-    queryFn: async () => {
-      const res = await client.get<{ data: HashrateResponse }>('/users/me/hashrate')
-      return res.data.data
-    },
-    // 일반 사용자 공개 전 — 관리자만 미리보기 (공개 시 !!user 로 변경)
-    enabled: !!user?.is_admin,
-    refetchInterval: 60_000,
-  })
-
-  const { data: myStats, isLoading } = useQuery<MyStats>({
+  const { isLoading } = useQuery<MyStats>({
     queryKey: ['my-stats'],
     queryFn: async () => {
       const res = await client.get<{ data: MyStats }>('/users/me/stats')
@@ -116,19 +90,6 @@ export default function ProfilePage() {
   })
 
 
-  const {
-    data: monthlyPointsData,
-    isLoading: monthlyPointsLoading,
-    isError: monthlyPointsError,
-  } = useQuery<MonthlyPointsResponse>({
-    queryKey: ['my-monthly-points', year, month],
-    queryFn: async () => {
-      const res = await client.get<{ data: MonthlyPointsResponse }>('/users/me/monthly-points')
-      return res.data.data
-    },
-    enabled: !!user && sweatPeriod === 'month',
-    refetchInterval: 60_000,
-  })
 
   type MyPost = { id: number; cdn_url: string; thumbnail_url?: string | null; caption: string | null; created_at: string; like_count: number; view_count: number; comment_count: number }
   type MyPostsPage = { posts: MyPost[]; has_more: boolean; week_offset: number }
@@ -214,38 +175,6 @@ export default function ProfilePage() {
   const totalWorkoutDays = historyData?.total_days ?? 0
   const isCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1
   const todayNum = isCurrentMonth ? now.getDate() : -1
-  const confirmedSweatPoints = myStats?.total_points ?? 0
-  const weekPoints = myStats?.week_points ?? 0
-  const weekQueuedPoints = myStats?.week_queued_points ?? 0
-
-  const sweatDisplayLoading =
-    sweatPeriod === 'month' && monthlyPointsLoading
-  const sweatDisplayError =
-    sweatPeriod === 'month' && monthlyPointsError
-  const sweatDisplayValue: number | null =
-    sweatPeriod === 'week'
-      ? weekPoints
-      : sweatPeriod === 'all'
-        ? confirmedSweatPoints
-        : monthlyPointsData?.month_points ?? null
-
-  useEffect(() => {
-    if (sweatDisplayLoading || sweatDisplayValue === null) return
-    const target = sweatDisplayValue
-    const duration = 800
-    const start = performance.now()
-    let raf: number
-    function step(now: number) {
-      const elapsed = Math.min(now - start, duration)
-      const progress = elapsed / duration
-      setDisplayedSweat(target * progress)
-      if (elapsed < duration) raf = requestAnimationFrame(step)
-      else setDisplayedSweat(target)
-    }
-    raf = requestAnimationFrame(step)
-    return () => cancelAnimationFrame(raf)
-  }, [sweatDisplayValue, sweatDisplayLoading])
-
   const cells: Array<{ day: number | null; dateStr: string | null }> = []
   for (let i = 0; i < firstIdx; i++) cells.push({ day: null, dateStr: null })
   for (let d = 1; d <= totalDays; d++) cells.push({ day: d, dateStr: `${year}-${pad2(month)}-${pad2(d)}` })
@@ -297,21 +226,6 @@ export default function ProfilePage() {
         </button>
       </div>
 
-      {user?.is_admin && hashrate && (
-        <div className="mx-4 mb-3 flex items-center justify-between rounded-xl bg-theme-surface px-4 py-3">
-          <span className="flex items-center gap-1.5 text-sm text-theme-muted">
-            <Zap size={14} className="text-accent" />
-            {t('hashrateTitle')}
-          </span>
-          <span className="text-sm font-semibold text-theme-primary">
-            {hashrate.percent}%
-            <span className="ml-1.5 text-xs font-normal text-theme-muted">
-              {hashrate.my_points} / {hashrate.total_points}
-            </span>
-          </span>
-        </div>
-      )}
-
       {user?.is_admin && (
         <div className="mx-4 mb-3">
           <button
@@ -323,56 +237,6 @@ export default function ProfilePage() {
           </button>
         </div>
       )}
-
-      <div className="mx-4 mb-4 rounded-2xl bg-theme-surface px-6 py-5 flex flex-col items-center gap-2">
-        <div className="flex gap-1 rounded-full bg-theme-surface2 p-0.5 self-center">
-          {(['week', 'month', 'all'] as const).map((period) => {
-            const label =
-              period === 'week' ? t('sweatPeriodWeek') :
-              period === 'month' ? t('sweatPeriodMonth') :
-              t('sweatPeriodAll')
-            return (
-              <button
-                key={period}
-                onClick={() => setSweatPeriod(period)}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                  sweatPeriod === period
-                    ? 'bg-accent text-accent-fg'
-                    : 'text-theme-muted hover:text-theme-primary'
-                }`}
-              >
-                {label}
-              </button>
-            )
-          })}
-        </div>
-
-        <Droplets size={30} className="text-blue-400 animate-drip" strokeWidth={1.5} />
-
-        {sweatDisplayError ? (
-          <span className="text-sm text-red-400">{t('sweatLoadError')}</span>
-        ) : sweatDisplayLoading ? (
-          <span className="text-5xl font-bold font-mono text-theme-muted">...</span>
-        ) : (
-          <span className="text-5xl font-bold font-mono text-theme-primary">
-            {sweatDisplayValue !== null ? displayedSweat.toFixed(2) : '—'}
-            <span className="text-xl font-medium text-theme-muted ml-1">L</span>
-          </span>
-        )}
-
-        {sweatPeriod === 'week' && weekQueuedPoints > 0 && (
-          <div className="flex items-center gap-1.5 rounded-full bg-theme-surface2 px-3 py-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-yellow-400 animate-pulse" />
-            <span className="text-xs text-theme-muted">{t('weekQueuedLabel', { amount: weekQueuedPoints.toFixed(2) })}</span>
-          </div>
-        )}
-        {sweatPeriod === 'week' && (() => {
-          const { weekNo, range } = getCurrentWeekInfo()
-          return <span className="text-xs text-theme-subtle">{t('weekLabel', { weekNo, range })}</span>
-        })()}
-
-      </div>
-
 
       <div className="mx-4 mb-4 rounded-xl bg-theme-surface px-4 py-3">
         <div className="flex items-center gap-4 py-1">

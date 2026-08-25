@@ -32,7 +32,6 @@
   "pageLabel": "Page {{page}} / {{total}}",
   "videoPageLabel": "{{page}} / {{totalPages}}",
   "userDetailClose": "Close",
-  "userDetailAccumPoints": "Total Points",
   "userDetailChallenges": "Challenges ({{count}})",
   "userDetailVideoCount": "Total uploads: {{count}}",
   "challengeProgress": "{{upload}}/{{total}}",
@@ -49,15 +48,5 @@
   "deleteChallengeButton": "Permanently Delete",
   "deletingChallenge": "Deleting...",
   "deleteChallengeTitle": "Permanently Delete Challenge",
-  "deleteChallengeBody": "All data including participation records will be permanently deleted. This cannot be undone.",
-  "tabHashrate": "Hashrate",
-  "noHashrate": "No active users this week",
-  "hashrateTotal": "{{count}} active this week · {{points}}P total",
-  "hashrateActivity": "{{uploads}} uploads · {{comments}} comments",
-  "hashrateDetailWeekPoints": "{{points}}P this week",
-  "hashrateDetailUploads": "{{count}} uploads",
-  "hashrateDetailComments": "{{count}} comments",
-  "hashrateDetailNone": "None",
-  "hashrateDeletedComment": "Deleted comment",
-  "hashrateDeletedPost": "Deleted post"
+  "deleteChallengeBody": "All data including participation records will be permanently deleted. This cannot be undone."
 }

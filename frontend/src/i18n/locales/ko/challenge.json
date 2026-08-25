@@ -137,19 +137,5 @@
     "participantCount": "참여자 {{count}}명",
     "completedCount": "완료 {{count}}명",
     "viewParticipants": "참여자 보기"
-  },
-  "leaderboard": {
-    "title": "사용자",
-    "periodWeek": "이번 주",
-    "periodMonth": "이번 달",
-    "periodAll": "전체",
-    "kstNote": "KST 기준",
-    "searchPlaceholder": "사용자 검색...",
-    "noResults": "검색 결과가 없습니다",
-    "noUsers": "사용자가 없습니다",
-    "me": "(나)",
-    "loadError": "데이터를 불러오지 못했습니다",
-    "prevPage": "이전",
-    "nextPage": "다음"
   }
 }

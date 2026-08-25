@@ -1,145 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Trash2, User, Video, ChevronRight, Search, X, ArrowLeft, RefreshCw, ClipboardList, Dumbbell, XCircle, Zap } from 'lucide-react'
+import { Trash2, User, Video, ChevronRight, Search, X, ArrowLeft, RefreshCw, ClipboardList, Dumbbell, XCircle } from 'lucide-react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import client from '../api/client'
 import type { AdminVideo, AdminUsersResponse } from '../api/types'
 import { useAuthStore } from '../store/auth'
 
-type TabId = 'users' | 'videos' | 'challenges' | 'hashrate'
-
-interface AdminHashrateItem {
-  rank: number
-  user_id: number
-  username: string
-  points: number
-  upload_count: number
-  comment_count: number
-  percent: number
-}
-
-interface AdminHashrateResponse {
-  items: AdminHashrateItem[]
-  total_points: number
-}
-
-interface AdminHashrateUpload {
-  post_id: number | null
-  caption: string | null
-  tags: string[]
-  thumbnail_url: string | null
-  share_token: string | null
-  points: number
-  status: string
-  created_at: string
-}
-
-interface AdminHashrateComment {
-  content: string | null
-  post_id: number | null
-  points: number
-  created_at: string
-}
-
-interface AdminHashrateDetail {
-  user_id: number
-  username: string
-  total_points: number
-  uploads: AdminHashrateUpload[]
-  comments: AdminHashrateComment[]
-}
-
-function formatActivityTime(iso: string): string {
-  const d = new Date(iso)
-  return `${d.toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric', weekday: 'short' })} ${d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}`
-}
-
-function HashrateDetailPanel({ userId, onClose }: { userId: number; onClose: () => void }) {
-  const { t } = useTranslation('admin')
-  const { data, isLoading } = useQuery<AdminHashrateDetail>({
-    queryKey: ['admin-hashrate-detail', userId],
-    queryFn: async () => {
-      const res = await client.get<{ data: AdminHashrateDetail }>(`/admin/hashrate/${userId}`)
-      return res.data.data
-    },
-  })
-
-  return (
-    <div className="fixed inset-0 z-[70] bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
-      <div
-        className="w-full max-w-lg max-h-[80dvh] overflow-y-auto rounded-2xl bg-theme-page p-4 space-y-4 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {isLoading && <p className="text-center text-theme-muted py-8">{t('loading')}</p>}
-        {data && (
-          <>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-bold text-theme-primary text-lg">@{data.username}</p>
-                <p className="text-xs text-theme-muted">{t('hashrateDetailWeekPoints', { points: data.total_points })}</p>
-              </div>
-              <button onClick={onClose} className="text-theme-muted text-sm px-2 py-1">{t('userDetailClose')}</button>
-            </div>
-
-            <div>
-              <p className="text-xs font-semibold text-theme-muted mb-2">{t('hashrateDetailUploads', { count: data.uploads.length })}</p>
-              {data.uploads.length === 0 && <p className="text-xs text-theme-subtle">{t('hashrateDetailNone')}</p>}
-              <div className="space-y-1">
-                {data.uploads.map((u, i) => (
-                  <a
-                    key={i}
-                    href={u.share_token ? `/shorts/${u.share_token}` : undefined}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-3 rounded-lg bg-theme-surface px-3 py-2"
-                  >
-                    {u.thumbnail_url ? (
-                      <img src={u.thumbnail_url} alt="" className="h-10 w-10 rounded-lg object-cover shrink-0" />
-                    ) : (
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-theme-surface2 shrink-0">
-                        <Video size={14} className="text-theme-muted" />
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-theme-primary truncate">
-                        {u.caption || (u.post_id ? `#${u.post_id}` : t('hashrateDeletedPost'))}
-                      </p>
-                      <p className="text-[11px] text-theme-muted">
-                        {u.tags[0] ? `${u.tags[0]} · ` : ''}{formatActivityTime(u.created_at)}
-                      </p>
-                    </div>
-                    <span className="shrink-0 text-xs font-semibold text-accent">+{u.points}P</span>
-                  </a>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <p className="text-xs font-semibold text-theme-muted mb-2">{t('hashrateDetailComments', { count: data.comments.length })}</p>
-              {data.comments.length === 0 && <p className="text-xs text-theme-subtle">{t('hashrateDetailNone')}</p>}
-              <div className="space-y-1">
-                {data.comments.map((c, i) => (
-                  <div key={i} className="flex items-center gap-3 rounded-lg bg-theme-surface px-3 py-2">
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-xs truncate ${c.content ? 'text-theme-primary' : 'text-theme-subtle italic'}`}>
-                        {c.content ?? t('hashrateDeletedComment')}
-                      </p>
-                      <p className="text-[11px] text-theme-muted">{formatActivityTime(c.created_at)}</p>
-                    </div>
-                    <span className={`shrink-0 text-xs font-semibold ${c.points < 0 ? 'text-red-400' : 'text-accent'}`}>
-                      {c.points > 0 ? '+' : ''}{c.points}P
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  )
-}
+type TabId = 'users' | 'videos' | 'challenges'
 
 interface AdminChallenge {
   id: number
@@ -182,7 +50,6 @@ interface AdminUserDetail {
     completed: boolean
     joined_at: string
   }[]
-  total_points: number
 }
 
 function UserDetailPanel({ userId, onClose }: { userId: number; onClose: () => void }) {
@@ -210,11 +77,6 @@ function UserDetailPanel({ userId, onClose }: { userId: number; onClose: () => v
                 <p className="text-xs text-theme-muted">{data.user.email ?? t('noEmail')}</p>
               </div>
               <button onClick={onClose} className="text-theme-muted text-sm px-2 py-1">{t('userDetailClose')}</button>
-            </div>
-
-            <div className="flex justify-between text-xs rounded-lg bg-theme-surface px-3 py-2">
-              <span className="text-theme-muted">{t('userDetailAccumPoints')}</span>
-              <span className="font-semibold text-theme-primary">{Number(data.total_points).toFixed(2)}P</span>
             </div>
 
             {data.challenges.length > 0 && (
@@ -322,16 +184,6 @@ export default function AdminPage() {
   })
   const challenges = challengesData?.challenges ?? []
 
-  const { data: hashrateData, isLoading: hashrateLoading, isError: hashrateError } = useQuery<AdminHashrateResponse>({
-    queryKey: ['admin-hashrate'],
-    queryFn: async () => {
-      const res = await client.get<{ data: AdminHashrateResponse }>('/admin/hashrate')
-      return res.data.data
-    },
-    enabled: isAdmin && activeTab === 'hashrate',
-    refetchInterval: 60_000,
-  })
-  const [hashrateDetailUserId, setHashrateDetailUserId] = useState<number | null>(null)
 
   const [deleteAdminChallengeConfirm, setDeleteAdminChallengeConfirm] = useState<{ id: number; title: string } | null>(null)
 
@@ -365,7 +217,6 @@ export default function AdminPage() {
     { id: 'users', label: t('tabUsers'), icon: <User size={14} /> },
     { id: 'videos', label: t('tabVideos'), icon: <Video size={14} /> },
     { id: 'challenges', label: t('tabChallenges'), icon: <Dumbbell size={14} /> },
-    { id: 'hashrate', label: t('tabHashrate'), icon: <Zap size={14} /> },
   ]
 
   return (
@@ -500,7 +351,6 @@ export default function AdminPage() {
                   <div className="flex items-center gap-3 mt-1 text-xs text-theme-subtle">
                     <span>{t('videoCountLabel', { count: u.video_count })}</span>
                     <span>{t('challengeCountLabel', { count: u.challenge_count })}</span>
-                    <span>{Number(u.total_points).toFixed(2)}L</span>
                   </div>
                   {(u.referred_by_username || u.referred_count > 0) && (
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-xs text-accent/80">
@@ -684,46 +534,9 @@ export default function AdminPage() {
         </div>
       )}
 
-      {activeTab === 'hashrate' && (
-        <div className="space-y-2">
-          {hashrateLoading && <p className="text-center text-theme-muted py-10">{t('loading')}</p>}
-          {!hashrateLoading && hashrateError && <p className="text-center text-red-400 py-10">{t('loadFailed')}</p>}
-          {!hashrateLoading && !hashrateError && hashrateData && hashrateData.items.length === 0 && (
-            <p className="text-center text-theme-subtle py-10">{t('noHashrate')}</p>
-          )}
-          {!hashrateLoading && !hashrateError && hashrateData && hashrateData.items.length > 0 && (
-            <>
-              <p className="text-xs text-theme-muted px-1">
-                {t('hashrateTotal', { count: hashrateData.items.length, points: hashrateData.total_points })}
-              </p>
-              {hashrateData.items.map((item) => (
-                <button
-                  key={item.user_id}
-                  onClick={() => setHashrateDetailUserId(item.user_id)}
-                  className="flex w-full items-center gap-3 rounded-xl bg-theme-surface px-4 py-3 text-left hover:bg-theme-surface2 transition-colors"
-                >
-                  <span className="w-5 shrink-0 text-center text-xs font-semibold text-theme-muted">{item.rank}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-theme-primary truncate">@{item.username}</p>
-                    <p className="text-xs text-theme-muted">
-                      {t('hashrateActivity', { uploads: item.upload_count, comments: item.comment_count })} · {item.points}P
-                    </p>
-                  </div>
-                  <span className="shrink-0 text-sm font-bold text-accent">{item.percent}%</span>
-                  <ChevronRight size={14} className="shrink-0 text-theme-muted" />
-                </button>
-              ))}
-            </>
-          )}
-        </div>
-      )}
 
       {selectedUserId !== null && (
         <UserDetailPanel userId={selectedUserId} onClose={() => setSelectedUserId(null)} />
-      )}
-
-      {hashrateDetailUserId !== null && (
-        <HashrateDetailPanel userId={hashrateDetailUserId} onClose={() => setHashrateDetailUserId(null)} />
       )}
 
       {deleteVideoConfirmId !== null && (

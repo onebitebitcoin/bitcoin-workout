@@ -9,10 +9,9 @@ from app.database import get_db
 from app.models.comment import Comment
 from app.models.notification import Notification
 from app.models.post import Post
-from app.models.reward import RewardPoint
 from app.models.user import User
 from app.routes.auth import get_current_user
-from app.services.reward import POINTS_PER_COMMENT, REWARD_STATUS_FIXED, add_points, _parse_tz
+from app.services.timeframe import parse_tz
 from app.services.notification import create_notification
 from app.services.error_codes import (
     api_error,
@@ -112,7 +111,7 @@ def create_comment(
         raise api_error(422, E_COMMENT_TOO_SHORT, f"댓글은 {MIN_COMMENT_LENGTH}자 이상 입력해주세요")
     if len(content) > 500:
         raise api_error(422, E_COMMENT_TOO_LONG, "댓글은 500자 이하로 입력해주세요")
-    if _get_daily_comment_count(db, current_user.id, _parse_tz(x_client_timezone)) >= DAILY_COMMENT_LIMIT:
+    if _get_daily_comment_count(db, current_user.id, parse_tz(x_client_timezone)) >= DAILY_COMMENT_LIMIT:
         raise api_error(429, E_COMMENT_DAILY_LIMIT, f"하루에 댓글은 {DAILY_COMMENT_LIMIT}개까지 작성할 수 있습니다")
     # 대댓글 처리: parent_id가 있으면 부모 댓글을 검증하고 1-depth로 평면화한다.
     resolved_parent_id: int | None = None
@@ -137,7 +136,6 @@ def create_comment(
     )
     db.add(comment)
     db.flush()
-    add_points(db, current_user.id, POINTS_PER_COMMENT, "comment", reference_id=comment.id)
     create_notification(db, recipient_id=recipient_id, actor_id=current_user.id, type="comment", post_id=post_id, comment_id=comment.id)
     db.commit()
     db.refresh(comment)
@@ -166,24 +164,6 @@ def delete_comment(
     for c in targets:
         # notifications FK 정리 (PostgreSQL FK 제약 위반 방지)
         db.query(Notification).filter(Notification.comment_id == c.id).delete()
-        # 댓글 포인트 회수 (fixed 포인트를 음수 항목으로 상쇄) — 본인이 작성한 것만
-        reward = (
-            db.query(RewardPoint)
-            .filter(
-                RewardPoint.reason == "comment",
-                RewardPoint.reference_id == c.id,
-                RewardPoint.user_id == c.user_id,
-            )
-            .first()
-        )
-        if reward and c.user_id == current_user.id:
-            db.add(RewardPoint(
-                user_id=c.user_id,
-                points=-POINTS_PER_COMMENT,
-                reason="comment_revoke",
-                reference_id=c.id,
-                status=REWARD_STATUS_FIXED,
-            ))
         db.delete(c)
     db.commit()
     return {"data": {"deleted": True}}

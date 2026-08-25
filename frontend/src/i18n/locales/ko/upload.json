@@ -49,7 +49,6 @@
     "challengeEmpty": "참여 중인 챌린지가 없어요",
     "challengeSearchEmpty": "참여 중인 챌린지 중 검색 결과가 없어요",
     "categoryRequired": "카테고리를 선택해주세요.",
-    "dailyLimitReached": "오늘 운동 영상 업로드 한도(3개)에 도달했습니다.",
     "mainCategoryLight": "가벼운 활동",
     "mainCategorySweat": "땀 흘리는 운동",
     "subCategoryStairs": "계단 오르기",
@@ -131,8 +130,6 @@
   },
   "done": {
     "title": "오늘 운동 완료",
-    "sweatLabel": "흘린 땀",
-    "pendingNote": "업로드 후 24시간이 지나면 땀이 확정돼요. 그 전에 영상을 삭제하면 취소됩니다.",
     "share": "공유하기",
     "viewFeed": "피드 보기",
     "shareText": "나의 운동을 기록하자"

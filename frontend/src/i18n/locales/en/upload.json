@@ -49,7 +49,6 @@
     "challengeEmpty": "You haven't joined any challenges",
     "challengeSearchEmpty": "No joined challenges match your search",
     "categoryRequired": "Please select a category.",
-    "dailyLimitReached": "You've reached today's workout upload limit (3 videos).",
     "mainCategoryLight": "Light Activity",
     "mainCategorySweat": "Sweat Workout",
     "subCategoryStairs": "Climbing Stairs",
@@ -131,8 +130,6 @@
   },
   "done": {
     "title": "Workout complete",
-    "sweatLabel": "Sweat earned",
-    "pendingNote": "Your sweat will be confirmed 24 hours after upload. Deleting the video before then will cancel it.",
     "share": "Share",
     "viewFeed": "View feed",
     "shareText": "Track your workouts"

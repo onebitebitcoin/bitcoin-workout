@@ -33,9 +33,7 @@ def test_feed_unauthenticated(client: TestClient) -> None:
     assert len(res.json()["data"]["posts"]) == 1
 
 
-@patch("app.routes.videos.get_daily_upload_count", return_value=0)
-def test_feed_pagination_cursor(_mock_count, client: TestClient) -> None:
-    # 페이지네이션 검증은 업로드 한도와 무관 — 한도를 우회해 3개 게시물 생성
+def test_feed_pagination_cursor(client: TestClient) -> None:
     token, user = _make_user(client, "b@x.com", "userb")
     posts = []
     for i in range(3):
@@ -75,24 +73,6 @@ def test_like_toggle(client: TestClient) -> None:
     assert res2.json()["data"]["like_count"] == 0
 
 
-def test_like_gives_points_to_poster(client: TestClient) -> None:
-    token_liker, _ = _make_user(client, "lk@x.com", "lk")
-    token_poster, user_poster = _make_user(client, "ps@x.com", "ps")
-    post = _create_post(client, token_poster, user_poster["id"])
-
-    res = client.post(f"/api/v1/feed/{post['id']}/like", headers=_auth(token_liker))
-    assert res.status_code == 200
-    assert res.json()["data"]["liked"] is True
-    assert res.json()["data"]["like_count"] == 1
-
-    # 업로드 보상은 24h 대기 중 (queued), 좋아요는 포인트 없음
-    summary = client.get("/api/v1/rewards/summary", headers=_auth(token_poster))
-    assert summary.status_code == 200
-    data = summary.json()["data"]
-    assert data["queued_week_points"] == 0.5  # 0.5pt per upload, queued
-    assert data["current_week_points"] == 0
-
-
 def test_view_dedup_same_user_same_day(client: TestClient) -> None:
     token_viewer, _ = _make_user(client, "vw@x.com", "vw")
     token_poster, user_poster = _make_user(client, "vp@x.com", "vp")
@@ -108,8 +88,3 @@ def test_view_dedup_same_user_same_day(client: TestClient) -> None:
     found = next((p for p in posts if p["id"] == post["id"]), None)
     assert found is not None
     assert found["view_count"] == 1
-
-    summary = client.get("/api/v1/rewards/summary", headers=_auth(token_poster))
-    data = summary.json()["data"]
-    assert data["queued_week_points"] == 0.5  # upload queued
-    assert data["current_week_points"] == 0   # view/like gives no fixed points

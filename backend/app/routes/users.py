@@ -1,48 +1,24 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, Query
 from pydantic import BaseModel
-from sqlalchemy import and_, func as sqlfunc, or_
+from sqlalchemy import func as sqlfunc
 from sqlalchemy.orm import Session, selectinload, joinedload
 
-from app.database import SessionLocal, get_db
+from app.database import get_db
 from app.models.challenge import ChallengeParticipation
 from app.models.comment import Comment
 from app.models.follow import Follow
 from app.models.post import Post
-from app.models.reward import RewardPoint
 from app.models.user import User
 from app.models.video import Video
 from app.routes.auth import get_active_user, get_optional_user
 from app.routes.auth import get_current_user as get_required_user
 from app.services.notification import create_notification
 from app.services.referral import generate_referral_code
-from app.services.reward import (
-    KST,
-    REWARD_STATUS_FIXED,
-    REWARD_STATUS_QUEUED,
-    UTC,
-    _parse_tz,
-    get_month_range,
-    get_week_range,
-    get_weekly_hashrate,
-    get_weekly_points,
-    get_weekly_queued_points,
-    settle_queued_rewards,
-)
 from app.services.error_codes import api_error, E_USER_NOT_FOUND, E_FORBIDDEN
 
 router = APIRouter(prefix="/api/v1/users", tags=["users"])
-
-
-def _settle_rewards_background(user_id: int) -> None:
-    db = SessionLocal()
-    try:
-        settled = settle_queued_rewards(db, user_id)
-        if settled:
-            db.commit()
-    finally:
-        db.close()
 
 
 class PublicUserSchema(BaseModel):
@@ -100,23 +76,6 @@ def get_my_referral(
     }
 
 
-@router.get("/me/hashrate")
-def get_my_hashrate(
-    current_user: User = Depends(get_required_user),
-    db: Session = Depends(get_db),
-) -> dict:
-    """이번 주 해시레이트(전체 점수 대비 내 점수 비중 %) 반환."""
-    my_points, total_points = get_weekly_hashrate(db, current_user.id)
-    percent = (my_points / total_points * 100) if total_points > 0 else 0.0
-    return {
-        "data": {
-            "my_points": round(my_points, 2),
-            "total_points": round(total_points, 2),
-            "percent": round(percent, 1),
-        }
-    }
-
-
 @router.get("/me/stats")
 def get_my_stats(
     background_tasks: BackgroundTasks,
@@ -124,8 +83,7 @@ def get_my_stats(
     db: Session = Depends(get_db),
     x_client_timezone: str = Header(default="UTC"),
 ) -> dict:
-    _ = x_client_timezone  # Accepted for API compatibility; reward totals use UTC globally.
-    background_tasks.add_task(_settle_rewards_background, current_user.id)
+    _ = x_client_timezone  # Accepted for API compatibility.
 
     total_posts = (
         db.query(Post)
@@ -137,210 +95,10 @@ def get_my_stats(
         .count()
     )
 
-    total_points = (
-        db.query(sqlfunc.sum(RewardPoint.points))
-        .filter(
-            RewardPoint.user_id == current_user.id,
-            RewardPoint.points > 0,
-            RewardPoint.status == REWARD_STATUS_FIXED,
-        )
-        .scalar()
-        or 0
-    )
-
-    queued_points = (
-        db.query(sqlfunc.sum(RewardPoint.points))
-        .filter(
-            RewardPoint.user_id == current_user.id,
-            RewardPoint.points > 0,
-            RewardPoint.status == REWARD_STATUS_QUEUED,
-        )
-        .scalar()
-        or 0
-    )
-
-    week_points = get_weekly_points(db, current_user.id, UTC)
-    week_queued = get_weekly_queued_points(db, current_user.id)
-
     return {
         "data": {
             "total_posts": total_posts,
-            "total_points": round(float(total_points), 2),
-            "queued_points": round(float(queued_points), 2),
-            "week_points": round(float(week_points), 2),
-            "week_queued_points": round(float(week_queued), 2),
         }
-    }
-
-
-@router.get("/me/weekly-points")
-def get_my_weekly_points(
-    current_user: User = Depends(get_required_user),
-    db: Session = Depends(get_db),
-    x_client_timezone: str = Header(default="UTC"),
-) -> dict:
-    client_tz = _parse_tz(x_client_timezone)
-    week_start_utc, week_end_utc = get_week_range(UTC)
-
-    # 계산 기준은 글로벌 UTC 주간이며, 표시용 날짜만 클라이언트 타임존으로 변환한다.
-    start_date = week_start_utc.astimezone(client_tz).date().isoformat()
-    end_date = (week_end_utc - timedelta(microseconds=1)).astimezone(client_tz).date().isoformat()
-    week_number = week_start_utc.isocalendar().week
-
-    records = (
-        db.query(RewardPoint)
-        .filter(
-            RewardPoint.user_id == current_user.id,
-            or_(
-                and_(
-                    RewardPoint.created_at >= week_start_utc,
-                    RewardPoint.created_at < week_end_utc,
-                    RewardPoint.status == REWARD_STATUS_FIXED,
-                ),
-                RewardPoint.status == REWARD_STATUS_QUEUED,
-            ),
-            RewardPoint.points > 0,
-        )
-        .order_by(RewardPoint.created_at.desc())
-        .all()
-    )
-
-    total_points = sum(r.points for r in records if r.status == REWARD_STATUS_FIXED)
-
-    def to_client_date(dt: datetime) -> str:
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        return dt.astimezone(client_tz).date().isoformat()
-
-    def to_utc_iso(dt: datetime) -> str:
-        if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
-        return dt.astimezone(timezone.utc).isoformat()
-
-    items = [
-        {
-            "date": to_client_date(r.created_at),
-            "settles_at": to_utc_iso(r.created_at + timedelta(hours=24)) if r.status == REWARD_STATUS_QUEUED else None,
-            "points": round(float(r.points), 2),
-            "source": r.reason,
-            "post_id": r.reference_id,
-            "queued": r.status == REWARD_STATUS_QUEUED,
-        }
-        for r in records
-    ]
-
-    return {
-        "data": {
-            "week_number": week_number,
-            "start_date": start_date,
-            "end_date": end_date,
-            "total_points": round(float(total_points), 2),
-            "items": items,
-        }
-    }
-
-
-@router.get("/me/monthly-points")
-def get_my_monthly_points(
-    current_user: User = Depends(get_required_user),
-    db: Session = Depends(get_db),
-    x_client_timezone: str = Header(default="UTC"),
-) -> dict:
-    _ = x_client_timezone  # Accepted for API compatibility; reward totals use UTC globally.
-    month_start, month_end = get_month_range(UTC)
-
-    month_points = (
-        db.query(sqlfunc.sum(RewardPoint.points))
-        .filter(
-            RewardPoint.user_id == current_user.id,
-            RewardPoint.points > 0,
-            RewardPoint.status == REWARD_STATUS_FIXED,
-            RewardPoint.created_at >= month_start,
-            RewardPoint.created_at < month_end,
-        )
-        .scalar()
-        or 0
-    )
-
-    return {
-        "data": {
-            "month_points": round(float(month_points), 2),
-        }
-    }
-
-
-@router.get("/leaderboard")
-def get_leaderboard(
-    db: Session = Depends(get_db),
-    page: int = Query(1, ge=1),
-    limit: int = Query(20, ge=1, le=50),
-    search: str = Query(""),
-    period: str = Query("week"),  # "week" | "all"
-    x_client_timezone: str = Header(default="UTC"),
-) -> dict:
-    _ = x_client_timezone  # Accepted for API compatibility; leaderboard periods use KST globally.
-
-    point_join_cond = [
-        RewardPoint.user_id == User.id,
-        RewardPoint.points > 0,
-        RewardPoint.status == REWARD_STATUS_FIXED,
-    ]
-    if period == "week":
-        week_start_utc, week_end_utc = get_week_range(KST)
-        point_join_cond.append(RewardPoint.created_at >= week_start_utc)
-        point_join_cond.append(RewardPoint.created_at < week_end_utc)
-    elif period == "month":
-        month_start_utc, month_end_utc = get_month_range(KST)
-        point_join_cond.append(RewardPoint.created_at >= month_start_utc)
-        point_join_cond.append(RewardPoint.created_at < month_end_utc)
-
-    base_query = (
-        db.query(
-            User,
-            sqlfunc.coalesce(sqlfunc.sum(RewardPoint.points), 0).label("total_points"),
-        )
-        .outerjoin(RewardPoint, and_(*point_join_cond))
-        .filter(User.is_banned.is_(False))
-        .group_by(User.id)
-    )
-
-    if search:
-        base_query = base_query.filter(User.username.ilike(f"%{search}%"))
-
-    count_query = db.query(sqlfunc.count(User.id)).filter(User.is_banned.is_(False))
-    if search:
-        count_query = count_query.filter(User.username.ilike(f"%{search}%"))
-    total: int = count_query.scalar() or 0
-
-    offset = (page - 1) * limit
-
-    rows = (
-        base_query
-        .order_by(sqlfunc.coalesce(sqlfunc.sum(RewardPoint.points), 0).desc(), User.id.asc())
-        .offset(offset)
-        .limit(limit + 1)
-        .all()
-    )
-
-    has_next = len(rows) > limit
-    rows = rows[:limit]
-
-    return {
-        "data": [
-            {
-                "rank": offset + idx + 1,
-                "user_id": user.id,
-                "username": user.username,
-                "avatar_url": user.avatar_url,
-                "total_points": round(float(total_points or 0), 1),
-            }
-            for idx, (user, total_points) in enumerate(rows)
-        ],
-        "total": total,
-        "page": page,
-        "limit": limit,
-        "has_next": has_next,
-        "period": period,
     }
 
 

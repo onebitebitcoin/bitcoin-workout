@@ -21,10 +21,10 @@ test.describe('피드 페이지', () => {
     await registerAndLogin(page)
     await page.screenshot({ path: 'e2e/screenshots/02-bottomnav.png', fullPage: true })
 
-    // 피드, 챌린지, 사용자, 프로필 NavLink(a 태그)
+    // 피드, 챌린지, 알림, 프로필 NavLink(a 태그)
     await expect(page.getByRole('link', { name: '피드' })).toBeVisible()
     await expect(page.getByRole('link', { name: '챌린지' })).toBeVisible()
-    await expect(page.getByRole('link', { name: '사용자' })).toBeVisible()
+    await expect(page.getByRole('link', { name: '알림' })).toBeVisible()
     await expect(page.getByRole('link', { name: '프로필' })).toBeVisible()
     // 업로드는 FAB 버튼 (link 아님)
     await expect(page.getByRole('button', { name: '운동 영상 올리기' })).toBeVisible()

@@ -40,7 +40,7 @@
 ### Backend — `backend/` (FastAPI + SQLAlchemy + Alembic)
 
 - 단일 FastAPI 앱(`app/main.py`)이 API와 frontend 빌드 정적 파일을 함께 서빙한다.
-- 라우터 9개: `auth` `videos` `feed` `rewards` `admin` `comments` `history` `challenges` `users`
+- 라우터 8개: `auth` `videos` `feed` `admin` `comments` `history` `challenges` `users`
 - 계층: `routes/`(HTTP) → `services/`(비즈니스 로직) → `models/`(SQLAlchemy ORM), 입출력은 `schemas/`(Pydantic).
 - 인증 3종:
   - 이메일+비밀번호 → JWT (`services/auth.py`)
@@ -82,16 +82,6 @@
 → post 생성 → 피드(/feed) 노출
 ```
 
-### 리워드 claim
-
-```
-사용자 활동 → 스코어 적립 (post/like/view/challenge)
-→ POST /rewards/claim
-→ BLINK_API_KEY 설정 시: Blink API로 즉시 Lightning 송금
-   미설정 시: 수동 송금 모드 (어드민 정산)
-→ reward 레코드 + admin_log 감사 기록
-```
-
 ### 공유 링크
 
 ```
@@ -105,7 +95,6 @@
 User ─┬─< Video ──< Post ─┬─< PostLike
       │                   ├─< PostView
       │                   └─< Comment
-      ├─< Reward                          (Lightning 지급 내역)
       ├─< Challenge 참여                   (challenge.py)
       └─< LnauthChallenge                 (Lightning 로그인 챌린지)
 AdminLog                                  (어드민 행위 감사)

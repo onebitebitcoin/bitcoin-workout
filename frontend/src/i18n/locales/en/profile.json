@@ -29,12 +29,6 @@
   "languageToggleLabel": "Language",
   "adminBadge": "Admin",
   "goToAdmin": "Go to Admin Panel",
-  "sweatPeriodWeek": "This Week",
-  "sweatPeriodMonth": "This Month",
-  "sweatPeriodAll": "All Time",
-  "sweatLoadError": "Failed to load",
-  "weekQueuedLabel": "+{{amount}}L pending",
-  "weekLabel": "Week {{weekNo}} {{range}}",
   "streakDays": "day streak",
   "thisMonthWorkout": "This month",
   "workoutDays": "{{count}} workout days",
@@ -97,6 +91,5 @@
   "inviteShare": "Share invite link",
   "inviteCopied": "Invite link copied!",
   "inviteCopyAria": "Copy link",
-  "inviteShareText": "Work out and earn Bitcoin with me on Stack Health!",
-  "hashrateTitle": "Weekly Hashrate"
+  "inviteShareText": "Work out and earn Bitcoin with me on Stack Health!"
 }

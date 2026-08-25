@@ -119,21 +119,6 @@ def test_delete_comment_by_owner(client: TestClient) -> None:
     assert len(comments) == 0
 
 
-def test_delete_comment_revokes_points(client: TestClient) -> None:
-    token, user = _reg(client, "crevoke@x.com", "curevoke")
-    post_id = _make_post(client, token, user["id"])
-    create_res = client.post(f"/api/v1/feed/{post_id}/comments", json={"content": "포인트 테스트 댓글"}, headers=_auth(token))
-    comment_id = create_res.json()["data"]["comment"]["id"]
-
-    summary_before = client.get("/api/v1/rewards/summary", headers=_auth(token)).json()["data"]
-    assert summary_before["fixed_week_points"] == 0.01
-
-    client.delete(f"/api/v1/feed/{post_id}/comments/{comment_id}", headers=_auth(token))
-
-    summary_after = client.get("/api/v1/rewards/summary", headers=_auth(token)).json()["data"]
-    assert summary_after["fixed_week_points"] == 0.0
-
-
 def test_delete_comment_by_other_user_forbidden(client: TestClient) -> None:
     token_owner, user_owner = _reg(client, "cg@x.com", "cuserg")
     token_other, _ = _reg(client, "ch@x.com", "cuserh")

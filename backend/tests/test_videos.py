@@ -44,123 +44,6 @@ def test_presigned_url_success(mock_r2, client: TestClient) -> None:
     assert data["r2_key"] == "videos/test.mp4"
 
 
-@patch("app.routes.videos.r2_service.get_cdn_url", return_value="https://cdn/v.mp4")
-def test_workout_upload_daily_limit(mock_cdn, client: TestClient) -> None:
-    """운동 태그 업로드는 하루 2개 한도 적용."""
-    token, uid = _register(client)
-    headers = _auth(token)
-    for i in range(2):
-        res = client.post("/api/v1/videos/confirm", json={
-            "r2_key": f"videos/{uid}/v{i}.mp4", "duration_sec": 20,
-            "tags": ["홈트"],
-        }, headers=headers)
-        assert res.status_code == 200
-    # 3rd workout upload blocked
-    res = client.post("/api/v1/videos/confirm", json={
-        "r2_key": f"videos/{uid}/v3.mp4", "duration_sec": 20,
-        "tags": ["홈트"],
-    }, headers=headers)
-    assert res.status_code == 429
-
-
-@patch("app.routes.videos.r2_service.get_cdn_url", return_value="https://cdn/v.mp4")
-def test_all_tags_subject_to_daily_limit(mock_cdn, client: TestClient) -> None:
-    """모든 태그(운동/비운동)가 동일한 일일 한도 적용."""
-    token, uid = _register(client, "nolimit@x.com", "nolimituser")
-    headers = _auth(token)
-    for i in range(2):
-        res = client.post("/api/v1/videos/confirm", json={
-            "r2_key": f"videos/{uid}/v{i}.mp4", "duration_sec": 20,
-            "tags": ["일상"],
-        }, headers=headers)
-        assert res.status_code == 200
-    res = client.post("/api/v1/videos/confirm", json={
-        "r2_key": f"videos/{uid}/v3.mp4", "duration_sec": 20,
-        "tags": ["일상"],
-    }, headers=headers)
-    assert res.status_code == 429
-
-
-@patch("app.routes.videos.r2_service.get_cdn_url", return_value="https://cdn/delete-v.mp4")
-def test_workout_limit_eased_after_delete(mock_cdn, client: TestClient) -> None:
-    """운동 업로드 삭제 후 한도가 풀린다."""
-    token, uid = _register(client, "limit-delete@x.com", "limitdelete")
-    headers = _auth(token)
-    post_ids: list[int] = []
-
-    for i in range(2):
-        confirm_res = client.post("/api/v1/videos/confirm", json={
-            "r2_key": f"videos/{uid}/delete-v{i}.mp4", "duration_sec": 20,
-            "tags": ["러닝"],
-        }, headers=headers)
-        assert confirm_res.status_code == 200
-        post_ids.append(confirm_res.json()["data"]["post"]["id"])
-
-    blocked_res = client.post("/api/v1/videos/confirm", json={
-        "r2_key": f"videos/{uid}/blocked.mp4", "duration_sec": 20,
-        "tags": ["러닝"],
-    }, headers=headers)
-    assert blocked_res.status_code == 429
-
-    with patch("app.routes.videos.r2_service.delete_object"):
-        delete_res = client.delete(f"/api/v1/videos/posts/{post_ids[0]}", headers=headers)
-    assert delete_res.status_code == 200
-
-    eased_res = client.post("/api/v1/videos/confirm", json={
-        "r2_key": f"videos/{uid}/eased.mp4", "duration_sec": 20,
-        "tags": ["러닝"],
-    }, headers=headers)
-    assert eased_res.status_code == 200
-
-
-@patch("app.routes.videos.r2_service.get_cdn_url", return_value="https://cdn/limit.mp4")
-def test_confirm_upload_uses_active_content_limit(mock_cdn, client: TestClient) -> None:
-    """confirm 엔드포인트의 운동 업로드 한도 검사."""
-    token, uid = _register(client, "confirm-limit@x.com", "confirmlimit")
-    headers = _auth(token)
-
-    for i in range(2):
-        res = client.post("/api/v1/videos/confirm", json={
-            "r2_key": f"videos/{uid}/confirm-limit-{i}.mp4",
-            "duration_sec": 20,
-            "tags": ["웨이트"],
-        }, headers=headers)
-        assert res.status_code == 200
-
-    res = client.post("/api/v1/videos/confirm", json={
-        "r2_key": f"videos/{uid}/confirm-limit-blocked.mp4",
-        "duration_sec": 20,
-        "tags": ["웨이트"],
-    }, headers=headers)
-    assert res.status_code == 429
-
-
-@patch("app.routes.videos.r2_service.get_cdn_url", return_value="https://cdn/dl.mp4")
-def test_daily_limit_endpoint(mock_cdn, client: TestClient) -> None:
-    """GET /videos/daily-limit: 운동 업로드 횟수/한도 반환."""
-    token, uid = _register(client, "dailylimit@x.com", "dailylimituser")
-    headers = _auth(token)
-
-    res = client.get("/api/v1/videos/daily-limit", headers=headers)
-    assert res.status_code == 200
-    data = res.json()["data"]
-    assert data["count"] == 0
-    assert data["limit"] == 2
-    assert data["reached"] is False
-
-    # 운동 업로드 2개(=하루 한도) 후 — 한도 도달
-    for i in range(2):
-        client.post("/api/v1/videos/confirm", json={
-            "r2_key": f"videos/{uid}/dl-{i}.mp4", "duration_sec": 20,
-            "tags": ["요가"],
-        }, headers=headers)
-
-    res = client.get("/api/v1/videos/daily-limit", headers=headers)
-    data = res.json()["data"]
-    assert data["count"] == 2
-    assert data["reached"] is True
-
-
 def test_presigned_url_file_too_large(client: TestClient) -> None:
     token = _register_and_token(client)
     res = client.post("/api/v1/videos/presigned-url", json={
@@ -189,7 +72,7 @@ def test_confirm_duration_too_long(mock_cdn, client: TestClient) -> None:
 
 
 @patch("app.routes.videos.r2_service.get_cdn_url", return_value="https://cdn.example.com/v.mp4")
-def test_confirm_success_earns_points(mock_cdn, client: TestClient) -> None:
+def test_confirm_success_creates_post(mock_cdn, client: TestClient) -> None:
     token, uid = _register(client)
     res = client.post("/api/v1/videos/confirm", json={
         "r2_key": f"videos/{uid}/ok.mp4",
@@ -199,7 +82,6 @@ def test_confirm_success_earns_points(mock_cdn, client: TestClient) -> None:
     }, headers=_auth(token))
     assert res.status_code == 200
     data = res.json()["data"]
-    assert data["points_earned"] == 0.5
     assert data["post"]["user_id"] is not None
 
 
@@ -415,7 +297,7 @@ def test_get_upload_job_processing(mock_job, client: TestClient) -> None:
 
 
 @patch("app.routes.videos.get_job_status", return_value={
-    "status": "completed", "post_id": "5", "cdn_url": "https://cdn/ok.mp4", "points_earned": "0.5",
+    "status": "completed", "post_id": "5", "cdn_url": "https://cdn/ok.mp4",
 })
 def test_get_upload_job_completed(mock_job, client: TestClient) -> None:
     token = _register_and_token(client, "job2@x.com", "job2user")
@@ -423,7 +305,6 @@ def test_get_upload_job_completed(mock_job, client: TestClient) -> None:
     assert res.status_code == 200
     data = res.json()["data"]
     assert data["status"] == "completed"
-    assert data["points_earned"] == 0.5
     assert data["cdn_url"] == "https://cdn/ok.mp4"
     # post_id=5 게시물이 DB에 없으면 share_token은 빈 문자열
     assert data["share_token"] == ""
@@ -441,7 +322,7 @@ def test_get_upload_job_returns_share_token(mock_cdn, client: TestClient) -> Non
     post = confirm_res.json()["data"]["post"]
 
     with patch("app.routes.videos.get_job_status", return_value={
-        "status": "completed", "post_id": str(post["id"]), "points_earned": "0.5",
+        "status": "completed", "post_id": str(post["id"]),
     }):
         res = client.get("/api/v1/videos/upload-job/done-job-id", headers=headers)
     assert res.status_code == 200
@@ -692,22 +573,6 @@ def test_upload_video_endpoint(mock_upload, client: TestClient) -> None:
     assert res.json()["data"]["r2_key"] == "videos/direct.mp4"
 
 
-@patch("app.routes.videos.reserve_job_id", return_value="limit-job-456")
-@patch("app.routes.videos.get_daily_upload_count", return_value=3)
-def test_upload_pipeline_daily_limit(mock_count, mock_reserve, client: TestClient) -> None:
-    """upload_pipeline: 일일 한도 초과 시 429."""
-    import json
-    token = _register_and_token(client, "pipelimit@x.com", "pipelimituser")
-    headers = _auth(token)
-    res = client.post(
-        "/api/v1/videos/upload-pipeline",
-        data={"duration_sec": "15", "tags": json.dumps(["홈트"])},
-        files={"file": ("v.mp4", b"\x00", "video/mp4")},
-        headers=headers,
-    )
-    assert res.status_code == 429
-
-
 @patch("app.routes.videos.r2_service.get_cdn_url", return_value="https://cdn/x.mp4")
 def test_confirm_upload_forbidden_r2key(mock_cdn, client: TestClient) -> None:
     """r2_key가 본인 prefix가 아닐 때 403."""
@@ -741,15 +606,6 @@ def test_merge_audio_bad_duration(client: TestClient) -> None:
         headers=_auth(token),
     )
     assert res.status_code == 400
-
-
-@patch("app.routes.videos.get_job_status", return_value={"status": "completed", "points_earned": "invalid", "cdn_url": "", "post_id": ""})
-def test_get_upload_job_bad_points(mock_job, client: TestClient) -> None:
-    """points_earned 파싱 실패 시 0.0으로 fallback."""
-    token = _register_and_token(client, "badpts@x.com", "badptsuser")
-    res = client.get("/api/v1/videos/upload-job/some-job", headers=_auth(token))
-    assert res.status_code == 200
-    assert res.json()["data"]["points_earned"] == 0.0
 
 
 def test_async_job_status_rejects_other_user(client: TestClient) -> None:
@@ -881,7 +737,6 @@ def test_upload_job_status_exposes_subtitle_result(client: TestClient) -> None:
     with patch("app.routes.videos.get_job_status", return_value={
         "status": "completed",
         "user_id": str(_uid),
-        "points_earned": "0.5",
         "subtitle_status": "completed",
         "subtitle_url": "https://cdn/subtitles/s-1.srt",
         "subtitle_text": "오늘도 5킬로 뛰었습니다.",

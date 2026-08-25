@@ -29,12 +29,6 @@
   "languageToggleLabel": "언어",
   "adminBadge": "관리자",
   "goToAdmin": "관리자 페이지로 이동",
-  "sweatPeriodWeek": "이번 주",
-  "sweatPeriodMonth": "이번 달",
-  "sweatPeriodAll": "전체",
-  "sweatLoadError": "불러오기 실패",
-  "weekQueuedLabel": "+{{amount}}L 대기 중",
-  "weekLabel": "{{weekNo}}주차 {{range}}",
   "streakDays": "일 연속",
   "thisMonthWorkout": "이번 달",
   "workoutDays": "{{count}}일 운동",
@@ -97,6 +91,5 @@
   "inviteShare": "초대 링크 공유",
   "inviteCopied": "초대 링크가 복사됐어요!",
   "inviteCopyAria": "링크 복사",
-  "inviteShareText": "Stack Health에서 함께 운동하고 비트코인 받자!",
-  "hashrateTitle": "이번주 해시레이트"
+  "inviteShareText": "Stack Health에서 함께 운동하고 비트코인 받자!"
 }

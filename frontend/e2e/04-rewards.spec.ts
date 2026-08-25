@@ -1,17 +1,16 @@
 import { test, expect } from '@playwright/test'
 import { registerAndLogin } from './helpers'
 
-test.describe('리워드/프로필/어드민', () => {
+test.describe('프로필/설정/어드민', () => {
   test.beforeEach(async ({ page }) => {
     await registerAndLogin(page)
   })
 
-  test('프로필 페이지 — 주간 스탯 표시', async ({ page }) => {
-    // /rewards 라우트는 제거됨. 주간 포인트/스탯은 프로필 페이지에 표시된다.
+  test('프로필 페이지 — 스트릭 카드 표시', async ({ page }) => {
     await page.goto('/profile')
     await page.screenshot({ path: 'e2e/screenshots/10-profile.png', fullPage: true })
 
-    await expect(page.locator('text=이번 주').first()).toBeVisible({ timeout: 8000 })
+    await expect(page.locator('text=일 연속').first()).toBeVisible({ timeout: 8000 })
   })
 
   test('설정 페이지 — 로그아웃 버튼', async ({ page }) => {

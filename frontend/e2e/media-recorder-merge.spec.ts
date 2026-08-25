@@ -76,7 +76,7 @@ test('MediaRecorder 오디오 병합 — 1초 영상 + 5초 녹음 → 5초 출�
   console.log('duration_sec:', durationSec)
 
   // 업로드 완료 대기
-  await page.waitForSelector('text=/\\+\\d+pt|포인트/', { timeout: 60000 })
+  await page.waitForSelector('text=/업로드 완료|공유/', { timeout: 60000 })
   await page.screenshot({ path: 'e2e/screenshots/mediarecorder-merge-result.png' })
 
   // 검증

@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from app.models.post import Post
-from app.routes import admin, auth, challenges, comments, feed, history, notifications, rewards, survey, users, videos
+from app.routes import admin, auth, challenges, comments, feed, history, notifications, survey, users, videos
 from app.services.r2 import ensure_r2_cors
 from app.services.notify import notify_backend_error
 
@@ -65,32 +65,10 @@ def _validation_error_message(errors: list[dict]) -> str:
         return f"{name}이(가) 너무 깁니다."
     return f"{name}을(를) 다시 확인해주세요."
 
-async def _settle_rewards_loop() -> None:
-    """매 1시간마다 24시간이 지난 queued 포인트를 fixed로 전환."""
-    from app.database import SessionLocal
-    from app.services.reward import settle_queued_rewards as _settle
-    while True:
-        db = SessionLocal()
-        try:
-            count = _settle(db)
-            db.commit()
-            if count:
-                logger.info("Background settle: %d reward(s) fixed", count)
-        except Exception as exc:
-            db.rollback()
-            logger.error("Background settle error: %s", exc, exc_info=True)
-        finally:
-            db.close()
-        await anyio.sleep(3600)
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # type: ignore[type-arg]
     await anyio.to_thread.run_sync(ensure_r2_cors)
-    async with anyio.create_task_group() as tg:
-        tg.start_soon(_settle_rewards_loop)
-        yield
-        tg.cancel_scope.cancel()
+    yield
 
 
 app = FastAPI(title="Stack Health", version="0.1.0", lifespan=lifespan)
@@ -142,7 +120,6 @@ async def add_security_headers(request: Request, call_next) -> Response:
 app.include_router(auth.router)
 app.include_router(videos.router)
 app.include_router(feed.router)
-app.include_router(rewards.router)
 app.include_router(admin.router)
 app.include_router(comments.router)
 app.include_router(history.router)

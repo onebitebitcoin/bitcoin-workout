@@ -30,7 +30,6 @@ const ChallengeDashboardPage = lazy(() => import('./pages/ChallengeDashboardPage
 const ChallengeDetailPage = lazy(() => import('./pages/ChallengeDetailPage'))
 const ChallengeEditPage = lazy(() => import('./pages/ChallengeEditPage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
-const LeaderboardPage = lazy(() => import('./pages/LeaderboardPage'))
 const SharedVideoPage = lazy(() => import('./pages/SharedVideoPage'))
 const LightningWalletGuidePage = lazy(() => import('./pages/LightningWalletGuidePage'))
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
@@ -56,7 +55,7 @@ const HIDE_NAV_PREFIXES = ['/shorts/', '/survey/']
 const KNOWN_ROUTE_SEGMENTS = new Set([
   'login', 'upload', 'challenges', 'my-challenges',
   'profile', 'setup-username', 'users', 'admin', 'terms',
-  'settings', 'team', 'leaderboard', 'share', 'register', 'lightning-guide',
+  'settings', 'team', 'share', 'register', 'lightning-guide',
   'notifications', 'posts', 'survey', 'invite',
 ])
 
@@ -149,7 +148,6 @@ function Layout() {
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/settings" element={<RequireAuth><SettingsPage /></RequireAuth>} />
         <Route path="/team" element={<TeamPage />} />
-        <Route path="/leaderboard" element={<RequireAuth><LeaderboardPage /></RequireAuth>} />
         <Route path="/shorts/:shareToken" element={<SharedVideoPage />} />
         <Route path="/lightning-guide" element={<LightningWalletGuidePage />} />
         <Route path="/notifications" element={<RequireAuth><NotificationsPage /></RequireAuth>} />

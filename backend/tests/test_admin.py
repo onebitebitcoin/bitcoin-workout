@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
 from unittest.mock import patch
 
-import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
@@ -26,14 +24,6 @@ def _make_admin_by_email(db: Session, email: str) -> None:
         db.commit()
 
 
-def _age_queued_rewards(db: Session) -> None:
-    from app.models.reward import RewardPoint
-    cutoff = datetime.utcnow() - timedelta(days=1, seconds=1)
-    for reward in db.query(RewardPoint).filter(RewardPoint.status == "queued").all():
-        reward.created_at = cutoff
-    db.commit()
-
-
 def _reg_admin(client: TestClient, db: Session, email: str = "admin@x.com", username: str = "admin") -> str:
     token, _ = _reg(client, email=email, username=username)
     _make_admin_by_email(db, email)
@@ -43,44 +33,6 @@ def _reg_admin(client: TestClient, db: Session, email: str = "admin@x.com", user
 def _get_user_id(client: TestClient, token: str) -> int:
     res = client.get("/api/v1/auth/me", headers=_auth(token))
     return res.json()["data"]["id"]
-
-
-def _upload_and_claim(client: TestClient, db: Session, user_token: str) -> int:
-    uid = _get_user_id(client, user_token)
-    for i in range(2):
-        with patch("app.routes.videos.r2_service.get_cdn_url", return_value=f"https://cdn/v{i}.mp4"):
-            client.post("/api/v1/videos/confirm", json={"r2_key": f"videos/{uid}/v{i}.mp4", "duration_sec": 20}, headers=_auth(user_token))
-    _age_queued_rewards(db)
-    client.patch("/api/v1/auth/me", json={"lightning_address": "u@w.com"}, headers=_auth(user_token))
-    res = client.post("/api/v1/rewards/claim", json={}, headers=_auth(user_token))
-    return res.json()["data"]["claim"]["id"]
-
-
-
-@pytest.mark.skip(reason="challenge-based bitcoin claim 구현 전까지 보류")
-def test_admin_claims_list(client: TestClient, db: Session) -> None:
-    admin_token = _reg_admin(client, db)
-    user_token, _ = _reg(client, email="user@x.com", username="user1")
-    _upload_and_claim(client, db, user_token)
-    res = client.get("/api/v1/admin/claims", headers=_auth(admin_token))
-    assert res.status_code == 200
-    claims = res.json()["data"]["claims"]
-    assert len(claims) == 1
-    assert claims[0]["status"] == "pending"
-
-
-@pytest.mark.skip(reason="challenge-based bitcoin claim 구현 전까지 보류")
-def test_admin_mark_paid(client: TestClient, db: Session) -> None:
-    admin_token = _reg_admin(client, db)
-    user_token, _ = _reg(client, email="user@x.com", username="user1")
-    claim_id = _upload_and_claim(client, db, user_token)
-    res = client.patch(
-        f"/api/v1/admin/claims/{claim_id}/mark-paid",
-        headers=_auth(admin_token),
-        params={"payment_memo": "sent via Zeus"},
-    )
-    assert res.status_code == 200
-    assert res.json()["data"]["claim"]["status"] == "paid"
 
 
 def test_admin_videos_list(client: TestClient, db: Session) -> None:
@@ -169,76 +121,3 @@ def test_admin_users_shows_referral_tracking(client: TestClient, db: Session) ->
     assert users["invitee1"]["referred_count"] == 0
 
 
-def test_admin_hashrate_requires_admin(client: TestClient) -> None:
-    token, _ = _reg(client, "plainhash@x.com", "plainhash")
-    res = client.get("/api/v1/admin/hashrate", headers=_auth(token))
-    assert res.status_code == 403
-
-
-def test_admin_hashrate_lists_share(client: TestClient, db: Session) -> None:
-    admin_token = _reg_admin(client, db, "hashadmin@x.com", "hashadmin")
-    user_token, user = _reg(client, "hashmember@x.com", "hashmember")
-
-    # 업로드 1건(0.5) + 댓글 1건(0.01)
-    key = f"videos/{user['id']}/hr.mp4"
-    with patch("app.routes.videos.r2_service.get_cdn_url", return_value="https://cdn/hr.mp4"):
-        post_res = client.post(
-            "/api/v1/videos/confirm",
-            json={"r2_key": key, "duration_sec": 20},
-            headers=_auth(user_token),
-        )
-    post_id = post_res.json()["data"]["post"]["id"]
-    client.post(
-        f"/api/v1/feed/{post_id}/comments",
-        json={"content": "오운완 인증 댓글"},
-        headers=_auth(user_token),
-    )
-
-    res = client.get("/api/v1/admin/hashrate", headers=_auth(admin_token))
-    assert res.status_code == 200
-    data = res.json()["data"]
-    assert data["total_points"] == 0.51
-    assert len(data["items"]) == 1
-    item = data["items"][0]
-    assert item["username"] == "hashmember"
-    assert item["upload_count"] == 1
-    assert item["comment_count"] == 1
-    assert item["percent"] == 100.0
-
-
-def test_admin_hashrate_user_detail(client: TestClient, db: Session) -> None:
-    admin_token = _reg_admin(client, db, "hrdadmin@x.com", "hrdadmin")
-    user_token, user = _reg(client, "hrdmember@x.com", "hrdmember")
-
-    key = f"videos/{user['id']}/hrd.mp4"
-    with patch("app.routes.videos.r2_service.get_cdn_url", return_value="https://cdn/hrd.mp4"):
-        post_res = client.post(
-            "/api/v1/videos/confirm",
-            json={"r2_key": key, "duration_sec": 20, "caption": "오운완", "tags": ["가벼운 활동"]},
-            headers=_auth(user_token),
-        )
-    post_id = post_res.json()["data"]["post"]["id"]
-    client.post(
-        f"/api/v1/feed/{post_id}/comments",
-        json={"content": "상세 확인용 댓글"},
-        headers=_auth(user_token),
-    )
-
-    res = client.get(f"/api/v1/admin/hashrate/{user['id']}", headers=_auth(admin_token))
-    assert res.status_code == 200
-    data = res.json()["data"]
-    assert data["username"] == "hrdmember"
-    assert data["total_points"] == 0.26
-    assert len(data["uploads"]) == 1
-    assert data["uploads"][0]["caption"] == "오운완"
-    assert data["uploads"][0]["tags"] == ["가벼운 활동"]
-    assert data["uploads"][0]["points"] == 0.25
-    assert len(data["comments"]) == 1
-    assert data["comments"][0]["content"] == "상세 확인용 댓글"
-    assert data["comments"][0]["points"] == 0.01
-
-
-def test_admin_hashrate_user_detail_404(client: TestClient, db: Session) -> None:
-    admin_token = _reg_admin(client, db, "hrd404@x.com", "hrd404admin")
-    res = client.get("/api/v1/admin/hashrate/999999", headers=_auth(admin_token))
-    assert res.status_code == 404

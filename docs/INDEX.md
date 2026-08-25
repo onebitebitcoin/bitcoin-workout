@@ -24,7 +24,6 @@ stack_health/
 | API 엔드포인트 추가/수정 | `backend/app/routes/<도메인>.py` + `backend/app/schemas/` + `backend/tests/test_<도메인>.py` |
 | DB 스키마 변경 | `backend/app/models/<도메인>.py` → `backend/alembic/` 마이그레이션 |
 | 인증 (JWT/Google/Lightning) | `backend/app/services/auth.py`, `google_oauth.py`, `lnauth.py` + `backend/app/routes/auth.py` |
-| 비트코인 리워드/정산 | `backend/app/services/reward.py` + `backend/app/routes/rewards.py` (Blink Lightning API) |
 | 영상 업로드/스토리지 | `backend/app/routes/videos.py` + `backend/app/services/r2.py` (Cloudflare R2) |
 | 영상 인코딩/병합/자막 처리 | `worker/tasks/full_pipeline.py`(단일), `full_pipeline_multi.py`(다중 미디어), `compose.py`(영상+이미지 concat), `merge.py`, `subtitle_extract.py` + `backend/app/services/job_queue.py` (Redis 큐 enqueue) |
 | 영상 필터 (카툰·운동열·발자국) | `backend/app/services/cartoon.py`(카툰 렌더러) + `backend/app/services/muscle_heat.py`(포즈 기반 근육 히트맵, mediapipe; `preset_for_exercise` 운동별 프리셋) + `backend/app/services/exercise_classify.py`(Gemini 운동 종목 분류) + `backend/app/services/motion_fx.py`(옵티컬 플로우 기반 발자국 리듬 효과, 포즈 불필요) + `POST /videos/filter-preview`(1프레임 미리보기, `video_filter=cartoon\|heat\|cartoon_heat\|footsteps`) + `worker/tasks/full_pipeline_multi.py`(`_apply_video_filter`; heat 계열만 classify) + `frontend/src/pages/upload/StepMedia.tsx`(효과 선택 라디오 UI) + `frontend/src/utils/videoFilter.ts`(옵션 목록·타입) |
@@ -50,12 +49,12 @@ stack_health/
 - **진입점**: `app/main.py` — FastAPI app, 라우터 등록, 정적 SPA fallback
 - **설정**: `app/config.py` (pydantic settings, `.env` 로드)
 - **DB**: `app/database.py` / 마이그레이션 `alembic/`
-- **routes/** (도메인별 API): `auth` `videos` `feed` `rewards` `admin` `comments` `history` `challenges` `users` `survey`
-- **models/** (SQLAlchemy): `user` `video` `post` `post_like` `post_view` `comment` `reward` `challenge` `admin_log` `lnauth_challenge` `app_links` `survey` `survey_response`
-- **schemas/** (Pydantic): `user` `video` `reward` `challenge` `survey`
+- **routes/** (도메인별 API): `auth` `videos` `feed` `admin` `comments` `history` `challenges` `users` `survey`
+- **models/** (SQLAlchemy): `user` `video` `post` `post_like` `post_view` `comment` `challenge` `admin_log` `lnauth_challenge` `app_links` `survey` `survey_response` `follow` `notification`
+- **schemas/** (Pydantic): `user` `video` `challenge` `survey`
 - **services/** (비즈니스 로직):
   - `auth.py` JWT / `google_oauth.py` Google 로그인 / `lnauth.py` Lightning 로그인(LNURL-auth)
-  - `reward.py` 리워드 지급 (Blink Lightning) / `share_token.py` 공유 링크 토큰
+  - `timeframe.py` 주/월/일 UTC 경계 계산 / `share_token.py` 공유 링크 토큰
   - `r2.py` Cloudflare R2 업로드 / `job_queue.py` Redis 잡 큐 enqueue
   - `subtitles.py` 자막 생성·환각 필터 / `rate_limit.py` / `notify.py` 텔레그램 알림 / `error_codes.py`
 - **tests/**: 도메인별 `test_*.py` (pytest) — 실행: `cd backend && .venv/bin/pytest -q`

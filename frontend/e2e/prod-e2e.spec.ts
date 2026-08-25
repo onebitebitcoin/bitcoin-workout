@@ -60,7 +60,7 @@ test.describe('0. 인증 (회원가입 → 피드 진입)', () => {
     await expect(page).toHaveURL(`${PROD_URL}/`)
     await expect(page.getByRole('link', { name: '피드' })).toBeVisible()
     await expect(page.getByRole('link', { name: '챌린지' })).toBeVisible()
-    await expect(page.getByRole('link', { name: '사용자' })).toBeVisible()
+    await expect(page.getByRole('link', { name: '알림' })).toBeVisible()
     await expect(page.getByRole('link', { name: '프로필' })).toBeVisible()
     await expect(page.getByRole('button', { name: '운동 영상 올리기' })).toBeVisible()
   })
@@ -283,22 +283,5 @@ test.describe('4. 챌린지 페이지', () => {
     const hasContent = await page.locator('main, [class*="challenge"], [class*="Challenge"]').first().isVisible({ timeout: 5000 }).catch(() => false)
     const hasEmpty = await page.locator('text=챌린지').first().isVisible({ timeout: 5000 }).catch(() => false)
     expect(hasContent || hasEmpty).toBe(true)
-  })
-})
-
-test.describe('5. 리더보드 (사용자)', () => {
-  test.beforeEach(async ({ page }) => {
-    await signup(page)
-  })
-
-  test('리더보드 페이지가 로드된다', async ({ page }) => {
-    await page.goto(`${PROD_URL}/leaderboard`)
-    await page.waitForLoadState('networkidle')
-    await screenshot(page, '05-leaderboard')
-
-    await expect(page).toHaveURL(`${PROD_URL}/leaderboard`)
-    // 유저 목록 또는 빈 상태
-    const isLoaded = await page.locator('body').isVisible()
-    expect(isLoaded).toBe(true)
   })
 })

@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { Home, Plus, UserCircle, Users, Dumbbell } from 'lucide-react'
+import { Bell, Home, Plus, UserCircle, Dumbbell } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../store/auth'
 import { useUiStore } from '../store/ui'
@@ -54,20 +54,20 @@ export default function BottomNav() {
           <span className="mt-1 text-xs text-transparent select-none" aria-hidden="true">.</span>
         </div>
 
-        <NavLink to="/leaderboard" className={navItem}>
-          <Users size={22} strokeWidth={1.5} />
-          <span>{t('nav.users')}</span>
-        </NavLink>
-
-        <NavLink to="/profile" className={navItem}>
+        <NavLink to="/notifications" className={navItem}>
           <span className="relative">
-            <UserCircle size={22} strokeWidth={1.5} />
+            <Bell size={22} strokeWidth={1.5} />
             {unreadCount > 0 && (
               <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold leading-none text-white">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
           </span>
+          <span>{t('nav.notifications')}</span>
+        </NavLink>
+
+        <NavLink to="/profile" className={navItem}>
+          <UserCircle size={22} strokeWidth={1.5} />
           <span>{t('nav.profile')}</span>
         </NavLink>
       </div>

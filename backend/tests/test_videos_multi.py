@@ -96,18 +96,6 @@ def test_upload_multi_invalid_image_type_rejected(client: TestClient) -> None:
     assert res.status_code == 400
 
 
-@patch("app.routes.videos.get_daily_upload_count", return_value=99)
-def test_upload_multi_daily_limit(mock_count, client: TestClient) -> None:
-    token = _register_and_token(client, "m7@x.com", "muser7")
-    res = client.post(
-        "/api/v1/videos/upload-multi",
-        data={"items_meta": json.dumps([{"kind": "image"}])},
-        files=[("files", _img("a.png"))],
-        headers=_auth(token),
-    )
-    assert res.status_code == 429
-
-
 def test_upload_multi_unauthenticated(client: TestClient) -> None:
     res = client.post(
         "/api/v1/videos/upload-multi",

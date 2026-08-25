@@ -135,7 +135,6 @@ def run_multi_pipeline(job: dict, status_callback=None) -> dict:
     from app.models.user import User
     from app.models.video import Video
     from app.routes.challenges import increment_challenge_upload
-    from app.services.reward import DAILY_MAX_UPLOADS, add_points, get_daily_upload_count, points_for_tags
 
     start_time = time.time()
     r2 = _get_r2_client()
@@ -232,16 +231,6 @@ def run_multi_pipeline(job: dict, status_callback=None) -> dict:
     # (별개의 try/finally라 전파가 그대로 함수 밖으로 나감). 같은 정리를 여기서도 수행.
     if status_callback:
         status_callback("db_save")
-    db = SessionLocal()
-    try:
-        if get_daily_upload_count(db, user_id) >= DAILY_MAX_UPLOADS:
-            raise RuntimeError("하루 업로드 한도 초과")
-    except Exception:
-        _cleanup_orphan_render(r2, job_id, compressed_key, filtered_key)
-        raise
-    finally:
-        db.close()
-
     # 6) thumbnail
     if status_callback:
         status_callback("thumbnail")
@@ -361,12 +350,6 @@ def run_multi_pipeline(job: dict, status_callback=None) -> dict:
             increment_challenge_upload(db, user_id, int(challenge_id))
 
         has_video = any(it.get("kind") == "video" for it in items)
-        rp = add_points(
-            db, user_id,
-            points_for_tags(job.get("tags", []), has_video=has_video),
-            "upload", reference_id=video.id,
-        )
-        points_earned = rp.points if rp else 0.0
 
         user = db.query(User).filter(User.id == user_id).first()
         username = user.username if user else str(user_id)
@@ -378,12 +361,11 @@ def run_multi_pipeline(job: dict, status_callback=None) -> dict:
         merge_type = f"multi({'video+' if has_video else ''}{n_images}img)"
         if has_audio_merged:
             merge_type += " + audio"
-        logger.info("[multi-pipeline] job=%s 완료 post_id=%s points=%s elapsed=%.1fs",
-                    job_id, post.id, points_earned, elapsed_sec)
+        logger.info("[multi-pipeline] job=%s 완료 post_id=%s elapsed=%.1fs",
+                    job_id, post.id, elapsed_sec)
         return {
             "post_id": str(post.id),
             "cdn_url": cdn_url,
-            "points_earned": str(points_earned),
             "username": username,
             "email": email or "",
             "elapsed_sec": round(elapsed_sec, 1),

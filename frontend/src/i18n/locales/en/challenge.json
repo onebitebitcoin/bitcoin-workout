@@ -137,19 +137,5 @@
     "participantCount": "{{count}} participants",
     "completedCount": "{{count}} completed",
     "viewParticipants": "View participants"
-  },
-  "leaderboard": {
-    "title": "Users",
-    "periodWeek": "This week",
-    "periodMonth": "This month",
-    "periodAll": "All time",
-    "kstNote": "KST",
-    "searchPlaceholder": "Search users...",
-    "noResults": "No results found",
-    "noUsers": "No users found",
-    "me": "(me)",
-    "loadError": "Failed to load data",
-    "prevPage": "Prev",
-    "nextPage": "Next"
   }
 }

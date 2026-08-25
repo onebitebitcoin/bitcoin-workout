@@ -57,7 +57,6 @@ export interface AdminUser {
   is_admin: boolean
   auth_provider: 'google' | 'lightning' | 'email'
   video_count: number
-  total_points: number
   challenge_count: number
   referred_count: number
   referred_by_username: string | null
@@ -210,36 +209,6 @@ export interface FollowUser {
 
 export interface MyStats {
   total_posts: number
-  total_points: number
-  queued_points: number
-  week_points: number
-  week_queued_points: number
-}
-
-export interface LeaderboardEntry {
-  rank: number
-  user_id: number
-  username: string
-  avatar_url: string | null
-  total_points: number
-}
-
-export interface LeaderboardResponse {
-  data: LeaderboardEntry[]
-  total: number
-  page: number
-  limit: number
-  has_next: boolean
-}
-
-export interface MonthlyPointsResponse {
-  month_points: number
-}
-
-export interface HashrateResponse {
-  my_points: number
-  total_points: number
-  percent: number
 }
 
 export type SubtitleLanguage = 'ko' | 'en' | 'auto'
