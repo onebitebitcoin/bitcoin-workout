@@ -3,7 +3,7 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, Header, Request
 from pydantic import BaseModel
-from sqlalchemy import func, or_
+from sqlalchemy import func, inspect, or_, text
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -303,6 +303,12 @@ def delete_user(
     db.query(Challenge).filter(Challenge.creator_id == user_id).update(
         {"creator_id": None}, synchronize_session=False
     )
+    # reward_points: 포인트 체계 제거로 모델은 삭제됐지만, DROP 마이그레이션이
+    # 배포 창 문제로 지연될 수 있어 테이블이 남아 있을 수 있다(FK에 ondelete 없음).
+    # 남아 있으면 raw SQL로 정리 — DROP이 실행된 뒤에는 테이블이 없으므로 건너뛴다.
+    # TODO: 모든 슬롯이 DROP 마이그레이션 이후 코드로 넘어간 게 확인되면 이 블록은 제거한다.
+    if inspect(db.bind).has_table("reward_points"):
+        db.execute(text("DELETE FROM reward_points WHERE user_id = :uid"), {"uid": user_id})
 
     log = AdminLog(
         action="user_delete",
