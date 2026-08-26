@@ -74,14 +74,26 @@ def _remap_posts_tags(bind: sa.engine.Connection) -> None:
 
 
 def _remap_challenge_categories(bind: sa.engine.Connection) -> None:
-    """challenges.categories의 각 원소를 매핑 치환한다. UI는 이번에 손대지 않는다."""
+    """challenges.categories의 각 원소를 매핑 치환한다. UI는 이번에 손대지 않는다.
+
+    posts.tags(Text 컬럼, 애플리케이션이 ensure_ascii=False로 직접 직렬화)와 달리
+    이쪽은 SQLAlchemy JSON 컬럼이라 드라이버 기본 직렬화를 탄다. DB에는 한글이
+    유니코드 이스케이프로 들어가지만 애플리케이션이 저장하는 방식과 동일하므로
+    일부러 맞추지 않는다. raw SQL로 LIKE 검색할 때만 주의하면 된다.
+    """
     challenges = sa.table('challenges', sa.column('id', sa.Integer), sa.column('categories', sa.JSON))
     rows = bind.execute(sa.select(challenges.c.id, challenges.c.categories)).fetchall()
     for row in rows:
         categories = row.categories
         if not isinstance(categories, list) or not categories:
             continue
-        new_categories = [_CATEGORY_MAP.get(c, c) if isinstance(c, str) else c for c in categories]
+        mapped = [_CATEGORY_MAP.get(c, c) if isinstance(c, str) else c for c in categories]
+        # 다대일 매핑이라 서로 다른 원소가 같은 값이 될 수 있다
+        # (["가벼운 활동","산책"] → ["일상","일상"]). 순서를 지키며 중복만 제거한다.
+        new_categories = []
+        for c in mapped:
+            if c not in new_categories:
+                new_categories.append(c)
         if new_categories == categories:
             continue
         bind.execute(
