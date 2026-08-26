@@ -25,7 +25,7 @@
   "deleteVideoBody": "This can't be undone.",
   "cancel": "Cancel",
   "deleteUserTitle": "Delete @{{username}}",
-  "deleteUserBody": "All data including videos and points will be permanently deleted.",
+  "deleteUserBody": "All data including videos, comments, and challenge participation will be permanently deleted.",
   "deletingUser": "Deleting...",
   "prevPage": "Previous",
   "nextPage": "Next",

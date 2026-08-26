@@ -3,8 +3,24 @@
    Apply via: document.documentElement.setAttribute('data-theme', 'X')
    ============================================= */
 
-/* --- Default: Volt Dark (dark, lime) --- */
+/* --- Default: Bitcoin Dark (dark, bitcoin orange) --- */
 :root,
+[data-theme="bitcoin"] {
+  --bg-page: #0D0D0D;
+  --bg-surface: #161616;
+  --bg-surface-2: #1F1F1F;
+  --accent: #F7931A;
+  --accent-rgb: 247, 147, 26;
+  --accent-fg: #0D0D0D;
+  --accent-text: #F7931A;       /* bitcoin orange on dark bg: 8:1+ contrast */
+  --text-primary: #F5F5F5;
+  --text-muted: #A1A1AA;
+  --text-subtle: #71717A;
+  --border: #2D2D2D;
+  --overlay: rgba(0, 0, 0, 0.7);
+}
+
+/* --- Volt Dark (dark, lime) --- */
 [data-theme="volt"] {
   --bg-page: #0D0D0D;
   --bg-surface: #161616;

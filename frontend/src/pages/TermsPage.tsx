@@ -17,20 +17,16 @@ export default function TermsPage() {
       <div className="px-4 pt-5 pb-6 space-y-6 text-sm text-theme-muted leading-relaxed">
         <p className="text-xs font-semibold uppercase tracking-widest text-theme-muted">{t('termsServiceGuide')}</p>
         <section>
-          <h2 className="font-semibold text-theme-primary mb-2">{t('termsSection.stackHealth.title')}</h2>
-          <p>{t('termsSection.stackHealth.body')}</p>
+          <h2 className="font-semibold text-theme-primary mb-2">{t('termsSection.intro.title')}</h2>
+          <p>{t('termsSection.intro.body')}</p>
         </section>
         <section>
-          <h2 className="font-semibold text-theme-primary mb-2">{t('termsSection.sweat.title')}</h2>
-          <p>{t('termsSection.sweat.body')}</p>
+          <h2 className="font-semibold text-theme-primary mb-2">{t('termsSection.categories.title')}</h2>
+          <p>{t('termsSection.categories.body')}</p>
         </section>
         <section>
           <h2 className="font-semibold text-theme-primary mb-2">{t('termsSection.uploadPolicy.title')}</h2>
           <p>{t('termsSection.uploadPolicy.body')}</p>
-        </section>
-        <section>
-          <h2 className="font-semibold text-theme-primary mb-2">{t('termsSection.sweatConfirm.title')}</h2>
-          <p>{t('termsSection.sweatConfirm.body')}</p>
         </section>
         <div className="h-px bg-theme-border" />
         <p className="text-xs font-semibold uppercase tracking-widest text-theme-muted">{t('termsSection.termsLabel')}</p>
@@ -45,10 +41,6 @@ export default function TermsPage() {
         <section>
           <h2 className="font-semibold text-theme-primary mb-2">{t('termsSection.article3.title')}</h2>
           <p>{t('termsSection.article3.body')}</p>
-        </section>
-        <section>
-          <h2 className="font-semibold text-theme-primary mb-2">{t('termsSection.article4.title')}</h2>
-          <p>{t('termsSection.article4.body')}</p>
         </section>
         <section>
           <h2 className="font-semibold text-theme-primary mb-2">{t('termsSection.contact.title')}</h2>

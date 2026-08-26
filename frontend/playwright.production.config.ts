@@ -12,7 +12,7 @@ export default defineConfig({
     ['list'],
   ],
   use: {
-    baseURL: 'https://stackhealth.life',
+    baseURL: 'https://bitcoiners.life',
     screenshot: 'on',
     video: 'retain-on-failure',
     trace: 'retain-on-failure',

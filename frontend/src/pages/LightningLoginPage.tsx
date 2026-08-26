@@ -93,7 +93,7 @@ export default function LightningLoginPage() {
       <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-2xl bg-theme-surface text-accent">
         <LogoMark aria-label={t('logoAlt')} role="img" size={40} />
       </div>
-      <p className="mb-1 text-2xl font-bold text-accent">Stack Health</p>
+      <p className="mb-1 text-2xl font-bold text-accent">Bitcoiners</p>
       <p className="mb-8 text-sm text-theme-muted">{t('lightningLoginTitle')}</p>
 
       <div className="w-full max-w-sm flex flex-col gap-4">

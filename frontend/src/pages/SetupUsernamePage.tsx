@@ -144,7 +144,7 @@ export default function SetupUsernamePage() {
       <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-theme-surface text-accent">
         <LogoMark aria-label={t('logoAlt')} role="img" size={40} />
       </div>
-      <p className="mb-1 text-xs font-bold tracking-[0.28em] text-accent uppercase">Stack Health</p>
+      <p className="mb-1 text-xs font-bold tracking-[0.28em] text-accent uppercase">Bitcoiners</p>
       <p className="mb-8 text-sm text-theme-muted">{t('setupProfileTitle')}</p>
 
       <div className="w-full max-w-sm">

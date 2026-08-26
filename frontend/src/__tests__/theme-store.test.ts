@@ -2,13 +2,13 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { useThemeStore, THEMES, THEME_LABELS, initTheme } from '../store/theme'
 
 beforeEach(() => {
-  useThemeStore.setState({ theme: 'volt' })
+  useThemeStore.setState({ theme: 'bitcoin' })
   document.documentElement.removeAttribute('data-theme')
 })
 
 describe('useThemeStore', () => {
-  it('기본 테마는 volt', () => {
-    expect(useThemeStore.getState().theme).toBe('volt')
+  it('기본 테마는 bitcoin', () => {
+    expect(useThemeStore.getState().theme).toBe('bitcoin')
   })
 
   it('setTheme으로 테마를 변경한다', () => {
@@ -57,6 +57,13 @@ describe('initTheme', () => {
     useThemeStore.setState({ theme: 'volt' as never })
     initTheme('volt-light')
     expect(document.documentElement.getAttribute('data-theme')).toBe('volt')
+  })
+
+  it('저장된 테마와 override가 모두 유효하지 않으면 기본값 bitcoin으로 마이그레이션', () => {
+    useThemeStore.setState({ theme: 'volt-light' as never })
+    initTheme('arctic')
+    expect(document.documentElement.getAttribute('data-theme')).toBe('bitcoin')
+    expect(useThemeStore.getState().theme).toBe('bitcoin')
   })
 
   it('유효하지 않은 override는 무시하고 저장된 테마 사용', () => {

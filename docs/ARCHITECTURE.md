@@ -1,13 +1,13 @@
-# Stack Health 시스템 아키텍처
+# Bitcoiners 시스템 아키텍처
 
-> 운동 쇼츠 공유 + 비트코인 리워드 플랫폼 (https://stackhealth.life)
+> 비트코이너의 하루를 60초 기록으로 공유하는 SNS 플랫폼 (https://bitcoiners.life)
 > 파일 단위 탐색은 `docs/INDEX.md`를 먼저 본다.
 
 ## 1. 전체 구성도
 
 ```
                         ┌─────────────────────────────┐
-  사용자 (웹/모바일앱)   │   nginx (stackhealth.life)   │
+  사용자 (웹/모바일앱)   │   nginx (bitcoiners.life)    │
  ───────────────────►  │  upstream: blue 8017 / green │
                         │  8018 (blue-green 전환)      │
                         └──────────────┬──────────────┘
@@ -32,7 +32,7 @@
                         │  병합/인코딩/자막      │
                         └──────────────────────┘
 
-   외부 서비스: Blink Lightning API (BTC 송금) · Google OAuth · Telegram (운영 알림)
+   외부 서비스: Google OAuth · Telegram (운영 알림)
 ```
 
 ## 2. 컴포넌트
@@ -46,7 +46,7 @@
   - 이메일+비밀번호 → JWT (`services/auth.py`)
   - Google OAuth (`services/google_oauth.py`, 선택 — env 미설정 시 비활성)
   - Lightning LNURL-auth (`services/lnauth.py`, `models/lnauth_challenge.py`)
-- 어드민: `ADMIN_SECRET_KEY` 헤더 인증. 삭제/ban/정산은 `models/admin_log.py`에 감사 로그.
+- 어드민: `ADMIN_SECRET_KEY` 헤더 인증. 삭제/ban은 `models/admin_log.py`에 감사 로그.
 
 ### Frontend — `frontend/` (React + Vite + TailwindCSS)
 
@@ -124,7 +124,6 @@ AppLinks                                  (앱 링크/메타)
 | 인증 | `SECRET_KEY`, `ACCESS_TOKEN_EXPIRE_MINUTES` | JWT |
 | 스토리지 | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL` | Cloudflare R2 |
 | 어드민 | `ADMIN_SECRET_KEY` | 헤더 인증 |
-| 리워드 | `BLINK_API_KEY` | 선택 — 미설정 시 수동 송금 |
 | 큐 | `REDIS_URL` | 선택 — 미설정 시 backend 직접 ffmpeg |
 | OAuth | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | 선택 |
 | 앱 | `ENVIRONMENT`, `PORT`, `APP_BASE_URL`, `VITE_APP_BASE_URL` | |

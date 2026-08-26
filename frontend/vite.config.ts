@@ -35,9 +35,10 @@ export default defineConfig({
       includeAssets: ['favicon.svg', 'favicon-192.png', 'apple-touch-icon.png'],
       manifest: {
         id: '/',
-        name: 'Stack Health',
-        short_name: 'Stack Health',
-        description: 'Stack Health',
+        name: 'Bitcoiners',
+        short_name: 'Bitcoiners',
+        description:
+          '비트코이너는 뭐하고 사나 — 비트코인 공부, 라이트닝 결제, 운동, 노드 운영을 60초 영상으로 기록하고 공유하는 커뮤니티',
         theme_color: '#0D0D0D',
         background_color: '#0D0D0D',
         display: 'standalone',

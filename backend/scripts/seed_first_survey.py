@@ -17,7 +17,9 @@ from app.models.survey import Survey  # noqa: E402
 from app.services.share_token import generate_share_token  # noqa: E402
 
 TITLE = "스택헬스 한 달 사용 설문"
-PUBLIC_BASE = "https://stackhealth.life/survey"
+# TITLE은 프로덕션에 이미 시드된 설문과 대조하는 멱등성 키다. 바꾸면 재실행 시
+# 기존 설문을 못 찾고 중복 생성한다 — 리브랜딩 후에도 원문 그대로 둔다.
+PUBLIC_BASE = "https://bitcoiners.life/survey"
 MAX_SLUG_RETRIES = 5
 
 KST = ZoneInfo("Asia/Seoul")

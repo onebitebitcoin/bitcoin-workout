@@ -46,7 +46,7 @@ class ConfirmUploadRequest(BaseModel):
 
 
 class PostUpdateRequest(BaseModel):
-    """게시물 글(캡션·태그·운동시간) 수정 요청. 보낸 필드만 반영된다."""
+    """게시물 글(캡션·태그·활동 시간) 수정 요청. 보낸 필드만 반영된다."""
     caption: str | None = None
     tags: list[str] | None = None
     workout_start: str | None = None

@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { Heart, MessageCircle, Volume2, VolumeX, Pause, Play, Clock, Share2, Rewind, FastForward } from 'lucide-react'
+import { Heart, MessageCircle, Volume2, VolumeX, Pause, Play, Share2, Rewind, FastForward } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { clsx } from 'clsx'
 import { useQueryClient, type InfiniteData } from '@tanstack/react-query'
@@ -346,7 +346,7 @@ export default function VideoCard({ post, onLoginRequired, onCommentClick, isMut
                 .then(() => toast.success(t('shareCopied')))
                 .catch(() => toast(t('shareLinkFallback') + shareUrl))
             if (typeof navigator !== 'undefined' && 'share' in navigator) {
-              navigator.share({ title: 'Stack Health', text: shareMessage })
+              navigator.share({ title: 'Bitcoiners', text: shareMessage })
                 .catch((err) => { if (!(err instanceof DOMException && err.name === 'AbortError')) copyToClipboard() })
             } else {
               copyToClipboard()
@@ -415,12 +415,6 @@ export default function VideoCard({ post, onLoginRequired, onCommentClick, isMut
               <TagChip key={tag} label={tag} />
             ))}
           </div>
-        )}
-        {post.workout_start && post.workout_end && (
-          <p className="mt-1 text-xs text-white/80 flex items-center gap-1">
-            <Clock size={12} />
-            {post.workout_start} ~ {post.workout_end}
-          </p>
         )}
       </div>
 

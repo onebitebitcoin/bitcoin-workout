@@ -14,8 +14,9 @@ import { isAxiosError } from 'axios'
 import StepMedia, { type MediaItem, MAX_IMAGES, IMAGE_CLIP_SECONDS } from './upload/StepMedia'
 import { type VideoFilterValue } from '../utils/videoFilter'
 import StepSubtitle, { type SubtitleSource } from './upload/StepSubtitle'
-import StepMeta, { type MainCategory } from './upload/StepMeta'
+import StepMeta from './upload/StepMeta'
 import { srtToTextLines } from '../utils/subtitles'
+import { type MainCategory } from '../constants/category'
 
 const STEPS_KEYS = ['media', 'subtitle', 'meta'] as const
 const MAX_RECORD_SECONDS = 60
@@ -70,7 +71,9 @@ export default function UploadPage() {
   const [step, setStep] = useState(0)
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([])
 
-  const [mainCategory, setMainCategory] = useState<MainCategory | null>('가벼운 활동')
+  // 비트코인/일상 두 카테고리는 성격이 뚜렷이 달라 임의로 하나를 선점하지 않는다 —
+  // 업로드 전 명시적으로 고르게 한다(미선택 시 categoryRequired 에러).
+  const [mainCategory, setMainCategory] = useState<MainCategory | null>(null)
   const [caption, setCaption] = useState('')
 
   const [subtitleSource, setSubtitleSource] = useState<SubtitleSource>('none')
@@ -92,14 +95,6 @@ export default function UploadPage() {
   const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(null)
   const [showChallengeModal, setShowChallengeModal] = useState(false)
   const [challengeSearch, setChallengeSearch] = useState('')
-  const [workoutStart, setWorkoutStart] = useState(() => {
-    const d = new Date(); d.setMinutes(d.getMinutes() - 30)
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-  })
-  const [workoutEnd, setWorkoutEnd] = useState(() => {
-    const d = new Date()
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-  })
 
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
@@ -470,8 +465,6 @@ export default function UploadPage() {
       if (videoFilter) form.append('video_filter', videoFilter)
       form.append('tags', JSON.stringify(mainCategory ? [mainCategory] : []))
       if (selectedChallengeId != null) form.append('challenge_id', String(selectedChallengeId))
-      if (workoutStart) form.append('workout_start', workoutStart)
-      if (workoutEnd) form.append('workout_end', workoutEnd)
       const postOnce = () => client.post<{ data: { job_id: string } }>(
         '/videos/upload-multi', form,
         { signal: ctrl.signal, timeout: 300_000, onUploadProgress: (e) => { if (e.total) setUploadProgress(Math.round((e.loaded / e.total) * 70)) } },
@@ -654,8 +647,6 @@ export default function UploadPage() {
           showChallengeModal={showChallengeModal} setShowChallengeModal={setShowChallengeModal}
           challengeSearch={challengeSearch} setChallengeSearch={setChallengeSearch}
           displayedChallenges={displayedChallenges} selectChallenge={selectChallenge}
-          workoutStart={workoutStart} setWorkoutStart={setWorkoutStart}
-          workoutEnd={workoutEnd} setWorkoutEnd={setWorkoutEnd}
           caption={caption} setCaption={setCaption}
           limitError={limitError} setLimitError={setLimitError}
           error={error} uploading={uploading} onUpload={handleUpload}

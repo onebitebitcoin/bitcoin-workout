@@ -7,33 +7,33 @@
 
   <!-- ── 메인 피드 (핵심 랜딩) ──────────────────────────────── -->
   <url>
-    <loc>https://stackhealth.life/</loc>
+    <loc>https://bitcoiners.life/</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
     <xhtml:link
       rel="alternate"
       hreflang="ko"
-      href="https://stackhealth.life/"
+      href="https://bitcoiners.life/"
     />
   </url>
 
   <!-- ── 챌린지 ──────────────────────────────────────────────── -->
   <url>
-    <loc>https://stackhealth.life/challenges</loc>
+    <loc>https://bitcoiners.life/challenges</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
     <xhtml:link
       rel="alternate"
       hreflang="ko"
-      href="https://stackhealth.life/challenges"
+      href="https://bitcoiners.life/challenges"
     />
   </url>
 
   <!-- ── 팀 소개 ──────────────────────────────────────────────── -->
   <url>
-    <loc>https://stackhealth.life/team</loc>
+    <loc>https://bitcoiners.life/team</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
@@ -41,7 +41,7 @@
 
   <!-- ── 로그인 ──────────────────────────────────────────────── -->
   <url>
-    <loc>https://stackhealth.life/login</loc>
+    <loc>https://bitcoiners.life/login</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
@@ -49,7 +49,7 @@
 
   <!-- ── 이용약관 ──────────────────────────────────────────────── -->
   <url>
-    <loc>https://stackhealth.life/terms</loc>
+    <loc>https://bitcoiners.life/terms</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>

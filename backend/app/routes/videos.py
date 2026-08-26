@@ -405,11 +405,9 @@ def update_post(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    """본인(또는 admin) 게시물의 캡션·태그·운동시간 수정.
+    """본인(또는 admin) 게시물의 캡션·태그·활동 시간 수정.
 
     영상·자막(burn-in)·썸네일은 변경하지 않는다.
-    메인 카테고리(tags[0]) 변경 시 업로드 리워드를 재산정하되,
-    이미 확정(fixed)된 리워드의 영상은 메인 카테고리 변경을 거부한다.
     """
     post = db.query(Post).filter(Post.id == post_id).first()
     if not post:
@@ -429,7 +427,7 @@ def update_post(
         if time_field in fields:
             value = fields[time_field]
             if value is not None and value != "" and not _TIME_RE.match(value):
-                raise api_error(400, E_VIDEO_DURATION_INVALID, "운동 시간 형식이 올바르지 않습니다 (HH:MM)")
+                raise api_error(400, E_VIDEO_DURATION_INVALID, "시간 형식이 올바르지 않습니다 (HH:MM)")
             setattr(post, time_field, value or None)
 
     if "tags" in fields and fields["tags"] is not None:
@@ -1201,8 +1199,8 @@ async def upload_multi(
     """다중 미디어(영상 ≤1 + 이미지 ≤5)를 순서대로 받아 합성 파이프라인에 등록한다.
 
     items_meta: JSON 배열 `[{"kind": "image"|"video"}, ...]` — files 순서와 1:1 대응.
-    video_filter: 합성본 전체에 적용할 영상 필터. "cartoon"(카툰) / "heat"(운동열 강조) /
-        "cartoon_heat"(약한 카툰 위에 운동열 강조) 중 하나.
+    video_filter: 합성본 전체에 적용할 영상 필터. "cartoon"(카툰) / "heat"(신체 열감 강조) /
+        "cartoon_heat"(약한 카툰 위에 신체 열감 강조) 중 하나.
     파일 수신 즉시 job_id 반환, R2 업로드 + 처리는 백그라운드.
     """
     if video_filter is not None and video_filter not in ALLOWED_VIDEO_FILTERS:

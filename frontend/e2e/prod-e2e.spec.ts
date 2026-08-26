@@ -1,5 +1,5 @@
 /**
- * Production E2E tests against https://stackhealth.life
+ * Production E2E tests against https://bitcoiners.life
  * Run: npx playwright test --config=playwright.production.config.ts
  *
  * Uses email signup so Google OAuth is not needed.
@@ -11,7 +11,7 @@ import path from 'path'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-const PROD_URL = 'https://stackhealth.life'
+const PROD_URL = 'https://bitcoiners.life'
 const SCREENSHOT_DIR = 'e2e/screenshots/prod'
 const TEST_VIDEO = path.resolve(__dirname, 'fixtures/test-workout.mp4')
 
@@ -62,7 +62,7 @@ test.describe('0. 인증 (회원가입 → 피드 진입)', () => {
     await expect(page.getByRole('link', { name: '챌린지' })).toBeVisible()
     await expect(page.getByRole('link', { name: '알림' })).toBeVisible()
     await expect(page.getByRole('link', { name: '프로필' })).toBeVisible()
-    await expect(page.getByRole('button', { name: '운동 영상 올리기' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '오늘 하루 올리기' })).toBeVisible()
   })
 })
 

@@ -9,22 +9,22 @@ import 'package:file_picker/file_picker.dart';
 
 const String kAppUrl = String.fromEnvironment(
   'APP_URL',
-  defaultValue: 'https://stackhealth.life',
+  defaultValue: 'https://bitcoiners.life',
 );
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  runApp(const StackHealthApp());
+  runApp(const BitcoinersApp());
 }
 
-class StackHealthApp extends StatelessWidget {
-  const StackHealthApp({super.key});
+class BitcoinersApp extends StatelessWidget {
+  const BitcoinersApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Stack Health',
+      title: 'Bitcoiners',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
@@ -52,7 +52,7 @@ class _WebViewPageState extends State<WebViewPage> {
   Timer? _loadTimeout;
   late final StreamSubscription<List<ConnectivityResult>> _connectivitySub;
 
-  void _log(String msg) => debugPrint('[StackHealth] $msg');
+  void _log(String msg) => debugPrint('[Bitcoiners] $msg');
 
   @override
   void initState() {

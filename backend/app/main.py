@@ -71,7 +71,7 @@ async def lifespan(app: FastAPI):  # type: ignore[type-arg]
     yield
 
 
-app = FastAPI(title="Stack Health", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Bitcoiners", version="0.1.0", lifespan=lifespan)
 app.router.redirect_slashes = False
 
 app.add_middleware(
@@ -155,13 +155,13 @@ def _is_crawler(request: Request) -> bool:
 
 def _build_og_meta(post: "Post") -> tuple[str, str]:  # type: ignore[name-defined]
     """Return (og_title, og_description) with meaningful content."""
-    username = post.user.username if post.user else "운동러"
+    username = post.user.username if post.user else "비트코이너"
 
     # Title: "{caption} — @{username}" or fallback
     if post.caption and post.caption.strip():
         title = f"{post.caption.strip()} — @{username}"
     else:
-        title = f"@{username}의 운동 기록"
+        title = f"@{username}의 기록"
 
     # Description parts
     parts: list[str] = []
@@ -182,11 +182,11 @@ def _build_og_meta(post: "Post") -> tuple[str, str]:  # type: ignore[name-define
             end = datetime.strptime(post.workout_end, fmt)
             minutes = int((end - start).total_seconds() / 60)
             if minutes > 0:
-                parts.append(f"{minutes}분 운동")
+                parts.append(f"{minutes}분")
         except ValueError:
             pass
 
-    parts.append("Stack Health")
+    parts.append("Bitcoiners")
     description = " · ".join(parts)
     return title, description
 
@@ -208,7 +208,7 @@ def _og_html(title: str, description: str, image: str, url: str, video_url: str 
 <meta charset="UTF-8" />
 <title>{t}</title>
 <meta property="og:type" content="video.other" />
-<meta property="og:site_name" content="Stack Health" />
+<meta property="og:site_name" content="Bitcoiners" />
 <meta property="og:title" content="{t}" />
 <meta property="og:description" content="{d}" />
 <meta property="og:image" content="{i}" />

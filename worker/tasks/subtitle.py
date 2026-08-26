@@ -34,7 +34,7 @@ DEFAULT_TRANSCRIPTION_LANGUAGE = os.environ.get("OPENAI_TRANSCRIPTION_LANGUAGE",
 # silent/ambiguous audio. A topic-priming prompt + temperature=0 measurably reduces it.
 DEFAULT_TRANSCRIPTION_PROMPT = os.environ.get(
     "OPENAI_TRANSCRIPTION_PROMPT",
-    "이것은 사용자가 직접 녹음한 운동 기록 음성 메모입니다. 실제로 들리는 발화만 받아 적으세요.",
+    "이것은 사용자가 직접 녹음한 일상 기록 음성 메모입니다. 실제로 들리는 발화만 받아 적으세요.",
 )
 DEFAULT_TRANSCRIPTION_TEMPERATURE = float(os.environ.get("OPENAI_TRANSCRIPTION_TEMPERATURE", "0"))
 SUBTITLE_ENABLED = os.environ.get("SUBTITLE_ENABLED", "1").lower() not in {"0", "false", "no", "off"}

@@ -15,7 +15,7 @@ _notify_fail() {
     local EXIT_CODE=$?
     local NOW
     NOW=$(TZ="Asia/Seoul" date "+%Y-%m-%d %H:%M")
-    bash "$TELEGRAM_SCRIPT" "❌ <b>Stack Health 배포 실패</b>
+    bash "$TELEGRAM_SCRIPT" "❌ <b>Bitcoiners 배포 실패</b>
 🕐 ${NOW} (KST)
 • 배포 슬롯: ${NEXT_SLOT:-unknown} (포트 ${NEXT_PORT:-?})
 • 실패 코드: ${EXIT_CODE}
@@ -32,7 +32,7 @@ LOCK_WAIT=600
 exec 200>"$LOCK_FILE"
 if ! flock -w "$LOCK_WAIT" 200; then
     echo "✗ 다른 배포가 ${LOCK_WAIT}초 넘게 진행 중 → 이번 배포 중단"
-    bash "$TELEGRAM_SCRIPT" "⏳ <b>Stack Health 배포 중단</b>
+    bash "$TELEGRAM_SCRIPT" "⏳ <b>Bitcoiners 배포 중단</b>
 🕐 $(TZ="Asia/Seoul" date "+%Y-%m-%d %H:%M") (KST)
 • 다른 배포가 진행 중이어서 잠금 획득 실패 (${LOCK_WAIT}초 대기)" 2>/dev/null || true
     exit 1
@@ -52,7 +52,7 @@ fi
 
 echo ""
 echo "╔══════════════════════════════════════════╗"
-echo "║  Stack Health Blue-Green 배포             ║"
+echo "║  Bitcoiners Blue-Green 배포               ║"
 echo "╠══════════════════════════════════════════╣"
 echo "║  현재: $CURRENT_SLOT (포트 $CURRENT_PORT)              ║"
 echo "║  배포: $NEXT_SLOT (포트 $NEXT_PORT)               ║"

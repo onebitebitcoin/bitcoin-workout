@@ -1,5 +1,5 @@
 #!/bin/bash
-# Stack Health Video Worker - Ubuntu 배포 스크립트
+# Bitcoiners Video Worker - Ubuntu 배포 스크립트
 # 도메인: server.stackhealth.life
 # 사용법: sudo bash deploy.sh
 #
@@ -18,7 +18,7 @@ SERVICE_NAME="stackhealth-worker"
 WORKER_INSTANCES="${WORKER_INSTANCES:-1}"
 
 echo "======================================"
-echo " Stack Health Worker 배포 시작"
+echo " Bitcoiners Worker 배포 시작"
 echo " 설치 경로: $INSTALL_DIR"
 echo "======================================"
 

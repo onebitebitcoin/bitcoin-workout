@@ -22,10 +22,6 @@ interface Props {
   onSubtitlePositionChange: (v: SubtitlePosition) => void
   subtitleLanguage: SubtitleLanguage
   onSubtitleLanguageChange: (v: SubtitleLanguage) => void
-  workoutStart: string
-  setWorkoutStart: (v: string) => void
-  workoutEnd: string
-  setWorkoutEnd: (v: string) => void
   error: string
   uploading: boolean
   onUpload: () => void
@@ -48,7 +44,6 @@ export default function StepCaption({
   caption, setCaption, subtitleText,
   subtitleSize, subtitlePosition, onSubtitleSizeChange, onSubtitlePositionChange,
   subtitleLanguage, onSubtitleLanguageChange,
-  workoutStart, setWorkoutStart, workoutEnd, setWorkoutEnd,
   error, uploading, onUpload,
 }: Props) {
   const { t } = useTranslation('upload')
@@ -76,28 +71,6 @@ export default function StepCaption({
 
   return (
     <div className="flex flex-1 flex-col px-6 pt-4 pb-6 overflow-y-auto gap-4">
-      {/* 운동 시간대 */}
-      <div className="rounded-xl bg-theme-surface px-4 py-3 space-y-2">
-        <p className="text-xs font-medium text-theme-muted">
-          {t('caption.workoutTime')} <span className="text-theme-subtle">{t('caption.workoutTimeOptional')}</span>
-        </p>
-        <div className="flex items-center gap-2">
-          <input
-            type="time"
-            value={workoutStart}
-            onChange={(e) => setWorkoutStart(e.target.value)}
-            className="flex-1 rounded-lg bg-theme-surface2 px-3 py-2 text-sm text-theme-primary outline-none focus:ring-2 focus:ring-accent"
-          />
-          <span className="text-theme-muted text-sm">~</span>
-          <input
-            type="time"
-            value={workoutEnd}
-            onChange={(e) => setWorkoutEnd(e.target.value)}
-            className="flex-1 rounded-lg bg-theme-surface2 px-3 py-2 text-sm text-theme-primary outline-none focus:ring-2 focus:ring-accent"
-          />
-        </div>
-      </div>
-
       {/* 자막 언어 선택 */}
       <div className="rounded-xl bg-theme-surface px-4 py-3 space-y-2">
         <p className="text-xs font-medium text-theme-muted">{t('caption.subtitleLanguage')}</p>

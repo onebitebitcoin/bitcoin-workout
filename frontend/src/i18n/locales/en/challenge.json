@@ -1,6 +1,6 @@
 {
   "pageTitle": "Challenges",
-  "pageSubtitle": "Work out and earn titles",
+  "pageSubtitle": "Record and earn titles",
   "addChallenge": "Add Challenge",
   "filter": {
     "all": "All",
@@ -17,7 +17,7 @@
     "closed": "No ended challenges"
   },
   "card": {
-    "certCount": "{{count}} workouts",
+    "certCount": "{{count}} check-ins",
     "participantCount": "{{count}}",
     "completed": "Completed",
     "joined": "Joined",
@@ -31,14 +31,14 @@
     "changeImage": "Choose different image",
     "selectImage": "Select image",
     "challengeTitle": "Challenge Title",
-    "titlePlaceholder": "e.g. 30-Day Squat Challenge",
+    "titlePlaceholder": "e.g. 30-Day Whitepaper Challenge",
     "description": "Description",
     "descriptionPlaceholder": "Describe the challenge",
     "rewardTitle": "Reward Title",
-    "rewardPlaceholder": "e.g. Squat Master",
+    "rewardPlaceholder": "e.g. Whitepaper Reader",
     "goal": "Goal",
     "goalOptional": "(optional)",
-    "goalPlaceholder": "e.g. Work out every day for 30 days",
+    "goalPlaceholder": "e.g. Record something every day for 30 days",
     "recruitPeriod": "Recruitment Period",
     "recruitOptional": "(optional — open enrollment if blank)",
     "challengePeriod": "Challenge Period",
@@ -77,7 +77,7 @@
     "closed": "Closed",
     "goal": "Goal",
     "manager": "Manager",
-    "myProgress": "Workouts logged",
+    "myProgress": "Records logged",
     "myUploadCount": "{{count}}",
     "titleEarned": "Earned title '{{title}}'!",
     "joinButton": "Join Challenge",

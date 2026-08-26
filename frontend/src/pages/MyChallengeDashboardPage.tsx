@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { Plus, Dumbbell, Users, CheckCircle } from 'lucide-react'
+import { Plus, Target, Users, CheckCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import client from '../api/client'
@@ -48,7 +48,7 @@ export default function MyChallengeDashboardPage() {
         </div>
       ) : challenges.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-3 py-16 text-center px-6">
-          <Dumbbell size={40} className="text-theme-surface2" strokeWidth={1} />
+          <Target size={40} className="text-theme-surface2" strokeWidth={1} />
           <p className="text-sm text-theme-muted">{t('myDashboard.noChallenge')}</p>
           {isAdmin && (
             <button

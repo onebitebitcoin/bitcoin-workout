@@ -1,10 +1,11 @@
-<svg width="64" height="64" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="512" height="512" rx="112" fill="#0D0D0D"/>
-  <rect x="64" y="192" width="64" height="128" rx="20" fill="#B5FF2E"/>
-  <rect x="128" y="232" width="104" height="48" rx="16" fill="#B5FF2E"/>
-  <rect x="280" y="232" width="104" height="48" rx="16" fill="#B5FF2E"/>
-  <rect x="384" y="192" width="64" height="128" rx="20" fill="#B5FF2E"/>
-  <path d="M280 96L192 272h64l-32 144 96-176h-64l24-144z"
-        fill="#0D0D0D" stroke="#0D0D0D" stroke-width="20" stroke-linejoin="round"/>
-  <path d="M280 96L192 272h64l-32 144 96-176h-64l24-144z" fill="#B5FF2E"/>
+<svg width="64" height="64" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <mask id="coin-play-hole">
+    <rect x="0" y="0" width="48" height="48" fill="white"/>
+    <path d="M21.6 19.6L21.6 28.4L29.4 24Z" fill="black" stroke="black" stroke-width="5" stroke-linejoin="round"/>
+  </mask>
+  <rect x="18.2" y="2.8" width="3.6" height="9.4" rx="1.4" fill="#F7931A"/>
+  <rect x="26.2" y="2.8" width="3.6" height="9.4" rx="1.4" fill="#F7931A"/>
+  <rect x="18.2" y="35.8" width="3.6" height="9.4" rx="1.4" fill="#F7931A"/>
+  <rect x="26.2" y="35.8" width="3.6" height="9.4" rx="1.4" fill="#F7931A"/>
+  <circle cx="24" cy="24" r="15.2" fill="#F7931A" mask="url(#coin-play-hole)"/>
 </svg>

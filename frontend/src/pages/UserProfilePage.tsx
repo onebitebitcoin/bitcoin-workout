@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Trophy, ArrowLeft, Dumbbell, Heart, Eye, MessageCircle, Share2, UserPlus, UserCheck } from 'lucide-react'
+import { Trophy, ArrowLeft, Target, Heart, Eye, MessageCircle, Share2, UserPlus, UserCheck } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import client from '../api/client'
 import type { UserProfile, PublicPost } from '../api/types'
@@ -248,7 +248,7 @@ export default function UserProfilePage() {
         <div className="px-4">
           {active_challenges.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-2">
-              <Dumbbell size={36} className="text-theme-surface2" strokeWidth={1.5} />
+              <Target size={36} className="text-theme-surface2" strokeWidth={1.5} />
               <p className="text-sm text-theme-muted">{t('noActiveChallenges')}</p>
             </div>
           ) : (

@@ -1,4 +1,4 @@
-# SPEC.md — 나의 운동을 기록하자
+# SPEC.md — 비트코이너는 뭐하고 사나
 
 > 버전: 0.52.0 (운영 중)
 > 런칭 목표: 2026-05-28
@@ -10,10 +10,10 @@
 
 ## 1. 프로젝트 개요
 
-운동 쇼츠를 SNS 피드(인스타 릴스/유튜브 쇼츠 형태)로 공유하고, 매일 나의 운동을 기록하며 꾸준한 운동 습관을 만들어가는 웹 플랫폼.
+비트코인 공부, 라이트닝 결제, 운동, 노드 운영, 모임 등 비트코이너의 하루를 60초 기록으로 SNS 피드(인스타 릴스/유튜브 쇼츠 형태)에 공유하는 웹 플랫폼. 카테고리는 비트코인·일상 두 가지다.
 
 ### 핵심 가치
-- 운동 습관 형성 + 운동 기록 공유
+- 비트코이너 생활 습관 형성 + 기록 공유
 - 커뮤니티와 함께하는 동기 부여
 
 ### MVP 목표
@@ -116,7 +116,7 @@ REDIS_URL=redis://localhost:6379/0
 ## 5. 프로젝트 구조
 
 ```
-stack_health/
+bitcoiners/
 ├── backend/
 │   ├── app/
 │   │   ├── main.py
@@ -202,7 +202,7 @@ id              INTEGER PRIMARY KEY
 video_id        INTEGER REFERENCES videos(id) UNIQUE
 user_id         INTEGER REFERENCES users(id)
 caption         TEXT                       -- 140자 이내
-tags            TEXT                       -- JSON 배열: ["홈트", "러닝"]
+tags            TEXT                       -- JSON 배열: ["일상"] (tags[0]=메인 카테고리)
 like_count      INTEGER DEFAULT 0
 view_count      INTEGER DEFAULT 0
 created_at      TIMESTAMPTZ DEFAULT now()   -- UTC
@@ -356,10 +356,13 @@ Request:  { "filename": str, "content_type": str, "file_size": int, "file_hash":
 Response: { "data": { "upload_url": str, "r2_key": str } }
 ```
 검증:
-- `content_type`: `video/mp4`, `video/quicktime`, `video/webm`
-- `file_size`: 최대 50MB (`services/r2.py:MAX_FILE_SIZE`)
-- `file_hash`: SHA256 중복 검사 → 중복이면 `409 Conflict`
-- 일일 업로드 횟수: 사용자당 3회 초과 시 `429 Too Many Requests`
+- `content_type`: `services/r2.py`의 `ALLOWED_CONTENT_TYPES` 8종 (mp4, quicktime, webm, m4v, 3gpp, 3gpp2, mpeg, matroska)
+- `file_size`: 최대 100MB (`services/r2.py:MAX_FILE_SIZE`)
+- 일일 업로드 횟수 제한 없음 — 점수 체계 제거와 함께 해제
+
+> `file_hash` 필드는 요청 스키마에 남아 있으나 중복 검사가 구현돼 있지 않다.
+> `routes/videos.py`가 이 값 대신 `r2_key`를 `videos.file_hash` 컬럼에 저장하고,
+> 해시로 조회하는 쿼리도 없다. 같은 영상을 반복 업로드할 수 있다.
 
 #### POST `/api/v1/videos/upload` 🔒
 서버 사이드 업로드 (브라우저 → 서버 → R2). CORS 제약이 있는 환경에서 사용.
@@ -375,8 +378,8 @@ Request:  { "r2_key": str, "duration_sec": int, "caption"?: str, "tags"?: [str],
 Response: { "data": { "post": PostSchema } }
 ```
 검증:
-- `duration_sec`: 5초 이상, 30초 이하
-- `tags`: `["홈트", "러닝", "요가", "웨이트", "기타"]` 중 선택 (복수 가능)
+- `duration_sec`: 10초 이상, 60초 이하
+- `tags`: `tags[0]`이 메인 카테고리. 백엔드는 화이트리스트 검증 없이 자유 문자열로 저장
 
 #### POST `/api/v1/videos/merge-audio` 🔒
 영상과 오디오 파일을 ffmpeg로 병합하는 잡을 큐에 등록.
@@ -520,15 +523,14 @@ Response: { "status": "ok", "version": "0.26.1" }
 
 ## 8. 영상 업로드 규칙
 
-| 항목 | 제한 |
-|------|------|
-| 최대 길이 | **30초** |
-| 최소 길이 | **5초** |
-| 최대 파일 크기 | **50MB** |
-| 허용 포맷 | mp4, mov, webm |
-| 일일 업로드 | **3회** |
-| 중복 차단 | 파일 SHA256 해시 기준 |
-| 태그 | 홈트, 러닝, 요가, 웨이트, 기타 |
+| 항목 | 제한 | 근거 |
+|------|------|------|
+| 최대 길이 | **60초** | `routes/videos.py` |
+| 최소 길이 | **10초** | `routes/videos.py` |
+| 최대 파일 크기 | **100MB** | `services/r2.py` `MAX_FILE_SIZE` |
+| 허용 포맷 | mp4, quicktime(mov), webm, m4v, 3gpp, 3gpp2, mpeg, matroska | `services/r2.py` `ALLOWED_CONTENT_TYPES` |
+| 일일 업로드 | 제한 없음 | 점수 체계 제거와 함께 해제 |
+| 카테고리 | 비트코인, 일상 | `frontend/src/constants/category.ts` |
 
 ---
 

@@ -1,4 +1,4 @@
-# Stack Health Worker - 배포 가이드
+# Bitcoiners Worker - 배포 가이드
 
 > LLM이 읽고 배포/운영/트러블슈팅을 수행할 수 있도록 작성된 가이드입니다.
 

@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { Home, Plus, UserCircle, Dumbbell, Bell } from 'lucide-react'
+import { Home, Plus, UserCircle, Target, Bell } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../store/auth'
 import LogoMark from './LogoMark'
@@ -27,7 +27,7 @@ export default function SideNav() {
       {/* 로고 */}
       <div className="flex items-center gap-2 px-6 py-5">
         <LogoMark size={28} className="text-accent" />
-        <span className="text-base font-bold text-theme-primary">Stack Health</span>
+        <span className="text-base font-bold text-theme-primary">Bitcoiners</span>
       </div>
 
       {/* 네비게이션 항목 */}
@@ -38,7 +38,7 @@ export default function SideNav() {
         </NavLink>
 
         <NavLink to="/challenges" className={navItem}>
-          <Dumbbell size={20} strokeWidth={1.5} />
+          <Target size={20} strokeWidth={1.5} />
           <span>{t('nav.challenges')}</span>
         </NavLink>
 

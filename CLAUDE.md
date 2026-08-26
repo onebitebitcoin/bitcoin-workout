@@ -1,4 +1,4 @@
-# Stack Health — Claude Code 작업 지침
+# Bitcoiners — Claude Code 작업 지침
 
 ## 탐색 인덱스 — 파일 탐색 전 필수 (MANDATORY)
 

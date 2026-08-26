@@ -7,7 +7,7 @@
 ## 한눈에 보기
 
 ```
-stack_health/
+bitcoiners/
 ├── backend/    FastAPI API 서버 (Python + SQLAlchemy + Alembic)
 ├── frontend/   React SPA (Vite + TailwindCSS + Zustand + TanStack Query)
 ├── worker/     Redis 큐 기반 ffmpeg 비디오 처리 워커 (별도 systemd 서비스)
@@ -33,13 +33,16 @@ stack_health/
 | 업로드 플로우 (단계별 UI) | `frontend/src/pages/upload/Step*.tsx` + `UploadPage.tsx` |
 | API 클라이언트/타입 | `frontend/src/api/client.ts`, `types.ts`, `errors.ts` |
 | 전역 상태 (auth/theme/ui) | `frontend/src/store/auth.ts`, `theme.ts`, `ui.ts` (Zustand) |
+| 번역/문구 수정 (i18n) | `frontend/src/i18n/index.ts`(초기화·언어 감지) + `frontend/src/i18n/locales/{ko,en}/*.json`(네임스페이스 10개: common/auth/feed/upload/challenge/profile/admin/errors/notification/survey) — ko/en 키 집합이 반드시 일치해야 함 |
 | 어드민 기능 | `backend/app/routes/admin.py` + `frontend/src/pages/AdminPage.tsx` + `backend/tests/test_admin.py` |
 | 챌린지 기능 | `backend/app/{routes,models,schemas}/challenge*.py` + `frontend/src/pages/Challenge*.tsx` |
 | 게시물 글 수정 | `PATCH /videos/posts/{id}` (`backend/app/routes/videos.py`, `PostUpdateRequest`) + `frontend/src/pages/PostEditPage.tsx` (`/posts/:id/edit`) |
 | 팔로우 | `backend/app/models/follow.py` + `app/routes/users.py`(follow/followers/following) + `frontend/src/pages/{UserProfilePage,FollowListPage}.tsx` |
+| 알림 (인앱) | `backend/app/models/notification.py` + `app/services/notification.py` + `app/routes/notifications.py` + `frontend/src/pages/NotificationsPage.tsx`(`/notifications`) + `frontend/src/hooks/useUnreadNotifications.ts` |
 | 친구 초대 (referral) | `backend/app/services/referral.py` + `users.referral_code/referred_by_id` + `GET /users/me/referral` + `frontend/src/pages/InvitePage.tsx` (`/invite`), `?ref=` 캡처는 `App.tsx` |
 | 설문 기능 | `backend/app/{models,schemas,routes}/survey.py` + `frontend/src/pages/SurveyPage.tsx` + `AdminSurveys*.tsx` |
 | 배포/인프라 | `scripts/deploy.sh` + `Dockerfile` + `CLAUDE.md`(blue-green 주의사항) |
+| 도메인 전환 (서버 도메인 변경) | `docs/DOMAIN-CUTOVER.md` — DNS·인증서·nginx server_name·Google OAuth redirect_uri 재등록 순서와 각 단계 롤백 절차 |
 | 워커 배포 | 실제 운영: `stack-health-worker@{1,2}.service`(systemd --user, host 전용) + `scripts/deploy.sh` — 인스턴스 수는 `worker/.env`의 `WORKER_INSTANCES`. `worker/DEPLOY.md`/`worker/stackhealth-worker@.service`/`worker/deploy.sh`는 별도 `/opt` 전용서버 경로(미사용). 상세: `CLAUDE.md`(워커 멀티 인스턴스 주의사항) |
 | 에러 코드 | `ERR_CODE.md` + `backend/app/services/error_codes.py` |
 | 환경변수 | `.env.example` + `backend/ENV_VARS.md` |
@@ -49,14 +52,14 @@ stack_health/
 - **진입점**: `app/main.py` — FastAPI app, 라우터 등록, 정적 SPA fallback
 - **설정**: `app/config.py` (pydantic settings, `.env` 로드)
 - **DB**: `app/database.py` / 마이그레이션 `alembic/`
-- **routes/** (도메인별 API): `auth` `videos` `feed` `admin` `comments` `history` `challenges` `users` `survey`
+- **routes/** (도메인별 API): `auth` `videos` `feed` `admin` `comments` `history` `challenges` `users` `survey` `notifications`
 - **models/** (SQLAlchemy): `user` `video` `post` `post_like` `post_view` `comment` `challenge` `admin_log` `lnauth_challenge` `app_links` `survey` `survey_response` `follow` `notification`
 - **schemas/** (Pydantic): `user` `video` `challenge` `survey`
 - **services/** (비즈니스 로직):
   - `auth.py` JWT / `google_oauth.py` Google 로그인 / `lnauth.py` Lightning 로그인(LNURL-auth)
   - `timeframe.py` 주/월/일 UTC 경계 계산 / `share_token.py` 공유 링크 토큰
   - `r2.py` Cloudflare R2 업로드 / `job_queue.py` Redis 잡 큐 enqueue
-  - `subtitles.py` 자막 생성·환각 필터 / `rate_limit.py` / `notify.py` 텔레그램 알림 / `error_codes.py`
+  - `subtitles.py` 자막 생성·환각 필터 / `rate_limit.py` / `notify.py` 텔레그램(운영자) 알림 / `notification.py` 인앱(사용자) 알림 생성 / `error_codes.py`
 - **tests/**: 도메인별 `test_*.py` (pytest) — 실행: `cd backend && .venv/bin/pytest -q`
 
 ## Frontend (`frontend/`)
@@ -68,13 +71,15 @@ stack_health/
   - `/challenges` ChallengePage (`create` `:id` `:id/edit` `:id/dashboard`, `/my-challenges`)
   - `/survey/:slug` SurveyPage (공개 익명 설문, 비로그인 접근)
   - `/admin/surveys` AdminSurveysListPage / `/admin/surveys/new` & `/:id/edit` AdminSurveyEditorPage / `/:id/responses` AdminSurveyResponsesPage
-  - `/admin` AdminPage, `/leaderboard`, `/settings`, `/team`, `/terms`
+  - `/admin` AdminPage, `/notifications` NotificationsPage, `/settings`, `/team`, `/terms`
   - `/shorts/:shareToken` SharedVideoPage (비로그인 공유), `/users/:userId` UserProfilePage
 - **components/**: `VideoCard` `CommentSheet` `BottomNav` `SideNav` `UpdateBanner` 등 공용 UI
 - **api/**: `client.ts`(fetch wrapper) `types.ts` `errors.ts`
-- **store/** (Zustand): `auth` `theme` `ui` / **hooks/**: `useVersionCheck`
-- **utils/**: `subtitles` `sweat` `calendar` `profileColor` / **lib/**: `constants` `platform`
-- **테스트**: 유닛 `src/__tests__/` (Vitest) / E2E `e2e/*.spec.ts` (Playwright)
+- **store/** (Zustand): `auth` `theme` `ui` / **hooks/**: `useVersionCheck` `useUnreadNotifications`
+- **utils/**: `subtitles` `calendar` `profileColor` `videoFilter` / **lib/**: `constants` `platform` `share`
+- **constants/**: `category.ts` — 업로드 메인 카테고리 2종(`비트코인` `일상`), 리브랜딩(운동 전용 → 비트코이너의 하루 전반)으로 도입된 단일 소스. DB(`posts.tags[0]`, `challenges.categories`)에 한글 원본 문자열 그대로 저장 — 값 변경 시 alembic 데이터 마이그레이션 필요
+- **i18n/**: `index.ts`(i18next 초기화, `localStorage` 기반 언어 감지) + `locales/{ko,en}/*.json`(네임스페이스 10개 — common/auth/feed/upload/challenge/profile/admin/errors/notification/survey). ko/en 키 집합이 반드시 일치해야 한다 — 한쪽에만 키를 추가하면 `fallbackLng: 'ko'` 설정 때문에 라이브러리가 에러 없이 다른 언어 UI에 한국어 원문을 그대로 섞어 보여준다
+- **테스트**: 유닛 `src/__tests__/` (Vitest) / E2E `e2e/*.spec.ts` (Playwright, `06-i18n.spec.ts`는 언어 전환 스모크 테스트)
 - 빌드: `cd frontend && npm run build`
 
 ## Worker (`worker/`)
@@ -102,6 +107,7 @@ stack_health/
 | `docs/discussion-report-spec.md` | 토론/보고 워크플로 단일 원본 |
 | `AGENTS.md` | 최상위 작업 계약 (에이전트 14종, 검증 기준) |
 | `ERR_CODE.md` | 에러 코드 정의 |
+| `docs/DOMAIN-CUTOVER.md` | 서버 도메인을 stackhealth.life → bitcoiners.life로 바꿀 때 실행하는 인프라 전환 절차서. DNS·인증서·nginx·Google OAuth 재등록 순서와 각 단계 롤백 방법을 다룬다 |
 | `meetings/INDEX.md` | 회의록 인덱스 |
 
 ## 탐색하지 않아도 되는 곳

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Search, Dumbbell, Users, CheckCircle, Plus } from 'lucide-react'
+import { Search, Target, Users, CheckCircle, Plus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import client from '../api/client'
@@ -159,7 +159,7 @@ export default function ChallengePage() {
         </div>
       ) : challenges.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-2 py-16 text-center px-6">
-          <Dumbbell size={40} className="text-theme-surface2" strokeWidth={1} />
+          <Target size={40} className="text-theme-surface2" strokeWidth={1} />
           <p className="text-sm text-theme-muted">
             {filter === 'joined'
               ? t('empty.joined')

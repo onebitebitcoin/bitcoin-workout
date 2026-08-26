@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Heart, Eye, Dumbbell } from 'lucide-react'
+import { ArrowLeft, Heart, Eye, Target } from 'lucide-react'
 import client from '../api/client'
 import type { Post } from '../api/types'
 import LoadingScreen from '../components/LoadingScreen'
@@ -46,7 +46,7 @@ export default function SharedVideoPage() {
   useEffect(() => {
     if (!post) return
 
-    const title = `@${post.username} - Stack Health`
+    const title = `@${post.username} - Bitcoiners`
     const description = post.caption ?? t('appTagline')
     const image = post.thumbnail_url ?? `${window.location.origin}/og-image.png`
 
@@ -63,7 +63,7 @@ export default function SharedVideoPage() {
     setMetaName('twitter:card', 'player')
 
     return () => {
-      document.title = `Stack Health | ${t('appTagline')}`
+      document.title = `Bitcoiners | ${t('appTagline')}`
     }
   }, [post, t])
 
@@ -82,8 +82,8 @@ export default function SharedVideoPage() {
           <ArrowLeft size={20} color="white" />
         </button>
         <div className="flex items-center gap-2">
-          <Dumbbell size={16} color="white" />
-          <span className="text-sm font-semibold text-white">Stack Health</span>
+          <Target size={16} color="white" />
+          <span className="text-sm font-semibold text-white">Bitcoiners</span>
         </div>
         <div className="w-9" />
       </div>

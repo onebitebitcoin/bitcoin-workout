@@ -1,4 +1,4 @@
-# Stack Health — https://stackhealth.life
+# Bitcoiners — https://bitcoiners.life
 # robots.txt
 
 # ── 일반 크롤러 ──────────────────────────────────────────────
@@ -86,4 +86,4 @@ User-agent: DotBot
 Disallow: /
 
 # ── Sitemap ──────────────────────────────────────────────────
-Sitemap: https://stackhealth.life/sitemap.xml
+Sitemap: https://bitcoiners.life/sitemap.xml

@@ -25,7 +25,7 @@ test('MediaRecorder 오디오 병합 — 1초 영상 + 5초 녹음 → 5초 출�
   await page.waitForURL(`${PROD_URL}/`)
 
   // 2. 업로드 페이지
-  await page.getByRole('button', { name: '운동 영상 올리기' }).click()
+  await page.getByRole('button', { name: '오늘 하루 올리기' }).click()
   await page.waitForURL(`${PROD_URL}/upload`)
 
   // 3. Step 0: 영상 파일 주입

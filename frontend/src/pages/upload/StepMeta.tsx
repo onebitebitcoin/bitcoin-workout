@@ -4,9 +4,7 @@ import type { Challenge } from '../../api/types'
 import type { MediaItem } from './StepMedia'
 import type { VideoFilterValue } from '../../utils/videoFilter'
 import MediaPreviewBox from './MediaPreviewBox'
-
-export const MAIN_CATEGORIES = ['가벼운 활동', '땀 흘리는 운동'] as const
-export type MainCategory = typeof MAIN_CATEGORIES[number]
+import { MAIN_CATEGORIES, MAIN_CATEGORY_LABEL_KEYS, type MainCategory } from '../../constants/category'
 
 interface Props {
   mainCategory: MainCategory | null
@@ -23,10 +21,6 @@ interface Props {
   setChallengeSearch: (v: string) => void
   displayedChallenges: Challenge[]
   selectChallenge: (c: Challenge) => void
-  workoutStart: string
-  setWorkoutStart: (v: string) => void
-  workoutEnd: string
-  setWorkoutEnd: (v: string) => void
   caption: string
   setCaption: (v: string) => void
   limitError: string
@@ -49,17 +43,15 @@ export default function StepMeta({
   hasChallenge, setHasChallenge, selectedChallenge, selectedChallengeId,
   clearChallenge, openChallengeModal, showChallengeModal, setShowChallengeModal,
   challengeSearch, setChallengeSearch, displayedChallenges, selectChallenge,
-  workoutStart, setWorkoutStart, workoutEnd, setWorkoutEnd,
   caption, setCaption, limitError, setLimitError, error, uploading, onUpload,
   items, subtitleSource, subtitleLines, subtitleSize, subtitlePosition,
   videoFilter, filteredPreviewUrl,
 }: Props) {
   const { t } = useTranslation('upload')
 
-  const MAIN_CATEGORY_LABELS: Record<MainCategory, string> = {
-    '가벼운 활동': t('tagChallenge.mainCategoryLight'),
-    '땀 흘리는 운동': t('tagChallenge.mainCategorySweat'),
-  }
+  const MAIN_CATEGORY_LABELS = Object.fromEntries(
+    MAIN_CATEGORIES.map((cat) => [cat, t(`tagChallenge.${MAIN_CATEGORY_LABEL_KEYS[cat]}`)]),
+  ) as Record<MainCategory, string>
 
   async function handleUpload() {
     setLimitError('')
@@ -114,16 +106,6 @@ export default function StepMeta({
               <span className="text-sm text-theme-muted">{t('tagChallenge.challengeSelect')}</span>
             </button>
           )}
-        </div>
-
-        {/* 운동 시간대 */}
-        <div>
-          <p className="mb-2 text-sm font-semibold text-theme-primary">{t('caption.workoutTime')} <span className="text-xs font-normal text-theme-subtle">{t('caption.workoutTimeOptional')}</span></p>
-          <div className="flex items-center gap-2">
-            <input type="time" value={workoutStart} onChange={(e) => setWorkoutStart(e.target.value)} className="flex-1 rounded-xl bg-theme-surface px-3 py-2.5 text-sm text-theme-primary outline-none focus:ring-2 focus:ring-accent" />
-            <span className="text-theme-muted text-sm">~</span>
-            <input type="time" value={workoutEnd} onChange={(e) => setWorkoutEnd(e.target.value)} className="flex-1 rounded-xl bg-theme-surface px-3 py-2.5 text-sm text-theme-primary outline-none focus:ring-2 focus:ring-accent" />
-          </div>
         </div>
 
         {/* 설명 */}

@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { Bell, Home, Plus, UserCircle, Dumbbell } from 'lucide-react'
+import { Bell, Home, Plus, UserCircle, Target } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../store/auth'
 import { useUiStore } from '../store/ui'
@@ -36,7 +36,7 @@ export default function BottomNav() {
         </NavLink>
 
         <NavLink to="/challenges" className={navItem}>
-          <Dumbbell size={22} strokeWidth={1.5} />
+          <Target size={22} strokeWidth={1.5} />
           <span>{t('nav.challenges')}</span>
         </NavLink>
 

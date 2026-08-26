@@ -194,11 +194,11 @@ def test_transcribe_srt_sends_prompt_and_temperature(monkeypatch) -> None:
         api_key="test-key",
         model="whisper-1",
         language="ko",
-        prompt="이것은 운동 기록 음성입니다.",
+        prompt="이것은 일상 기록 음성입니다.",
         temperature=0.0,
     )
 
-    assert captured["fields"]["prompt"] == "이것은 운동 기록 음성입니다."
+    assert captured["fields"]["prompt"] == "이것은 일상 기록 음성입니다."
     assert captured["fields"]["temperature"] == "0.0"
 
 

@@ -2,13 +2,12 @@ import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  ArrowLeft, Dumbbell, Users, CheckCircle, CalendarDays,
-  Edit2, UserCircle, Droplets, Play, TrendingUp, CircleCheck, XCircle, Trash2,
+  ArrowLeft, Target, Users, CheckCircle, CalendarDays,
+  Edit2, UserCircle, Play, TrendingUp, CircleCheck, XCircle, Trash2,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import client from '../api/client'
 import type { Challenge, ChallengeParticipant, ChallengeVideo } from '../api/types'
-import { toSweatL } from '../utils/sweat'
 import { getApiErrorMessage } from '../api/errors'
 import { useAuthStore } from '../store/auth'
 import LoadingScreen from '../components/LoadingScreen'
@@ -33,11 +32,11 @@ function DescriptionText({ text }: { text: string }) {
   )
 }
 
-function SweatCount({ count, total }: { count: number; total: number }) {
+function UploadCount({ count, total }: { count: number; total: number }) {
   return (
     <span className="flex items-center gap-0.5 text-xs text-theme-muted">
-      <Droplets size={11} className="text-accent" />
-      {toSweatL(count)} / {toSweatL(total)}
+      <Target size={11} className="text-accent" />
+      {count} / {total}
     </span>
   )
 }
@@ -266,7 +265,7 @@ export default function ChallengeDetailPage() {
           <div className="flex flex-col gap-1">
             <span className="text-xs text-theme-muted">{t('detail.rewardTitle')}</span>
             <div className="inline-flex items-center gap-1.5 rounded-full bg-accent/15 px-3 py-1.5 self-start">
-              <Dumbbell size={13} className="text-accent" />
+              <Target size={13} className="text-accent" />
               <span className="text-sm font-semibold text-accent">{challenge.reward_title}</span>
             </div>
           </div>
@@ -380,7 +379,7 @@ export default function ChallengeDetailPage() {
           {challenge.joined && !challenge.completed && (
             <div className="flex gap-2">
               <div className="flex-1 flex items-center justify-center gap-1.5 rounded-2xl bg-accent/10 py-3">
-                <Dumbbell size={15} className="text-accent" />
+                <Target size={15} className="text-accent" />
                 <span className="text-sm font-semibold text-accent">{t('detail.participating')}</span>
               </div>
               <button
@@ -443,7 +442,7 @@ export default function ChallengeDetailPage() {
                         <span className="text-[10px] text-theme-muted flex-shrink-0">{t('manager.certCount', { count: p.post_count })}</span>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
-                        <SweatCount count={p.upload_count} total={p.condition_value} />
+                        <UploadCount count={p.upload_count} total={p.condition_value} />
                         <button
                           onClick={() => completeMutation.mutate(p.user_id)}
                           disabled={completeMutation.isPending}

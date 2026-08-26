@@ -90,8 +90,8 @@ describe('StepMedia', () => {
 
   it.each([
     ['카툰 필터', 'cartoon'],
-    ['운동열 강조', 'heat'],
-    ['카툰 + 운동열', 'cartoon_heat'],
+    ['해시열', 'heat'],
+    ['카툰 + 해시열', 'cartoon_heat'],
     ['발자국', 'footsteps'],
   ])('%s 옵션 선택 시 setVideoFilter(%s) 호출', async (label, value) => {
     const setVideoFilter = vi.fn()

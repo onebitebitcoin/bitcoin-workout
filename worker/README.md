@@ -1,4 +1,4 @@
-# Stack Health Video Worker
+# Bitcoiners Video Worker
 
 Redis 큐 기반 ffmpeg 비디오+오디오 병합 워커.
 

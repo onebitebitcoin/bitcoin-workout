@@ -1,4 +1,4 @@
-# Stack Health 에러 코드 정의
+# Bitcoiners 에러 코드 정의
 
 > 에러 코드 관련 문의 시 이 파일을 먼저 참고한다.
 > 코드 소스: `backend/app/services/error_codes.py`
@@ -46,7 +46,6 @@
 | `E_VIDEO_DURATION_INVALID` | 400 | 영상은 10~60초여야 합니다 | 업로드 영상 길이 범위 초과 |
 | `E_VIDEO_FORMAT_INVALID` | 400 | 지원하지 않는 파일 형식입니다 | 허용되지 않는 비디오 MIME 타입 |
 | `E_VIDEO_TOO_LARGE` | 400 | 파일이 너무 큽니다 (최대 100MB) | 영상 파일 100MB 초과 |
-| `E_VIDEO_DAILY_LIMIT` | 429 | 하루 업로드 한도를 초과했습니다 | 하루 3회 업로드 초과 |
 | `E_AUDIO_DURATION_INVALID` | 400 | 오디오 길이를 확인해주세요 | 녹음 오디오 길이 오류 |
 | `E_AUDIO_UPLOAD_FAILED` | 500 | 오디오 업로드에 실패했습니다 | 오디오 R2 업로드 오류 |
 | `E_UPLOAD_URL_FAILED` | 500 | 업로드를 시작할 수 없습니다 | presigned URL 생성 실패 |

@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-echo "=== Stack Health Video Worker ==="
+echo "=== Bitcoiners Video Worker ==="
 
 # ffmpeg 확인
 if ! command -v ffmpeg &> /dev/null; then

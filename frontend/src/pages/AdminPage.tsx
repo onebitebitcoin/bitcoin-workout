@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Trash2, User, Video, ChevronRight, Search, X, ArrowLeft, RefreshCw, ClipboardList, Dumbbell, XCircle } from 'lucide-react'
+import { Trash2, User, Video, ChevronRight, Search, X, ArrowLeft, RefreshCw, ClipboardList, Target, XCircle } from 'lucide-react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import client from '../api/client'
@@ -216,7 +216,7 @@ export default function AdminPage() {
   const tabs: { id: TabId; label: string; icon: React.ReactNode }[] = [
     { id: 'users', label: t('tabUsers'), icon: <User size={14} /> },
     { id: 'videos', label: t('tabVideos'), icon: <Video size={14} /> },
-    { id: 'challenges', label: t('tabChallenges'), icon: <Dumbbell size={14} /> },
+    { id: 'challenges', label: t('tabChallenges'), icon: <Target size={14} /> },
   ]
 
   return (

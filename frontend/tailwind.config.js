@@ -41,8 +41,8 @@ export default {
           '100%': { backgroundPosition: '200% 0' },
         },
         'fab-pulse': {
-          '0%, 100%': { boxShadow: '0 0 0 0 rgba(var(--accent-rgb, 181,255,46), 0.4)' },
-          '50%':      { boxShadow: '0 0 0 10px rgba(var(--accent-rgb, 181,255,46), 0)' },
+          '0%, 100%': { boxShadow: '0 0 0 0 rgba(var(--accent-rgb, 247,147,26), 0.4)' },
+          '50%':      { boxShadow: '0 0 0 10px rgba(var(--accent-rgb, 247,147,26), 0)' },
         },
         'confetti-fall': {
           '0%':   { transform: 'translateY(-20px) rotate(0deg)', opacity: '1' },

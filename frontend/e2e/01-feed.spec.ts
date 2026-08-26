@@ -27,6 +27,6 @@ test.describe('피드 페이지', () => {
     await expect(page.getByRole('link', { name: '알림' })).toBeVisible()
     await expect(page.getByRole('link', { name: '프로필' })).toBeVisible()
     // 업로드는 FAB 버튼 (link 아님)
-    await expect(page.getByRole('button', { name: '운동 영상 올리기' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '오늘 하루 올리기' })).toBeVisible()
   })
 })
