@@ -226,7 +226,7 @@ reward_title    TEXT NOT NULL              -- 달성 보상 타이틀 (최대 80
 condition_value INTEGER NOT NULL           -- 완료에 필요한 업로드 수
 start_date      DATETIME NOT NULL
 end_date        DATETIME NOT NULL
-categories      JSON DEFAULT []            -- 운동 카테고리 목록
+categories      JSON DEFAULT []            -- 카테고리 목록 (현재 UI 미노출, 항상 [])
 is_active       BOOLEAN DEFAULT TRUE
 creator_id      INTEGER REFERENCES users(id) -- null이면 시스템 챌린지
 created_at      TIMESTAMPTZ DEFAULT now()   -- UTC
