@@ -6,6 +6,9 @@ import { resolve } from 'path'
 
 const appVersion = readFileSync(resolve(__dirname, '../VERSION'), 'utf-8').trim()
 
+// dev 프록시가 바라볼 백엔드. E2E는 전용 포트로 띄우므로 환경변수로 갈아끼운다.
+const API_PROXY_TARGET = process.env.VITE_API_PROXY_TARGET ?? 'http://localhost:8000'
+
 export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(appVersion),
@@ -94,11 +97,11 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: API_PROXY_TARGET,
         changeOrigin: true,
       },
       '/admin': {
-        target: 'http://localhost:8000',
+        target: API_PROXY_TARGET,
         changeOrigin: true,
         bypass(req) {
           // HTML 요청(브라우저 페이지 네비게이션)은 SPA에서 처리
