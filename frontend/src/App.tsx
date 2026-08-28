@@ -176,7 +176,7 @@ function Layout() {
             color: 'var(--text-primary)',
             border: '1px solid var(--border)',
             fontSize: '14px',
-            fontFamily: 'DM Sans, sans-serif',
+            fontFamily: "'IBM Plex Sans KR', 'Apple SD Gothic Neo', sans-serif",
           },
         }}
       />

@@ -10,7 +10,6 @@ const ANDROID_APK_URL = 'https://github.com/onebitebitcoin/stack-health/releases
 
 const ROW = 'flex items-center justify-between px-4 py-3.5'
 const LABEL = 'text-sm text-theme-primary'
-const DIVIDER = ''
 const GROUP = 'rounded-xl bg-theme-surface overflow-hidden'
 const SECTION = 'text-[10px] font-medium uppercase tracking-widest text-theme-muted px-1 mb-2'
 
@@ -209,7 +208,7 @@ export default function SettingsPage() {
             {avatarError && <p className="text-[10px] text-red-400 px-4 py-1">{avatarError}</p>}
 
             {/* 닉네임 */}
-            <div className={`${DIVIDER}`}>
+            <div>
               <div className={ROW}>
                 <span className={LABEL}>{t('profile:nickname')}</span>
                 {!editingUsername ? (
@@ -248,7 +247,7 @@ export default function SettingsPage() {
             </div>
 
             {/* 이메일 */}
-            <div className={`${DIVIDER}`}>
+            <div>
               <div className={ROW}>
                 <span className={LABEL}>{t('profile:email')}</span>
                 <span className="text-sm text-theme-subtle truncate max-w-[180px]">{user?.email}</span>
@@ -256,7 +255,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Lightning 주소 */}
-            <div className={editingLn ? DIVIDER : ''}>
+            <div>
               <div className={ROW}>
                 <span className={LABEL}>{t('profile:lightningAddress')}</span>
                 {!editingLn ? (
@@ -347,7 +346,7 @@ export default function SettingsPage() {
               href={ANDROID_APK_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className={`${ROW} ${DIVIDER}`}
+              className={ROW}
             >
               <div className="flex items-center gap-2">
                 <Smartphone size={13} className="text-[#3DDC84]" />
@@ -359,7 +358,7 @@ export default function SettingsPage() {
             {/* iOS PWA */}
             <button
               onClick={() => setShowIosGuide((v) => !v)}
-              className={`w-full ${ROW} ${showIosGuide ? DIVIDER : ''}`}
+              className={`w-full ${ROW}`}
             >
               <div className="flex items-center gap-2">
                 <Smartphone size={13} className="text-blue-400" />
@@ -389,14 +388,14 @@ export default function SettingsPage() {
           <div className={GROUP}>
             <button
               onClick={() => navigate('/invite')}
-              className={`w-full ${ROW} ${DIVIDER}`}
+              className={`w-full ${ROW}`}
             >
               <span className={`${LABEL} flex items-center gap-2`}><UserPlus size={15} className="text-theme-muted" /> {t('profile:inviteFriends')}</span>
               <ChevronRight size={14} className="text-theme-muted" />
             </button>
             <button
               onClick={() => navigate('/terms')}
-              className={`w-full ${ROW} ${DIVIDER}`}
+              className={`w-full ${ROW}`}
             >
               <span className={LABEL}>{t('profile:terms')}</span>
               <ChevronRight size={14} className="text-theme-muted" />

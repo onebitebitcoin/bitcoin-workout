@@ -1,117 +1,80 @@
 /* =============================================
    Design Token Themes
    Apply via: document.documentElement.setAttribute('data-theme', 'X')
+
+   등록된 테마는 src/store/theme.ts 의 THEMES 배열과 반드시 일치해야 한다.
+   배열에 없는 테마 블록은 어떤 경로로도 켜지지 않는 죽은 코드다.
+
+   중성색 규칙: 각 테마의 배경/테두리/글자 회색은 그 테마의 강조색 쪽으로
+   아주 조금만 기운다 (채도 0.02 이하). 중립 회색 위에 유채색 강조를 얹으면
+   둘이 따로 논다.
    ============================================= */
 
 /* --- Default: Bitcoin Dark (dark, bitcoin orange) --- */
 :root,
 [data-theme="bitcoin"] {
-  --bg-page: #0D0D0D;
-  --bg-surface: #161616;
-  --bg-surface-2: #1F1F1F;
+  --bg-page: #0C0B0A;
+  --bg-surface: #151311;
+  --bg-surface-2: #201C18;
   --accent: #F7931A;
-  --accent-rgb: 247, 147, 26;
-  --accent-fg: #0D0D0D;
-  --accent-text: #F7931A;       /* bitcoin orange on dark bg: 8:1+ contrast */
-  --text-primary: #F5F5F5;
-  --text-muted: #A1A1AA;
-  --text-subtle: #71717A;
-  --border: #2D2D2D;
+  --accent-fg: #14100B;
+  --accent-text: #F7931A;       /* on --bg-page: 8.7:1 */
+  --text-primary: #F7F4F1;
+  --text-muted: #A29A92;        /* on --bg-page: 7.1:1 */
+  --text-subtle: #857D75;       /* on --bg-page: 4.9:1 — 화면 이관 후 삭제 예정 */
+  --border: #2B2622;
   --overlay: rgba(0, 0, 0, 0.7);
+  --danger: #F5604F;
+  --success: #3FBF71;
 }
 
 /* --- Volt Dark (dark, lime) --- */
 [data-theme="volt"] {
-  --bg-page: #0D0D0D;
-  --bg-surface: #161616;
-  --bg-surface-2: #1F1F1F;
+  --bg-page: #0B0C0A;
+  --bg-surface: #131610;
+  --bg-surface-2: #1C2018;
   --accent: #B5FF2E;
-  --accent-rgb: 181, 255, 46;
-  --accent-fg: #0D0D0D;
-  --accent-text: #B5FF2E;       /* lime on dark bg: 7:1+ contrast */
-  --text-primary: #F5F5F5;
-  --text-muted: #A1A1AA;
-  --text-subtle: #71717A;
-  --border: #2D2D2D;
+  --accent-fg: #0B0C0A;
+  --accent-text: #B5FF2E;       /* on --bg-page: 15:1 */
+  --text-primary: #F3F6F0;
+  --text-muted: #9CA396;
+  --text-subtle: #7F867A;       /* 화면 이관 후 삭제 예정 */
+  --border: #272C22;
   --overlay: rgba(0, 0, 0, 0.7);
+  --danger: #F5604F;
+  --success: #3FBF71;
 }
 
 /* --- Sapphire Premium (dark, blue) --- */
 [data-theme="sapphire"] {
-  --bg-page: #0A0A0A;
-  --bg-surface: #141414;
-  --bg-surface-2: #1E1E1E;
+  --bg-page: #0A0A0C;
+  --bg-surface: #131418;
+  --bg-surface-2: #1C1E24;
   --accent: #1E6FFF;
-  --accent-rgb: 30, 111, 255;
   --accent-fg: #FFFFFF;
-  --accent-text: #1E6FFF;
-  --text-primary: #F5F5F5;
-  --text-muted: #9CA3AF;
-  --text-subtle: #6B7280;
-  --border: #2A2A2A;
+  --accent-text: #6FA1FF;       /* #1E6FFF은 어두운 배경에서 3.9:1로 미달 → 밝은 파랑 7.4:1 */
+  --text-primary: #F1F3F7;
+  --text-muted: #969CA8;
+  --text-subtle: #7B8290;       /* 화면 이관 후 삭제 예정 */
+  --border: #272A31;
   --overlay: rgba(0, 0, 0, 0.7);
-}
-
-/* --- Volt Light (light, lime) --- */
-[data-theme="volt-light"] {
-  --bg-page: #F8F9FA;
-  --bg-surface: #FFFFFF;
-  --bg-surface-2: #F1F3F5;
-  --accent: #5A8A00;            /* dark lime — readable on white, WCAG AA */
-  --accent-rgb: 90, 138, 0;
-  --accent-fg: #FFFFFF;
-  --accent-text: #5A8A00;
-  --text-primary: #111827;
-  --text-muted: #4B5563;
-  --text-subtle: #9CA3AF;
-  --border: #E5E7EB;
-  --overlay: rgba(0, 0, 0, 0.4);
+  --danger: #F5604F;
+  --success: #3FBF71;
 }
 
 /* --- Royal Indigo (dark, purple) --- */
 [data-theme="indigo"] {
-  --bg-page: #0F0F0F;
-  --bg-surface: #181820;
-  --bg-surface-2: #1E1E2A;
+  --bg-page: #0C0B0E;
+  --bg-surface: #16141A;
+  --bg-surface-2: #201D28;
   --accent: #7C3AED;
-  --accent-rgb: 124, 58, 237;
   --accent-fg: #FFFFFF;
-  --accent-text: #9B6FFF;
-  --text-primary: #F5F5F5;
-  --text-muted: #A1A1AA;
-  --text-subtle: #6B7280;
-  --border: #2D2D3A;
+  --accent-text: #9B6FFF;       /* #7C3AED은 어두운 배경에서 미달 → 밝은 보라 */
+  --text-primary: #F4F2F7;
+  --text-muted: #A09AAA;
+  --text-subtle: #837D8D;       /* 화면 이관 후 삭제 예정 */
+  --border: #2C2836;
   --overlay: rgba(0, 0, 0, 0.7);
-}
-
-/* --- Arctic Light (light, blue) --- */
-[data-theme="arctic"] {
-  --bg-page: #F8FAFC;
-  --bg-surface: #FFFFFF;
-  --bg-surface-2: #F1F5F9;
-  --accent: #2563EB;
-  --accent-rgb: 37, 99, 235;
-  --accent-fg: #FFFFFF;
-  --accent-text: #2563EB;
-  --text-primary: #0F172A;
-  --text-muted: #475569;
-  --text-subtle: #94A3B8;
-  --border: #E2E8F0;
-  --overlay: rgba(0, 0, 0, 0.5);
-}
-
-/* --- Forest Light (light, green) --- */
-[data-theme="forest"] {
-  --bg-page: #FAFAF9;
-  --bg-surface: #FFFFFF;
-  --bg-surface-2: #F0FDF4;
-  --accent: #059669;
-  --accent-rgb: 5, 150, 105;
-  --accent-fg: #FFFFFF;
-  --accent-text: #059669;
-  --text-primary: #0F172A;
-  --text-muted: #4B5563;
-  --text-subtle: #9CA3AF;
-  --border: #D1FAE5;
-  --overlay: rgba(0, 0, 0, 0.5);
+  --danger: #F5604F;
+  --success: #3FBF71;
 }

@@ -42,8 +42,6 @@ export default function BottomNav() {
 
         {/* FAB — 업로드 */}
         <div className="relative flex flex-col items-center">
-          {/* pulse ring */}
-          <div className="absolute -top-7 h-14 w-14 rounded-full bg-accent opacity-30 animate-fab-pulse pointer-events-none" />
           <button
             onClick={handleUpload}
             className="absolute -top-7 flex h-14 w-14 items-center justify-center rounded-full bg-accent shadow-lg shadow-accent/30 transition-all active:scale-90 hover:shadow-accent/50 hover:shadow-xl"
