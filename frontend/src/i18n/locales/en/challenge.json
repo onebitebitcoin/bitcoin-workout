@@ -21,8 +21,9 @@
     "participantCount": "{{count}}",
     "completed": "Completed",
     "joined": "Joined",
-    "join": "Join",
-    "ended": "Ended"
+    "ended": "Ended",
+    "participants": "{{count}} joined",
+    "endsOn": "Ends {{date}}"
   },
   "create": {
     "title": "Create Challenge",

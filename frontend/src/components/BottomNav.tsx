@@ -23,20 +23,20 @@ export default function BottomNav() {
   }
 
   const navItem = ({ isActive }: { isActive: boolean }) =>
-    `flex flex-col items-center gap-0.5 px-3 py-1 text-xs transition-colors ${
-      isActive ? 'text-accent-text' : 'text-theme-subtle'
+    `flex flex-col items-center gap-1 px-3 py-1 text-label transition-colors ${
+      isActive ? 'text-accent-text' : 'text-theme-muted'
     }`
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-theme-border bg-theme-surface pb-safe lg:hidden" style={{ transform: 'translateZ(0)' }}>
       <div className="flex h-16 items-center justify-around">
         <NavLink to="/" end className={navItem}>
-          <Home size={22} strokeWidth={1.5} />
+          <Home size={22} strokeWidth={1.75} />
           <span>{t('nav.feed')}</span>
         </NavLink>
 
         <NavLink to="/challenges" className={navItem}>
-          <Target size={22} strokeWidth={1.5} />
+          <Target size={22} strokeWidth={1.75} />
           <span>{t('nav.challenges')}</span>
         </NavLink>
 
@@ -44,28 +44,29 @@ export default function BottomNav() {
         <div className="relative flex flex-col items-center">
           <button
             onClick={handleUpload}
-            className="absolute -top-7 flex h-14 w-14 items-center justify-center rounded-full bg-accent shadow-lg shadow-accent/30 transition-all active:scale-90 hover:shadow-accent/50 hover:shadow-xl"
+            className="absolute -top-7 flex h-14 w-14 items-center justify-center rounded-pill bg-accent shadow-[0_8px_24px_rgba(0,0,0,0.5)] transition-transform active:scale-90"
             aria-label={t('nav.uploadAria')}
           >
             <Plus size={24} strokeWidth={2} color="var(--accent-fg)" />
           </button>
-          <span className="mt-1 text-xs text-transparent select-none" aria-hidden="true">.</span>
+          <span className="mt-1 text-label text-transparent select-none" aria-hidden="true">.</span>
         </div>
 
         <NavLink to="/notifications" className={navItem}>
           <span className="relative">
-            <Bell size={22} strokeWidth={1.5} />
+            <Bell size={22} strokeWidth={1.75} />
             {unreadCount > 0 && (
-              <span className="absolute -top-1.5 -right-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold leading-none text-white">
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
+              <span
+                className="absolute -top-1 -right-1 h-2 w-2 rounded-pill bg-danger ring-2 ring-theme-surface"
+                aria-label={t('nav.unreadAria', { count: unreadCount })}
+              />
             )}
           </span>
           <span>{t('nav.notifications')}</span>
         </NavLink>
 
         <NavLink to="/profile" className={navItem}>
-          <UserCircle size={22} strokeWidth={1.5} />
+          <UserCircle size={22} strokeWidth={1.75} />
           <span>{t('nav.profile')}</span>
         </NavLink>
       </div>

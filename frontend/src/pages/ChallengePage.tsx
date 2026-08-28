@@ -1,15 +1,21 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Search, Target, Users, CheckCircle, Plus } from 'lucide-react'
+import { Search, Target, ChevronRight, Plus } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import client from '../api/client'
 import type { Challenge } from '../api/types'
 import { useAuthStore } from '../store/auth'
 
-function formatMonthDay(dateStr: string) {
-  const d = new Date(dateStr)
-  return `${d.getMonth() + 1}/${d.getDate()}`
+// 시간/날짜는 한국 시간(Asia/Seoul) 기준
+function formatEndDate(dateStr: string, lang: string) {
+  const isEn = lang.startsWith('en')
+  // ko-KR + numeric 은 "10. 7." 처럼 마침표로 끝난다. long 이어야 "10월 7일"이 된다.
+  return new Intl.DateTimeFormat(isEn ? 'en-US' : 'ko-KR', {
+    month: isEn ? 'short' : 'long',
+    day: 'numeric',
+    timeZone: 'Asia/Seoul',
+  }).format(new Date(dateStr))
 }
 
 function ChallengeCard({
@@ -19,11 +25,29 @@ function ChallengeCard({
   challenge: Challenge
   onNavigate: (id: number) => void
 }) {
-  const { t } = useTranslation('challenge')
+  const { t, i18n } = useTranslation('challenge')
+
+  // 카드 전체가 상세로 가는 탭 타깃이다. 그 안에 버튼처럼 생긴 것을 두지 않고
+  // 오른쪽에는 상태만 알린다 — 아직 참여 전이면 갈 곳이 있다는 표시(화살표)만.
+  const status = !challenge.is_active ? (
+    <span className="text-label text-theme-muted shrink-0">{t('card.ended')}</span>
+  ) : challenge.completed ? (
+    <span className="text-label font-semibold text-accent-text shrink-0">{t('card.completed')}</span>
+  ) : challenge.joined ? (
+    <span className="text-label font-semibold text-accent-text shrink-0">
+      {challenge.my_upload_count > 0
+        ? t('card.certCount', { count: challenge.my_upload_count })
+        : t('card.joined')}
+    </span>
+  ) : (
+    <ChevronRight size={18} strokeWidth={1.75} className="text-theme-muted shrink-0" />
+  )
 
   return (
     <div
-      className="rounded-xl bg-theme-surface cursor-pointer active:opacity-80 overflow-hidden flex"
+      className={`rounded-card bg-theme-surface cursor-pointer active:opacity-80 overflow-hidden flex ${
+        challenge.is_active ? '' : 'opacity-60'
+      }`}
       onClick={() => onNavigate(challenge.id)}
     >
       {(challenge.image_thumb_url ?? challenge.image_url) ? (
@@ -38,46 +62,20 @@ function ChallengeCard({
         <div className="w-24 flex-shrink-0 bg-theme-surface2 self-stretch" />
       )}
 
-      <div className="flex-1 min-w-0 px-3 py-2.5 flex flex-col gap-1">
-        {/* title + completed icon */}
-        <div className="flex items-center justify-between gap-2">
-          <h3 className="font-semibold text-theme-primary text-sm leading-tight truncate">{challenge.title}</h3>
-          {!challenge.is_active && (
-            <span className="shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-zinc-700/50 text-theme-muted">{t('card.ended')}</span>
-          )}
-          {challenge.is_active && challenge.completed && <CheckCircle size={15} className="text-accent flex-shrink-0" />}
-        </div>
+      <div className="flex-1 min-w-0 px-5 py-4 flex flex-col gap-2">
+        <h3 className="text-lead text-theme-primary truncate">{challenge.title}</h3>
 
-        {/* description */}
         {challenge.description && (
-          <p className="text-[11px] text-theme-muted leading-snug line-clamp-1">{challenge.description}</p>
+          <p className="text-body text-theme-muted truncate">{challenge.description}</p>
         )}
 
-        {/* progress */}
-        {challenge.joined && (
-          <div className="flex items-center gap-1 text-[10px] text-accent font-medium">
-            <CheckCircle size={10} strokeWidth={2} />
-            {t('card.certCount', { count: challenge.my_upload_count })}
-          </div>
-        )}
-
-        {/* bottom info + button */}
-        <div className="flex items-center justify-between mt-auto pt-0.5">
-          <div className="flex items-center gap-1 text-[10px] text-theme-subtle">
-            <Users size={11} />
-            <span>{t('card.participantCount', { count: challenge.participant_count })}</span>
-            <span>·</span>
-            <span>~{formatMonthDay(challenge.end_date)}</span>
-          </div>
-          {challenge.completed ? (
-            <span className="text-[10px] font-semibold text-accent">{t('card.completed')}</span>
-          ) : challenge.joined ? (
-            <span className="text-[10px] font-semibold text-accent">{t('card.joined')}</span>
-          ) : (
-            <span className="rounded-lg bg-accent px-2.5 py-1 text-[10px] font-semibold text-accent-fg">
-              {t('card.join')}
-            </span>
-          )}
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-label text-theme-muted truncate">
+            {t('card.participants', { count: challenge.participant_count })}
+            {' · '}
+            {t('card.endsOn', { date: formatEndDate(challenge.end_date, i18n.language) })}
+          </span>
+          {status}
         </div>
       </div>
     </div>
@@ -106,17 +104,17 @@ export default function ChallengePage() {
 
   return (
     <div className="flex flex-col h-[100dvh] overflow-y-auto bg-theme-page pb-nav-safe lg:max-w-2xl lg:mx-auto">
-      <div className="px-4 pt-5 pb-3 flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-bold text-theme-primary">{t('pageTitle')}</h1>
-          <p className="text-xs text-theme-muted mt-0.5">{t('pageSubtitle')}</p>
+      <div className="px-5 pt-8 pb-5 flex items-start justify-between gap-5">
+        <div className="flex flex-col gap-2 min-w-0">
+          <h1 className="text-display text-theme-primary">{t('pageTitle')}</h1>
+          <p className="text-body text-theme-muted">{t('pageSubtitle')}</p>
         </div>
         {user && (
           <button
             onClick={() => navigate('/challenges/create')}
-            className="flex items-center gap-1.5 rounded-xl bg-accent px-3 py-1.5 text-xs font-semibold text-accent-fg"
+            className="h-11 shrink-0 flex items-center gap-2 rounded-card bg-accent px-4 text-label font-semibold text-accent-fg"
           >
-            <Plus size={13} />
+            <Plus size={18} strokeWidth={2} />
             {t('addChallenge')}
           </button>
         )}
@@ -124,13 +122,15 @@ export default function ChallengePage() {
 
       {/* filters */}
       {user && (
-        <div className="px-4 mb-3 flex gap-2">
+        <div className="px-5 mb-3 flex gap-2">
           {(['all', 'joined', 'available', 'closed'] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                filter === f ? 'bg-accent text-accent-fg' : 'bg-theme-surface text-theme-muted'
+              className={`h-9 rounded-pill px-4 text-label transition-colors ${
+                filter === f
+                  ? 'bg-accent font-semibold text-accent-fg'
+                  : 'bg-theme-surface text-theme-muted'
               }`}
             >
               {t(`filter.${f}`)}
@@ -140,27 +140,27 @@ export default function ChallengePage() {
       )}
 
       {/* search */}
-      <div className="px-4 mb-4">
-        <div className="flex items-center gap-2 rounded-xl bg-theme-surface px-3 py-2.5">
-          <Search size={16} className="text-theme-subtle flex-shrink-0" />
+      <div className="px-5 mb-5">
+        <div className="flex items-center gap-3 h-12 rounded-card bg-theme-surface px-4">
+          <Search size={18} strokeWidth={1.75} className="text-theme-muted flex-shrink-0" />
           <input
             type="text"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder={t('searchPlaceholder')}
-            className="flex-1 bg-transparent text-sm text-theme-primary placeholder-theme-subtle outline-none"
+            className="flex-1 bg-transparent text-body text-theme-primary placeholder-theme-muted outline-none"
           />
         </div>
       </div>
 
       {isLoading ? (
         <div className="flex justify-center py-16">
-          <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+          <div className="w-5 h-5 border-2 border-accent border-t-transparent rounded-pill animate-spin" />
         </div>
       ) : challenges.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-2 py-16 text-center px-6">
+        <div className="flex flex-col items-center justify-center gap-3 py-16 text-center px-5">
           <Target size={40} className="text-theme-surface2" strokeWidth={1} />
-          <p className="text-sm text-theme-muted">
+          <p className="text-body text-theme-muted">
             {filter === 'joined'
               ? t('empty.joined')
               : filter === 'available'
@@ -173,7 +173,7 @@ export default function ChallengePage() {
           </p>
         </div>
       ) : (
-        <div className="px-4 flex flex-col gap-3">
+        <div className="px-5 flex flex-col gap-3">
           {challenges.map((c) => (
             <ChallengeCard
               key={c.id}

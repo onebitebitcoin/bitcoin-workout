@@ -30,7 +30,8 @@
     "upload": "업로드",
     "profile": "프로필",
     "uploadAria": "오늘 하루 올리기",
-    "notifications": "알림"
+    "notifications": "알림",
+    "unreadAria": "읽지 않은 알림 {{count}}개"
   },
   "language": "언어",
   "languageKo": "한국어",

@@ -21,8 +21,9 @@
     "participantCount": "{{count}}명",
     "completed": "완료",
     "joined": "참여중",
-    "join": "참여하기",
-    "ended": "종료됨"
+    "ended": "종료됨",
+    "participants": "참여 {{count}}명",
+    "endsOn": "{{date}} 종료"
   },
   "create": {
     "title": "챌린지 만들기",

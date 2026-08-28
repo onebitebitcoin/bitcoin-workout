@@ -8,10 +8,12 @@ import UserAvatar from '../components/UserAvatar'
 
 const ANDROID_APK_URL = 'https://github.com/onebitebitcoin/stack-health/releases/download/v0.11.1-android/app-release.apk'
 
-const ROW = 'flex items-center justify-between px-4 py-3.5'
-const LABEL = 'text-sm text-theme-primary'
-const GROUP = 'rounded-xl bg-theme-surface overflow-hidden'
-const SECTION = 'text-[10px] font-medium uppercase tracking-widest text-theme-muted px-1 mb-2'
+const ROW = 'flex items-center justify-between gap-3 px-5 py-3 min-h-16'
+const LABEL = 'text-body text-theme-primary'
+// 옮겨 적는 값(아이디·이메일·주소·버전)은 Mono
+const VALUE = 'text-label font-mono text-theme-muted'
+const GROUP = 'rounded-card bg-theme-surface overflow-hidden'
+const SECTION = 'text-eyebrow text-theme-muted px-1 mb-3'
 
 export default function SettingsPage() {
   const navigate = useNavigate()
@@ -159,14 +161,14 @@ export default function SettingsPage() {
   return (
     <div className="flex flex-col h-[100dvh] bg-theme-page pb-nav-safe lg:max-w-2xl lg:mx-auto">
       {/* 헤더 */}
-      <div className="flex items-center gap-3 px-4 pt-5 pb-4">
-        <button onClick={() => navigate(-1)} className="p-1 text-theme-muted hover:text-theme-primary transition-colors">
-          <ChevronLeft size={20} strokeWidth={1.5} />
+      <div className="flex flex-col gap-2 px-5 pt-6 pb-5">
+        <button onClick={() => navigate(-1)} className="-ml-3 h-11 w-11 flex items-center justify-center text-theme-muted hover:text-theme-primary transition-colors">
+          <ChevronLeft size={18} strokeWidth={1.75} />
         </button>
-        <h1 className="text-base font-bold text-theme-primary">{t('profile:settings')}</h1>
+        <h1 className="text-display text-theme-primary">{t('profile:settings')}</h1>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 pt-4 space-y-4">
+      <div className="flex-1 overflow-y-auto px-5 space-y-6">
 
         {/* 계정 */}
         <div>
@@ -187,10 +189,10 @@ export default function SettingsPage() {
                     profileColor={(user?.app_settings?.profile_color as string | null) ?? null}
                     size={44}
                   />
-                  <div className={`absolute inset-0 rounded-full flex items-center justify-center bg-black/40 transition-opacity ${avatarUploading ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                  <div className={`absolute inset-0 rounded-pill flex items-center justify-center bg-black/40 transition-opacity ${avatarUploading ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                     {avatarUploading
-                      ? <Loader2 size={16} className="text-white animate-spin" />
-                      : <Camera size={16} className="text-white" />
+                      ? <Loader2 size={18} className="text-white animate-spin" />
+                      : <Camera size={18} className="text-white" />
                     }
                   </div>
                 </label>
@@ -205,22 +207,22 @@ export default function SettingsPage() {
                 />
               </div>
             </div>
-            {avatarError && <p className="text-[10px] text-red-400 px-4 py-1">{avatarError}</p>}
+            {avatarError && <p className="text-label text-danger px-5 pb-2">{avatarError}</p>}
 
             {/* 닉네임 */}
             <div>
               <div className={ROW}>
                 <span className={LABEL}>{t('profile:nickname')}</span>
                 {!editingUsername ? (
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm text-theme-subtle">@{user?.username}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-label font-mono text-theme-muted">@{user?.username}</span>
                     {usernameSaved
-                      ? <Check size={11} className="text-green-400" />
+                      ? <Check size={14} className="text-success" />
                       : <button
                           onClick={() => { setEditingUsername(true); setUsernameInput(user?.username ?? '') }}
                           className="text-theme-muted hover:text-theme-primary transition-colors"
                         >
-                          <Pencil size={13} strokeWidth={1.5} />
+                          <Pencil size={18} strokeWidth={1.75} />
                         </button>
                     }
                   </div>
@@ -232,25 +234,25 @@ export default function SettingsPage() {
                       onChange={(e) => setUsernameInput(e.target.value)}
                       autoFocus
                       maxLength={30}
-                      className="w-36 bg-theme-surface2 rounded-lg px-2.5 py-1 text-sm text-theme-primary outline-none border border-accent"
+                      className="w-40 bg-theme-surface2 rounded-card px-3 py-2 text-body text-theme-primary outline-none border border-accent"
                     />
                     <button type="submit" disabled={savingUsername} className="text-accent disabled:opacity-50">
-                      <Check size={15} />
+                      <Check size={18} strokeWidth={1.75} />
                     </button>
                     <button type="button" onClick={() => { setEditingUsername(false); setUsernameError('') }} className="text-theme-muted">
-                      <X size={15} />
+                      <X size={18} strokeWidth={1.75} />
                     </button>
                   </form>
                 )}
               </div>
-              {usernameError && <p className="text-[10px] text-red-400 px-4 pb-2">{usernameError}</p>}
+              {usernameError && <p className="text-label text-danger px-5 pb-3">{usernameError}</p>}
             </div>
 
             {/* 이메일 */}
             <div>
               <div className={ROW}>
                 <span className={LABEL}>{t('profile:email')}</span>
-                <span className="text-sm text-theme-subtle truncate max-w-[180px]">{user?.email}</span>
+                <span className={`${VALUE} truncate max-w-[200px]`}>{user?.email}</span>
               </div>
             </div>
 
@@ -259,10 +261,10 @@ export default function SettingsPage() {
               <div className={ROW}>
                 <span className={LABEL}>{t('profile:lightningAddress')}</span>
                 {!editingLn ? (
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-2">
                     {lnSaved
-                      ? <span className="flex items-center gap-1 text-xs text-green-400"><Check size={11} />{t('common:saved')}</span>
-                      : <span className="text-sm text-theme-subtle truncate max-w-[150px]">
+                      ? <span className="flex items-center gap-1 text-label text-success"><Check size={14} />{t('common:saved')}</span>
+                      : <span className={`truncate max-w-[170px] text-label text-theme-muted ${user?.lightning_address ? 'font-mono' : ''}`}>
                           {user?.lightning_address ?? t('profile:lightningAddressPlaceholder')}
                         </span>
                     }
@@ -271,31 +273,31 @@ export default function SettingsPage() {
                         onClick={() => { setEditingLn(true); setLnInput(user?.lightning_address ?? '') }}
                         className="text-theme-muted hover:text-theme-primary transition-colors flex-shrink-0"
                       >
-                        <Pencil size={13} strokeWidth={1.5} />
+                        <Pencil size={18} strokeWidth={1.75} />
                       </button>
                     )}
                   </div>
                 ) : null}
               </div>
               {editingLn && (
-                <form onSubmit={saveLightningAddress} className="px-4 pb-3 space-y-1">
-                  <div className="flex items-center gap-2 rounded-lg bg-theme-surface2 px-3 py-2">
+                <form onSubmit={saveLightningAddress} className="px-5 pb-4 space-y-2">
+                  <div className="flex items-center gap-3 rounded-card bg-theme-surface2 px-4 py-3">
                     <input
                       type="text"
                       value={lnInput}
                       onChange={(e) => { setLnInput(e.target.value); setLnError('') }}
                       placeholder="you@wallet.com"
                       autoFocus
-                      className="flex-1 bg-transparent text-sm text-theme-primary outline-none font-mono"
+                      className="flex-1 bg-transparent text-body font-mono text-theme-primary outline-none"
                     />
                     <button type="submit" disabled={saving} className="text-accent disabled:opacity-50">
-                      <Check size={15} />
+                      <Check size={18} strokeWidth={1.75} />
                     </button>
                     <button type="button" onClick={() => { setEditingLn(false); setLnError('') }} className="text-theme-muted">
-                      <X size={15} />
+                      <X size={18} strokeWidth={1.75} />
                     </button>
                   </div>
-                  {lnError && <p className="text-[10px] text-red-400">{lnError}</p>}
+                  {lnError && <p className="text-label text-danger">{lnError}</p>}
                 </form>
               )}
             </div>
@@ -307,27 +309,27 @@ export default function SettingsPage() {
           <p className={SECTION}>{t('common:language')}</p>
           <div className={GROUP}>
             <div className={ROW}>
-              <div className="flex items-center gap-2">
-                <Globe size={13} className="text-theme-muted" />
+              <div className="flex items-center gap-3">
+                <Globe size={18} strokeWidth={1.75} className="text-theme-muted" />
                 <span className={LABEL}>{t('profile:languageToggleLabel')}</span>
               </div>
-              <div className="flex items-center gap-1 bg-theme-surface2 rounded-lg p-0.5">
+              <div className="flex items-center gap-1 bg-theme-surface2 rounded-pill p-1">
                 <button
                   onClick={() => handleLanguageChange('ko')}
-                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                  className={`h-9 px-4 rounded-pill text-label transition-colors ${
                     currentLang === 'ko'
-                      ? 'bg-accent text-white'
-                      : 'text-theme-subtle hover:text-theme-primary'
+                      ? 'bg-accent font-semibold text-accent-fg'
+                      : 'text-theme-muted hover:text-theme-primary'
                   }`}
                 >
                   {t('common:languageKo')}
                 </button>
                 <button
                   onClick={() => handleLanguageChange('en')}
-                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                  className={`h-9 px-4 rounded-pill text-label transition-colors ${
                     currentLang === 'en'
-                      ? 'bg-accent text-white'
-                      : 'text-theme-subtle hover:text-theme-primary'
+                      ? 'bg-accent font-semibold text-accent-fg'
+                      : 'text-theme-muted hover:text-theme-primary'
                   }`}
                 >
                   {t('common:languageEn')}
@@ -349,10 +351,10 @@ export default function SettingsPage() {
               className={ROW}
             >
               <div className="flex items-center gap-2">
-                <Smartphone size={13} className="text-[#3DDC84]" />
+                <Smartphone size={18} strokeWidth={1.75} className="text-[#3DDC84]" />
                 <span className={LABEL}>{t('profile:androidApk')}</span>
               </div>
-              <Download size={14} className="text-theme-muted" />
+              <Download size={18} strokeWidth={1.75} className="text-theme-muted" />
             </a>
 
             {/* iOS PWA */}
@@ -361,21 +363,21 @@ export default function SettingsPage() {
               className={`w-full ${ROW}`}
             >
               <div className="flex items-center gap-2">
-                <Smartphone size={13} className="text-blue-400" />
+                <Smartphone size={18} strokeWidth={1.75} className="text-blue-400" />
                 <span className={LABEL}>{t('profile:iosPwa')}</span>
               </div>
-              <ChevronDown size={14} className={`text-theme-muted transition-transform ${showIosGuide ? 'rotate-180' : ''}`} />
+              <ChevronDown size={18} strokeWidth={1.75} className={`text-theme-muted transition-transform ${showIosGuide ? 'rotate-180' : ''}`} />
             </button>
 
             {showIosGuide && (
-              <div className="px-4 pb-3 space-y-1.5">
+              <div className="px-5 pb-4 space-y-2">
                 {([
                   t('profile:iosGuideStep1'),
                   t('profile:iosGuideStep2'),
                   t('profile:iosGuideStep3'),
                   t('profile:iosGuideStep4'),
                 ] as string[]).map((step) => (
-                  <p key={step} className="text-xs text-theme-subtle">{step}</p>
+                  <p key={step} className="text-label text-theme-muted">{step}</p>
                 ))}
               </div>
             )}
@@ -390,26 +392,26 @@ export default function SettingsPage() {
               onClick={() => navigate('/invite')}
               className={`w-full ${ROW}`}
             >
-              <span className={`${LABEL} flex items-center gap-2`}><UserPlus size={15} className="text-theme-muted" /> {t('profile:inviteFriends')}</span>
-              <ChevronRight size={14} className="text-theme-muted" />
+              <span className={`${LABEL} flex items-center gap-3`}><UserPlus size={18} strokeWidth={1.75} className="text-theme-muted" /> {t('profile:inviteFriends')}</span>
+              <ChevronRight size={18} strokeWidth={1.75} className="text-theme-muted" />
             </button>
             <button
               onClick={() => navigate('/terms')}
               className={`w-full ${ROW}`}
             >
               <span className={LABEL}>{t('profile:terms')}</span>
-              <ChevronRight size={14} className="text-theme-muted" />
+              <ChevronRight size={18} strokeWidth={1.75} className="text-theme-muted" />
             </button>
             <div className={ROW}>
               <span className={LABEL}>{t('profile:version')}</span>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-theme-subtle font-mono">v{__APP_VERSION__}</span>
+                <span className={VALUE}>v{__APP_VERSION__}</span>
                 <button
                   onClick={() => window.location.reload()}
-                  className="text-theme-subtle hover:text-theme-muted transition-colors active:opacity-50"
+                  className="text-theme-muted hover:text-theme-primary transition-colors active:opacity-50"
                   aria-label={t('common:retry')}
                 >
-                  <RefreshCw size={12} />
+                  <RefreshCw size={18} strokeWidth={1.75} />
                 </button>
               </div>
             </div>
@@ -423,14 +425,14 @@ export default function SettingsPage() {
             <div className={ROW}>
               <div>
                 <span className={LABEL}>{t('profile:developerMode')}</span>
-                <p className="text-[11px] text-theme-muted mt-0.5">{t('profile:developerModeDesc')}</p>
+                <p className="text-label text-theme-muted mt-1">{t('profile:developerModeDesc')}</p>
               </div>
               <button
                 onClick={toggleDevMode}
                 disabled={devModeLoading}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ${devMode ? 'bg-accent' : 'bg-theme-surface2'} disabled:opacity-50`}
+                className={`relative inline-flex h-6 w-11 items-center rounded-pill transition-colors duration-200 ${devMode ? 'bg-accent' : 'bg-theme-surface2'} disabled:opacity-50`}
               >
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-200 ${devMode ? 'translate-x-6' : 'translate-x-1'}`} />
+                <span className={`inline-block h-4 w-4 transform rounded-pill bg-white shadow transition-transform duration-200 ${devMode ? 'translate-x-6' : 'translate-x-1'}`} />
               </button>
             </div>
           </div>
@@ -439,9 +441,9 @@ export default function SettingsPage() {
         {/* 로그아웃 */}
         <button
           onClick={() => { logout(); window.location.href = '/login' }}
-          className="w-full flex items-center justify-center gap-2 rounded-xl bg-red-500/10 px-4 py-3.5 text-sm font-semibold text-red-400 hover:bg-red-500/20 active:opacity-70 transition-colors"
+          className="w-full h-14 flex items-center justify-center gap-3 rounded-card bg-theme-surface px-5 text-body font-semibold text-danger hover:bg-theme-surface2 active:opacity-70 transition-colors"
         >
-          <LogOut size={15} strokeWidth={2} />
+          <LogOut size={18} strokeWidth={1.75} />
           {t('profile:logout')}
         </button>
 

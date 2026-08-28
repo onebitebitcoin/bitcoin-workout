@@ -30,7 +30,8 @@
     "upload": "Upload",
     "profile": "Profile",
     "uploadAria": "Upload today's moment",
-    "notifications": "Notifications"
+    "notifications": "Notifications",
+    "unreadAria": "{{count}} unread notifications"
   },
   "language": "Language",
   "languageKo": "한국어",
