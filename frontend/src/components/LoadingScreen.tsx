@@ -9,10 +9,10 @@ export default function LoadingScreen() {
         <LogoMark aria-hidden="true" size={56} />
       </div>
       <div className="text-center">
-        <p className="text-sm font-semibold tracking-widest text-theme-primary uppercase">
+        <p className="text-body font-semibold tracking-widest text-theme-primary uppercase">
           Bitcoiners
         </p>
-        <p className="mt-1 text-xs text-theme-muted">{t('loadingStack')}</p>
+        <p className="mt-1 text-label text-theme-muted">{t('loadingStack')}</p>
       </div>
     </div>
   )

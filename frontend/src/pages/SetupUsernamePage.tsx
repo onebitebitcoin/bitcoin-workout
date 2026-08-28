@@ -141,21 +141,21 @@ export default function SetupUsernamePage() {
 
   return (
     <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-theme-page px-6">
-      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-theme-surface text-accent">
+      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-card bg-theme-surface text-accent">
         <LogoMark aria-label={t('logoAlt')} role="img" size={40} />
       </div>
-      <p className="mb-1 text-xs font-bold tracking-[0.28em] text-accent uppercase">Bitcoiners</p>
-      <p className="mb-8 text-sm text-theme-muted">{t('setupProfileTitle')}</p>
+      <p className="mb-1 text-label font-bold tracking-[0.28em] text-accent uppercase">Bitcoiners</p>
+      <p className="mb-8 text-body text-theme-muted">{t('setupProfileTitle')}</p>
 
       <div className="w-full max-w-sm">
         <div className="flex justify-center mb-6">
           <div className="relative">
             <label htmlFor="setup-avatar-input" className="cursor-pointer">
               {previewUrl ? (
-                <img src={previewUrl} alt={t('profileAlt')} className="h-20 w-20 rounded-full object-cover" />
+                <img src={previewUrl} alt={t('profileAlt')} className="h-20 w-20 rounded-pill object-cover" />
               ) : (
                 <div
-                  className="h-20 w-20 rounded-full flex items-center justify-center font-bold text-white text-3xl"
+                  className="h-20 w-20 rounded-pill flex items-center justify-center text-white text-display"
                   style={{ backgroundColor: displayColor }}
                 >
                   {username ? username[0].toUpperCase() : '?'}
@@ -164,10 +164,10 @@ export default function SetupUsernamePage() {
             </label>
             <label
               htmlFor="setup-avatar-input"
-              className={`absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-accent text-accent-fg shadow-md ${uploading ? 'pointer-events-none opacity-60' : 'cursor-pointer'}`}
+              className={`absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-pill bg-accent text-accent-fg shadow-md ${uploading ? 'pointer-events-none opacity-60' : 'cursor-pointer'}`}
             >
               {uploading ? (
-                <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-accent-fg border-t-transparent" />
+                <div className="h-3.5 w-3.5 animate-spin rounded-pill border-2 border-accent-fg border-t-transparent" />
               ) : (
                 <Camera size={13} strokeWidth={2} />
               )}
@@ -184,13 +184,13 @@ export default function SetupUsernamePage() {
           </div>
         </div>
 
-        <p className="text-center text-xs text-theme-muted mb-6 -mt-2">
+        <p className="text-center text-label text-theme-muted mb-6 -mt-2">
           {t('changePhoto')}
         </p>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
-            <p className="text-xs text-theme-muted mb-1.5 ml-1">{t('nicknameLabel')}</p>
+            <p className="text-label text-theme-muted mb-2 ml-1">{t('nicknameLabel')}</p>
             <div className="relative">
               <input
                 type="text"
@@ -200,33 +200,33 @@ export default function SetupUsernamePage() {
                 minLength={2}
                 maxLength={30}
                 required
-                className="w-full rounded-lg bg-theme-surface px-4 py-3 pr-10 text-theme-primary placeholder-theme-subtle outline-none focus:ring-2 focus:ring-accent"
+                className="w-full rounded-card bg-theme-surface px-4 py-3 pr-10 text-theme-primary placeholder-theme-muted outline-none focus:ring-2 focus:ring-accent"
               />
               {username.length >= 2 && !checking && (
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  {available === true && <CheckCircle size={18} className="text-green-500" />}
-                  {available === false && <XCircle size={18} className="text-red-400" />}
+                  {available === true && <CheckCircle size={18} className="text-success" />}
+                  {available === false && <XCircle size={18} className="text-danger" />}
                 </div>
               )}
               {checking && (
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+                  <div className="h-4 w-4 animate-spin rounded-pill border-2 border-accent border-t-transparent" />
                 </div>
               )}
             </div>
             {username.length >= 2 && !checking && (
-              <p className={`mt-1 text-xs ml-1 ${available ? 'text-green-500' : 'text-red-400'}`}>
+              <p className={`mt-1 text-label ml-1 ${available ? 'text-success' : 'text-danger'}`}>
                 {available ? t('usernameAvailable') : t('usernameTaken')}
               </p>
             )}
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-1.5 ml-1">
-              <p className="text-xs text-theme-muted">
-                {t('lightningAddressLabel')} <span className="text-theme-subtle">{t('lightningAddressOptional')}</span>
+            <div className="flex items-center justify-between mb-2 ml-1">
+              <p className="text-label text-theme-muted">
+                {t('lightningAddressLabel')} <span className="text-theme-muted">{t('lightningAddressOptional')}</span>
               </p>
-              <Link to="/lightning-guide" className="text-xs text-accent underline underline-offset-2">
+              <Link to="/lightning-guide" className="text-label text-accent underline underline-offset-2">
                 {t('howToCreateWallet')}
               </Link>
             </div>
@@ -236,17 +236,17 @@ export default function SetupUsernamePage() {
                 placeholder="user@walletofsatoshi.com"
                 value={lightningAddress}
                 onChange={(e) => setLightningAddress(e.target.value)}
-                className="w-full rounded-lg bg-theme-surface py-3 px-4 text-theme-primary placeholder-theme-subtle outline-none focus:ring-2 focus:ring-accent"
+                className="w-full rounded-card bg-theme-surface py-3 px-4 text-theme-primary placeholder-theme-muted outline-none focus:ring-2 focus:ring-accent"
               />
             </div>
           </div>
 
-          {error && <p className="text-sm text-red-400">{error}</p>}
+          {error && <p className="text-body text-danger">{error}</p>}
 
           <button
             type="submit"
             disabled={!available || submitting || uploading}
-            className="w-full rounded-lg bg-accent py-3 font-semibold text-accent-fg transition-opacity disabled:opacity-40"
+            className="w-full rounded-card bg-accent py-3 font-semibold text-accent-fg transition-opacity disabled:opacity-40"
           >
             {submitting ? t('settingUp') : t('startButton')}
           </button>

@@ -16,21 +16,21 @@ export default function LoginPromptSheet({ onClose }: LoginPromptSheetProps) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg rounded-2xl bg-theme-surface p-6 shadow-2xl"
+        className="w-full max-w-lg rounded-card bg-theme-surface p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-1 h-1 w-10 rounded-full bg-theme-border mx-auto" />
-        <h2 className="mt-4 text-center text-lg font-bold text-theme-primary">{t('loginRequired')}</h2>
-        <p className="mt-1 text-center text-sm text-theme-muted">
+        <div className="mb-1 h-1 w-10 rounded-pill bg-theme-border mx-auto" />
+        <h2 className="mt-4 text-center text-title text-theme-primary">{t('loginRequired')}</h2>
+        <p className="mt-1 text-center text-body text-theme-muted">
           {t('loginToLike')}
         </p>
         <button
           onClick={() => navigate('/login')}
-          className="mt-5 w-full rounded-xl bg-accent py-3 font-semibold text-accent-fg"
+          className="mt-5 w-full rounded-card bg-accent py-3 font-semibold text-accent-fg"
         >
           {t('loginOrRegister')}
         </button>
-        <button onClick={onClose} className="mt-3 w-full py-2 text-sm text-theme-subtle">
+        <button onClick={onClose} className="mt-3 w-full py-2 text-body text-theme-muted">
           {t('later')}
         </button>
       </div>

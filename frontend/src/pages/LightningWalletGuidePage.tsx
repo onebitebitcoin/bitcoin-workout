@@ -3,20 +3,20 @@ import { useTranslation } from 'react-i18next'
 
 function StepList({ steps }: { steps: string[] }) {
   return (
-    <div className="rounded-xl border border-theme-border bg-theme-surface overflow-hidden">
+    <div className="rounded-card border border-theme-border bg-theme-surface overflow-hidden">
       {steps.map((step, i) => (
         <div
           key={i}
           className="flex items-start gap-3 px-4 py-3 border-b border-theme-border last:border-b-0"
         >
-          <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent/10 mt-0.5">
+          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-pill bg-accent/10 mt-1">
             {i === steps.length - 1 ? (
-              <CheckCircle size={13} className="text-accent" />
+              <CheckCircle size={14} className="text-accent" />
             ) : (
-              <span className="text-[11px] font-bold text-accent">{i + 1}</span>
+              <span className="text-label font-bold text-accent">{i + 1}</span>
             )}
           </div>
-          <p className="text-sm text-theme-primary leading-relaxed">{step}</p>
+          <p className="text-body text-theme-primary leading-relaxed">{step}</p>
         </div>
       ))}
     </div>
@@ -38,23 +38,23 @@ export default function LightningWalletGuidePage() {
   return (
     <div className="min-h-screen bg-theme-page px-5 py-6 max-w-lg mx-auto">
 <div className="mb-2">
-        <p className="font-bold text-theme-primary text-lg">{t('walletGuideTitle')}</p>
-        <p className="text-xs text-theme-muted">{t('walletGuideSubtitle')}</p>
+        <p className="text-theme-primary text-title">{t('walletGuideTitle')}</p>
+        <p className="text-label text-theme-muted">{t('walletGuideSubtitle')}</p>
       </div>
 
-      <p className="text-xs font-semibold uppercase tracking-wider text-theme-subtle mb-3">{t('installStep')}</p>
+      <p className="text-label font-semibold uppercase tracking-wider text-theme-muted mb-3">{t('installStep')}</p>
 
       <div className="space-y-4 mb-8">
         {/* Android */}
         <div>
           <div className="flex items-center gap-2 mb-2">
             <Smartphone size={14} className="text-theme-muted" />
-            <span className="text-sm font-medium text-theme-primary">Android</span>
+            <span className="text-body font-medium text-theme-primary">Android</span>
             <a
               href="https://play.google.com/store/apps/details?id=com.livingroomofsatoshi.wallet"
               target="_blank"
               rel="noopener noreferrer"
-              className="ml-auto flex items-center gap-1 rounded-lg bg-theme-surface px-3 py-1.5 text-xs font-medium text-accent border border-theme-border hover:bg-theme-surface2"
+              className="ml-auto flex items-center gap-1 rounded-card bg-theme-surface px-3 py-2 text-label font-medium text-accent border border-theme-border hover:bg-theme-surface2"
             >
               <Download size={12} />
               {t('playStore')}
@@ -67,12 +67,12 @@ export default function LightningWalletGuidePage() {
         <div>
           <div className="flex items-center gap-2 mb-2">
             <Smartphone size={14} className="text-theme-muted" />
-            <span className="text-sm font-medium text-theme-primary">iPhone (iOS)</span>
+            <span className="text-body font-medium text-theme-primary">iPhone (iOS)</span>
             <a
               href="https://apps.apple.com/app/wallet-of-satoshi/id1438599608"
               target="_blank"
               rel="noopener noreferrer"
-              className="ml-auto flex items-center gap-1 rounded-lg bg-theme-surface px-3 py-1.5 text-xs font-medium text-accent border border-theme-border hover:bg-theme-surface2"
+              className="ml-auto flex items-center gap-1 rounded-card bg-theme-surface px-3 py-2 text-label font-medium text-accent border border-theme-border hover:bg-theme-surface2"
             >
               <Download size={12} />
               {t('appStore')}
@@ -82,15 +82,15 @@ export default function LightningWalletGuidePage() {
         </div>
       </div>
 
-      <p className="text-xs font-semibold uppercase tracking-wider text-theme-subtle mb-3">{t('findAddressStep')}</p>
+      <p className="text-label font-semibold uppercase tracking-wider text-theme-muted mb-3">{t('findAddressStep')}</p>
 
-      <div className="rounded-xl border border-theme-border bg-theme-surface overflow-hidden mb-8">
+      <div className="rounded-card border border-theme-border bg-theme-surface overflow-hidden mb-8">
         {findAddressSteps.map((item, i) => (
           <div
             key={i}
-            className="flex items-start gap-3 px-4 py-3.5 border-b border-theme-border last:border-b-0"
+            className="flex items-start gap-3 px-4 py-4 border-b border-theme-border last:border-b-0"
           >
-            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent/10 mt-0.5">
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-pill bg-accent/10 mt-1">
               {i === findAddressSteps.length - 1 ? (
                 <CheckCircle size={14} className="text-accent" />
               ) : (
@@ -98,16 +98,16 @@ export default function LightningWalletGuidePage() {
               )}
             </div>
             <div>
-              <p className="text-sm font-medium text-theme-primary mb-0.5">{item.step}</p>
-              <p className="text-xs text-theme-muted leading-relaxed">{item.desc}</p>
+              <p className="text-body font-medium text-theme-primary mb-1">{item.step}</p>
+              <p className="text-label text-theme-muted leading-relaxed">{item.desc}</p>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="rounded-xl bg-yellow-500/5 border border-yellow-500/20 px-4 py-3 mb-6">
-        <p className="text-xs font-semibold text-yellow-500 mb-1">{t('lightningAddressFormat')}</p>
-        <p className="text-xs text-theme-muted leading-relaxed">
+      <div className="rounded-card bg-lightning/5 border border-lightning/20 px-4 py-3 mb-6">
+        <p className="text-label font-semibold text-lightning mb-1">{t('lightningAddressFormat')}</p>
+        <p className="text-label text-theme-muted leading-relaxed">
           {t('lightningAddressFormatDesc')}{' '}
           <span className="font-mono text-theme-primary">user@walletofsatoshi.com</span>
         </p>

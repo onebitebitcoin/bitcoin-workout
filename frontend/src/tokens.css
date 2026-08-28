@@ -8,7 +8,21 @@
    중성색 규칙: 각 테마의 배경/테두리/글자 회색은 그 테마의 강조색 쪽으로
    아주 조금만 기운다 (채도 0.02 이하). 중립 회색 위에 유채색 강조를 얹으면
    둘이 따로 논다.
+
+   글자 회색은 두 단(primary / muted)이다. 세 번째 단(subtle)은 10px 글자를
+   옅어 보이게 하려고만 있던 것이라 없앴다. 위계는 크기와 굵기가 만든다.
    ============================================= */
+
+/* --- 상태색·브랜드색: 테마와 무관하게 공통 ---
+   Tailwind 투명도 수식어(bg-danger/10, bg-accent/15)를 쓰려면 rgb 삼원색이어야 한다.
+   var(--x) 에 hex 를 담으면 rgb(var(--x) / .15) 가 성립하지 않아 그 클래스가
+   CSS 로 아예 생성되지 않는다 — 에러 없이 배경만 사라진다. */
+:root {
+  --danger-rgb: 245 96 79;
+  --success-rgb: 63 191 113;
+  --warning-rgb: 232 163 60;
+  --lightning-rgb: 247 201 72;
+}
 
 /* --- Default: Bitcoin Dark (dark, bitcoin orange) --- */
 :root,
@@ -16,16 +30,14 @@
   --bg-page: #0C0B0A;
   --bg-surface: #151311;
   --bg-surface-2: #201C18;
-  --accent: #F7931A;
+  --accent-rgb: 247 147 26;
+  --accent: rgb(var(--accent-rgb));
   --accent-fg: #14100B;
   --accent-text: #F7931A;       /* on --bg-page: 8.7:1 */
   --text-primary: #F7F4F1;
   --text-muted: #A29A92;        /* on --bg-page: 7.1:1 */
-  --text-subtle: #857D75;       /* on --bg-page: 4.9:1 — 화면 이관 후 삭제 예정 */
   --border: #2B2622;
   --overlay: rgba(0, 0, 0, 0.7);
-  --danger: #F5604F;
-  --success: #3FBF71;
 }
 
 /* --- Volt Dark (dark, lime) --- */
@@ -33,16 +45,14 @@
   --bg-page: #0B0C0A;
   --bg-surface: #131610;
   --bg-surface-2: #1C2018;
-  --accent: #B5FF2E;
+  --accent-rgb: 181 255 46;
+  --accent: rgb(var(--accent-rgb));
   --accent-fg: #0B0C0A;
   --accent-text: #B5FF2E;       /* on --bg-page: 15:1 */
   --text-primary: #F3F6F0;
   --text-muted: #9CA396;
-  --text-subtle: #7F867A;       /* 화면 이관 후 삭제 예정 */
   --border: #272C22;
   --overlay: rgba(0, 0, 0, 0.7);
-  --danger: #F5604F;
-  --success: #3FBF71;
 }
 
 /* --- Sapphire Premium (dark, blue) --- */
@@ -50,16 +60,14 @@
   --bg-page: #0A0A0C;
   --bg-surface: #131418;
   --bg-surface-2: #1C1E24;
-  --accent: #1E6FFF;
+  --accent-rgb: 30 111 255;
+  --accent: rgb(var(--accent-rgb));
   --accent-fg: #FFFFFF;
   --accent-text: #6FA1FF;       /* #1E6FFF은 어두운 배경에서 3.9:1로 미달 → 밝은 파랑 7.4:1 */
   --text-primary: #F1F3F7;
   --text-muted: #969CA8;
-  --text-subtle: #7B8290;       /* 화면 이관 후 삭제 예정 */
   --border: #272A31;
   --overlay: rgba(0, 0, 0, 0.7);
-  --danger: #F5604F;
-  --success: #3FBF71;
 }
 
 /* --- Royal Indigo (dark, purple) --- */
@@ -67,14 +75,12 @@
   --bg-page: #0C0B0E;
   --bg-surface: #16141A;
   --bg-surface-2: #201D28;
-  --accent: #7C3AED;
+  --accent-rgb: 124 58 237;
+  --accent: rgb(var(--accent-rgb));
   --accent-fg: #FFFFFF;
   --accent-text: #9B6FFF;       /* #7C3AED은 어두운 배경에서 미달 → 밝은 보라 */
   --text-primary: #F4F2F7;
   --text-muted: #A09AAA;
-  --text-subtle: #837D8D;       /* 화면 이관 후 삭제 예정 */
   --border: #2C2836;
   --overlay: rgba(0, 0, 0, 0.7);
-  --danger: #F5604F;
-  --success: #3FBF71;
 }

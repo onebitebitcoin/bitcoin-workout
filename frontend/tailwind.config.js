@@ -64,9 +64,9 @@ export default {
       },
       colors: {
         accent: {
-          DEFAULT: 'var(--accent)',
+          DEFAULT: 'rgb(var(--accent-rgb) / <alpha-value>)',
           fg: 'var(--accent-fg)',
-          text: 'var(--accent-text, var(--accent))',
+          text: 'var(--accent-text, rgb(var(--accent-rgb)))',
         },
         theme: {
           page: 'var(--bg-page)',
@@ -74,15 +74,15 @@ export default {
           surface2: 'var(--bg-surface-2)',
           border: 'var(--border)',
           primary: 'var(--text-primary)',
+          // 글자 회색은 두 단뿐이다. 위계는 크기와 굵기가 만든다.
           muted: 'var(--text-muted)',
-          // subtle은 10px 글자를 옅어 보이게 하려고만 존재했다.
-          // 화면 이관이 끝나면 지우고 muted 2단으로 간다.
-          subtle: 'var(--text-subtle)',
         },
         // 상태색. 지금까지 토큰이 없어서 red-300/400/500, green-400/500이
         // 화면마다 섞여 있었다 (팔레트 직접 호출 142곳).
-        danger: 'var(--danger)',
-        success: 'var(--success)',
+        danger: 'rgb(var(--danger-rgb) / <alpha-value>)',
+        success: 'rgb(var(--success-rgb) / <alpha-value>)',
+        warning: 'rgb(var(--warning-rgb) / <alpha-value>)',
+        lightning: 'rgb(var(--lightning-rgb) / <alpha-value>)',
       },
     },
   },

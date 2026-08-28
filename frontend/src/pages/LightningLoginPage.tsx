@@ -90,21 +90,21 @@ export default function LightningLoginPage() {
 
   return (
     <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-theme-page px-6">
-      <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-2xl bg-theme-surface text-accent">
+      <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-card bg-theme-surface text-accent">
         <LogoMark aria-label={t('logoAlt')} role="img" size={40} />
       </div>
-      <p className="mb-1 text-2xl font-bold text-accent">Bitcoiners</p>
-      <p className="mb-8 text-sm text-theme-muted">{t('lightningLoginTitle')}</p>
+      <p className="mb-1 text-display text-accent">Bitcoiners</p>
+      <p className="mb-8 text-body text-theme-muted">{t('lightningLoginTitle')}</p>
 
       <div className="w-full max-w-sm flex flex-col gap-4">
-        {lnLoading && <p className="text-center text-sm text-theme-muted">{t('qrGenerating')}</p>}
-        {lnError && <p className="text-center text-sm text-red-400">{lnError}</p>}
+        {lnLoading && <p className="text-center text-body text-theme-muted">{t('qrGenerating')}</p>}
+        {lnError && <p className="text-center text-body text-danger">{lnError}</p>}
         {lnExpired && (
           <div className="text-center">
-            <p className="mb-2 text-sm text-theme-muted">{t('qrExpired')}</p>
+            <p className="mb-2 text-body text-theme-muted">{t('qrExpired')}</p>
             <button
               onClick={startChallenge}
-              className="text-sm text-accent underline"
+              className="text-body text-accent underline"
             >
               {t('regenerate')}
             </button>
@@ -113,11 +113,11 @@ export default function LightningLoginPage() {
         {lnChallenge && !lnExpired && (
           <>
             <div className="flex justify-center">
-              <div className="rounded-xl bg-white p-4">
+              <div className="rounded-card bg-white p-4">
                 <QRCodeSVG value={`lightning:${lnChallenge.lnurl}`} size={200} />
               </div>
             </div>
-            <p className="text-center text-xs text-theme-muted">
+            <p className="text-center text-label text-theme-muted">
               {t('scanQrCode')}
             </p>
             <button
@@ -127,12 +127,12 @@ export default function LightningLoginPage() {
                   setTimeout(() => setLnCopied(false), 2000)
                 })
               }}
-              className="flex w-full items-center justify-center gap-2 rounded-lg border border-theme-border bg-theme-surface px-3 py-3 text-sm text-theme-muted transition-colors hover:bg-theme-surface2"
+              className="flex w-full items-center justify-center gap-2 rounded-card border border-theme-border bg-theme-surface px-3 py-3 text-body text-theme-muted transition-colors hover:bg-theme-surface2"
             >
               {lnCopied ? (
                 <>
-                  <Check size={15} className="text-green-500" />
-                  <span className="text-green-500">{t('copied')}</span>
+                  <Check size={15} className="text-success" />
+                  <span className="text-success">{t('copied')}</span>
                 </>
               ) : (
                 <>
@@ -141,8 +141,8 @@ export default function LightningLoginPage() {
                 </>
               )}
             </button>
-            <div className="flex items-center justify-center gap-2 text-xs text-theme-subtle">
-              <div className="h-2 w-2 animate-pulse rounded-full bg-yellow-500" />
+            <div className="flex items-center justify-center gap-2 text-label text-theme-muted">
+              <div className="h-2 w-2 animate-pulse rounded-pill bg-lightning" />
               {t('waitingForAuth')}
             </div>
           </>

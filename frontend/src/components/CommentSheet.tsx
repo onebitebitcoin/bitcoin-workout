@@ -31,15 +31,15 @@ function CommentRow({ comment, canDelete, onReply, onDelete }: CommentRowProps) 
         avatarUrl={comment.avatar_url}
         profileColor={comment.profile_color}
         size={28}
-        className="shrink-0 mt-0.5"
+        className="shrink-0 mt-1"
       />
       <div className="flex-1 min-w-0">
-        <span className="text-xs font-semibold text-zinc-300">@{comment.username}</span>
-        <p className="text-sm text-white mt-0.5 break-words">{comment.content}</p>
+        <span className="text-label font-semibold text-theme-primary">@{comment.username}</span>
+        <p className="text-body text-white mt-1 break-words">{comment.content}</p>
         <button
           type="button"
           onClick={() => onReply(comment)}
-          className="text-xs text-zinc-500 hover:text-zinc-300 mt-1"
+          className="text-label text-theme-muted hover:text-theme-primary mt-1"
         >
           {t('replyButton')}
         </button>
@@ -47,7 +47,7 @@ function CommentRow({ comment, canDelete, onReply, onDelete }: CommentRowProps) 
       {canDelete && (
         <button
           onClick={() => onDelete(comment)}
-          className="text-zinc-600 hover:text-red-400 mt-1 shrink-0"
+          className="text-theme-muted hover:text-danger mt-1 shrink-0"
         >
           <Trash2 size={14} />
         </button>
@@ -229,9 +229,9 @@ export default function CommentSheet({ postId, open, onClose, onLoginRequired }:
         ref={sheetRef}
         data-testid="comment-sheet"
         className={[
-          'fixed z-[60] flex flex-col bg-zinc-900/95 backdrop-blur duration-300',
+          'fixed z-[60] flex flex-col bg-theme-surface backdrop-blur duration-300',
           'bottom-0 left-0 right-0 rounded-t-2xl transition-transform',
-          'lg:bottom-auto lg:right-auto lg:top-1/2 lg:left-1/2 lg:w-full lg:max-w-md lg:rounded-2xl',
+          'lg:bottom-auto lg:right-auto lg:top-1/2 lg:left-1/2 lg:w-full lg:max-w-md lg:rounded-card',
           open
             ? 'translate-y-0 lg:-translate-x-1/2 lg:-translate-y-1/2'
             : 'translate-y-full lg:-translate-x-1/2 lg:opacity-0 lg:pointer-events-none',
@@ -239,9 +239,9 @@ export default function CommentSheet({ postId, open, onClose, onLoginRequired }:
         style={{ maxHeight: '75dvh' }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-theme-border">
           <span className="font-semibold text-white">{t('commentCount', { count: totalCount })}</span>
-          <button onClick={onClose} className="text-zinc-400 hover:text-white">
+          <button onClick={onClose} className="text-theme-muted hover:text-theme-primary">
             <X size={20} />
           </button>
         </div>
@@ -249,7 +249,7 @@ export default function CommentSheet({ postId, open, onClose, onLoginRequired }:
         {/* Comments list */}
         <div className="flex-1 overflow-y-auto px-4 py-2 space-y-3">
           {comments.length === 0 && (
-            <p className="text-center text-zinc-500 py-8 text-sm">{t('commentEmpty')}</p>
+            <p className="text-center text-theme-muted py-8 text-body">{t('commentEmpty')}</p>
           )}
           {comments.map((c) => (
             <div key={c.id} className="space-y-2">
@@ -260,7 +260,7 @@ export default function CommentSheet({ postId, open, onClose, onLoginRequired }:
                 onDelete={(target) => deleteComment.mutate(target)}
               />
               {c.replies && c.replies.length > 0 && (
-                <div className="ml-8 space-y-2 border-l border-zinc-800 pl-3">
+                <div className="ml-8 space-y-2 border-l border-theme-border pl-3">
                   {c.replies.map((r) => (
                     <CommentRow
                       key={r.id}
@@ -277,21 +277,21 @@ export default function CommentSheet({ postId, open, onClose, onLoginRequired }:
         </div>
 
         {/* Input */}
-        <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col px-4 py-3 border-t border-zinc-800 pb-safe gap-1">
+        <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col px-4 py-3 border-t border-theme-border pb-safe gap-1">
           {replyTo && (
-            <div className="flex items-center justify-between px-1 text-xs text-zinc-400">
+            <div className="flex items-center justify-between px-1 text-label text-theme-muted">
               <span>{t('replyingTo', { username: replyTo.username })}</span>
               <button
                 type="button"
                 onClick={() => setReplyTo(null)}
-                className="text-zinc-500 hover:text-white"
+                className="text-theme-muted hover:text-theme-primary"
               >
                 <X size={14} />
               </button>
             </div>
           )}
           {submitError && (
-            <p className="text-xs text-red-400 px-1">{submitError}</p>
+            <p className="text-label text-danger px-1">{submitError}</p>
           )}
           <div className="flex gap-2">
           <input
@@ -309,13 +309,13 @@ export default function CommentSheet({ postId, open, onClose, onLoginRequired }:
                   ? t('replyPlaceholder')
                   : t('commentPlaceholder')
             }
-            className="flex-1 rounded-full bg-zinc-800 px-4 py-2 text-base text-white placeholder-zinc-500 outline-none"
+            className="flex-1 rounded-pill bg-theme-surface2 px-4 py-2 text-body text-theme-primary placeholder-theme-muted outline-none"
             maxLength={500}
           />
           <button
             type="submit"
             disabled={!hasContent || addComment.isPending}
-            className="rounded-full bg-accent p-2 text-accent-fg disabled:opacity-40"
+            className="rounded-pill bg-accent p-2 text-accent-fg disabled:opacity-40"
           >
             <Send size={16} />
           </button>

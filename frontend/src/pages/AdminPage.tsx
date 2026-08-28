@@ -65,7 +65,7 @@ function UserDetailPanel({ userId, onClose }: { userId: number; onClose: () => v
   return (
     <div className="fixed inset-0 z-[70] bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
       <div
-        className="w-full max-w-lg max-h-[80dvh] overflow-y-auto rounded-2xl bg-theme-page p-4 space-y-4 shadow-2xl"
+        className="w-full max-w-lg max-h-[80dvh] overflow-y-auto rounded-card bg-theme-page p-4 space-y-4 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {isLoading && <p className="text-center text-theme-muted py-8">{t('loading')}</p>}
@@ -73,18 +73,18 @@ function UserDetailPanel({ userId, onClose }: { userId: number; onClose: () => v
           <>
             <div className="flex items-center justify-between">
               <div>
-                <p className="font-bold text-theme-primary text-lg">@{data.user.username}</p>
-                <p className="text-xs text-theme-muted">{data.user.email ?? t('noEmail')}</p>
+                <p className="text-theme-primary text-title">@{data.user.username}</p>
+                <p className="text-label text-theme-muted">{data.user.email ?? t('noEmail')}</p>
               </div>
-              <button onClick={onClose} className="text-theme-muted text-sm px-2 py-1">{t('userDetailClose')}</button>
+              <button onClick={onClose} className="text-theme-muted text-body px-2 py-1">{t('userDetailClose')}</button>
             </div>
 
             {data.challenges.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-theme-muted mb-2">{t('userDetailChallenges', { count: data.challenges.length })}</p>
+                <p className="text-label font-semibold text-theme-muted mb-2">{t('userDetailChallenges', { count: data.challenges.length })}</p>
                 <div className="space-y-1">
                   {data.challenges.map((c) => (
-                    <div key={c.challenge_id} className="flex items-center justify-between text-xs rounded-lg bg-theme-surface px-3 py-2">
+                    <div key={c.challenge_id} className="flex items-center justify-between text-label rounded-card bg-theme-surface px-3 py-2">
                       <span className="text-theme-primary flex-1 min-w-0 truncate">{c.title}</span>
                       <span className="ml-2 text-theme-muted shrink-0">
                         {t('challengeProgress', { upload: c.upload_count, total: c.condition_value })}{c.completed ? ' ✓' : ''}
@@ -95,7 +95,7 @@ function UserDetailPanel({ userId, onClose }: { userId: number; onClose: () => v
               </div>
             )}
 
-            <p className="text-xs text-theme-muted">{t('userDetailVideoCount', { count: data.videos.length })}</p>
+            <p className="text-label text-theme-muted">{t('userDetailVideoCount', { count: data.videos.length })}</p>
           </>
         )}
       </div>
@@ -208,7 +208,7 @@ export default function AdminPage() {
   if (!isAdmin) {
     return (
       <div className="flex h-[100dvh] flex-col items-center justify-center gap-3 bg-theme-page">
-        <p className="text-theme-muted text-sm">{t('adminOnly')}</p>
+        <p className="text-theme-muted text-body">{t('adminOnly')}</p>
       </div>
     )
   }
@@ -225,33 +225,33 @@ export default function AdminPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/profile')}
-            className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-theme-surface transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-pill hover:bg-theme-surface transition-colors"
           >
             <ArrowLeft size={18} strokeWidth={2} className="text-theme-primary" />
           </button>
           <div>
-            <h1 className="text-xl font-bold text-theme-primary">Admin</h1>
-            <p className="text-xs text-theme-muted">@{user?.username}</p>
+            <h1 className="text-display text-theme-primary">Admin</h1>
+            <p className="text-label text-theme-muted">@{user?.username}</p>
           </div>
         </div>
 
         <button
           onClick={() => navigate('/admin/surveys')}
-          className="flex w-full items-center justify-between rounded-xl bg-theme-surface px-4 py-3"
+          className="flex w-full items-center justify-between rounded-card bg-theme-surface px-4 py-3"
         >
           <div className="flex items-center gap-2">
             <ClipboardList size={15} className="text-theme-muted" />
-            <span className="text-sm font-semibold text-theme-primary">설문 관리</span>
+            <span className="text-body font-semibold text-theme-primary">설문 관리</span>
           </div>
           <ChevronRight size={15} className="text-theme-muted" />
         </button>
 
-        <div className="flex rounded-xl bg-theme-surface overflow-hidden">
+        <div className="flex rounded-card bg-theme-surface overflow-hidden">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => { setSearchParams({ tab: tab.id }); setVideoPage(1); setUserSearchInput(''); setUserSearch(''); setUserPage(1) }}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-semibold transition-colors ${
+              className={`flex-1 flex items-center justify-center gap-2 py-3 text-body font-semibold transition-colors ${
                 activeTab === tab.id ? 'bg-accent text-accent-fg' : 'text-theme-muted hover:text-theme-primary'
               }`}
             >
@@ -276,7 +276,7 @@ export default function AdminPage() {
                   onFocus={() => setShowSuggestions(true)}
                   onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
                   placeholder={t('searchPlaceholder')}
-                  className="w-full rounded-xl border border-theme-border bg-theme-surface py-3 pl-9 pr-9 text-sm text-theme-primary placeholder:text-theme-subtle outline-none focus:border-accent"
+                  className="w-full rounded-card border border-theme-border bg-theme-surface py-3 pl-9 pr-9 text-body text-theme-primary placeholder:text-theme-muted outline-none focus:border-accent"
                 />
                 {userSearchInput && (
                   <button
@@ -289,16 +289,16 @@ export default function AdminPage() {
                   </button>
                 )}
                 {showSuggestions && users.length > 0 && userSearchInput && (
-                  <div className="absolute left-0 right-0 top-full mt-1 z-20 rounded-xl border border-theme-border bg-theme-surface shadow-lg overflow-hidden">
+                  <div className="absolute left-0 right-0 top-full mt-1 z-20 rounded-card border border-theme-border bg-theme-surface shadow-lg overflow-hidden">
                     {users.slice(0, 5).map((u) => (
                       <button
                         key={u.id}
                         type="button"
                         onMouseDown={() => { setUserSearchInput(u.username); setShowSuggestions(false) }}
-                        className="w-full px-4 py-2.5 text-left text-sm hover:bg-theme-surface2 flex items-center gap-2"
+                        className="w-full px-4 py-3 text-left text-body hover:bg-theme-surface2 flex items-center gap-2"
                       >
                         <span className="font-semibold text-theme-primary">@{u.username}</span>
-                        {u.email && <span className="text-xs text-theme-muted truncate">{u.email}</span>}
+                        {u.email && <span className="text-label text-theme-muted truncate">{u.email}</span>}
                       </button>
                     ))}
                   </div>
@@ -308,14 +308,14 @@ export default function AdminPage() {
                 type="button"
                 onClick={() => refetchUsers()}
                 disabled={usersFetching}
-                className="shrink-0 rounded-xl border border-theme-border bg-theme-surface p-3 text-theme-muted hover:text-theme-primary disabled:opacity-40"
+                className="shrink-0 rounded-card border border-theme-border bg-theme-surface p-3 text-theme-muted hover:text-theme-primary disabled:opacity-40"
                 aria-label={t('refresh')}
               >
                 <RefreshCw size={14} className={usersFetching ? 'animate-spin' : ''} />
               </button>
             </div>
             {!usersLoading && !usersError && usersData && (
-              <p className="mt-2 text-xs text-theme-muted">
+              <p className="mt-2 text-label text-theme-muted">
                 {userSearch
                   ? t('searchResultCount', { count: usersData.total })
                   : t('totalUserCount', { count: usersData.total })}
@@ -324,36 +324,36 @@ export default function AdminPage() {
           </div>
 
           {usersLoading && <p className="text-center text-theme-muted py-10">{t('loading')}</p>}
-          {!usersLoading && usersError && <p className="text-center text-red-400 py-10">{t('loadFailed')}</p>}
+          {!usersLoading && usersError && <p className="text-center text-danger py-10">{t('loadFailed')}</p>}
           {!usersLoading && !usersError && users.length === 0 && (
-            <p className="text-center text-theme-subtle py-10">{userSearch ? t('noSearchResults') : t('noUsers')}</p>
+            <p className="text-center text-theme-muted py-10">{userSearch ? t('noSearchResults') : t('noUsers')}</p>
           )}
           {users.map((u) => (
-            <div key={u.id} className="rounded-xl bg-theme-surface p-4">
+            <div key={u.id} className="rounded-card bg-theme-surface p-4">
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-semibold text-theme-primary">@{u.username}</p>
                     {u.is_admin && (
-                      <span className="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-full">admin</span>
+                      <span className="text-label bg-accent/20 text-accent px-2 py-1 rounded-pill">admin</span>
                     )}
                     {u.auth_provider === 'google' && (
-                      <span className="text-[10px] bg-red-500/15 text-red-400 px-1.5 py-0.5 rounded-full">Google</span>
+                      <span className="text-label bg-danger/15 text-danger px-2 py-1 rounded-pill">Google</span>
                     )}
                     {u.auth_provider === 'lightning' && (
-                      <span className="text-[10px] bg-yellow-500/15 text-yellow-400 px-1.5 py-0.5 rounded-full">Lightning</span>
+                      <span className="text-label bg-lightning/15 text-lightning px-2 py-1 rounded-pill">Lightning</span>
                     )}
                     {u.auth_provider === 'email' && (
-                      <span className="text-[10px] bg-blue-500/15 text-blue-400 px-1.5 py-0.5 rounded-full">Email</span>
+                      <span className="text-label bg-theme-surface2 text-theme-muted px-2 py-1 rounded-pill">Email</span>
                     )}
                   </div>
-                  <p className="text-xs text-theme-muted">{u.email ?? t('noEmail')}</p>
-                  <div className="flex items-center gap-3 mt-1 text-xs text-theme-subtle">
+                  <p className="text-label text-theme-muted">{u.email ?? t('noEmail')}</p>
+                  <div className="flex items-center gap-3 mt-1 text-label text-theme-muted">
                     <span>{t('videoCountLabel', { count: u.video_count })}</span>
                     <span>{t('challengeCountLabel', { count: u.challenge_count })}</span>
                   </div>
                   {(u.referred_by_username || u.referred_count > 0) && (
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1 text-xs text-accent/80">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-label text-accent/80">
                       {u.referred_by_username && <span>{t('referredByLabel', { username: u.referred_by_username })}</span>}
                       {u.referred_count > 0 && <span>{t('referredCountLabel', { count: u.referred_count })}</span>}
                     </div>
@@ -363,7 +363,7 @@ export default function AdminPage() {
               <div className="mt-3 flex gap-2">
                 <button
                   onClick={() => setSelectedUserId(u.id)}
-                  className="flex items-center gap-1.5 rounded-lg bg-theme-surface2 px-3 py-2 text-xs font-semibold text-theme-muted hover:text-theme-primary"
+                  className="flex items-center gap-2 rounded-card bg-theme-surface2 px-3 py-2 text-label font-semibold text-theme-muted hover:text-theme-primary"
                 >
                   <ChevronRight size={12} />
                   {t('detailButton')}
@@ -371,7 +371,7 @@ export default function AdminPage() {
                 <button
                   onClick={() => setDeleteUserConfirm({ id: u.id, username: u.username })}
                   disabled={deleteUser.isPending}
-                  className="flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
+                  className="flex items-center gap-2 rounded-card bg-danger px-3 py-2 text-label font-semibold text-white disabled:opacity-60"
                 >
                   <Trash2 size={12} />
                   {t('deleteButton')}
@@ -381,7 +381,7 @@ export default function AdminPage() {
           ))}
 
           {usersData && (
-            <div className="flex items-center justify-between px-2 py-3 text-sm text-theme-muted">
+            <div className="flex items-center justify-between px-2 py-3 text-body text-theme-muted">
               <button disabled={userPage === 1} onClick={() => setUserPage(p => p - 1)} className="disabled:opacity-40">{t('prevPage')}</button>
               <span>{t('pageLabel', { page: userPage, total: Math.ceil(usersData.total / 20) })}</span>
               <button disabled={!usersData.has_next} onClick={() => setUserPage(p => p + 1)} className="disabled:opacity-40">{t('nextPage')}</button>
@@ -393,20 +393,20 @@ export default function AdminPage() {
       {activeTab === 'videos' && (
         <div className="space-y-4">
           <div className="px-1">
-            <p className="text-xs text-theme-muted">
+            <p className="text-label text-theme-muted">
               {videoTotal > 0 ? t('totalVideos', { total: videoTotal, page: videoPage, totalPages: videoTotalPages }) : ''}
             </p>
           </div>
 
           {videosLoading && <p className="text-center text-theme-muted py-10">{t('loading')}</p>}
-          {!videosLoading && videosError && <p className="text-center text-red-400 py-10">{t('loadFailed')}</p>}
+          {!videosLoading && videosError && <p className="text-center text-danger py-10">{t('loadFailed')}</p>}
           {!videosLoading && !videosError && videos.length === 0 && (
-            <p className="text-center text-theme-subtle py-10">{t('noVideos')}</p>
+            <p className="text-center text-theme-muted py-10">{t('noVideos')}</p>
           )}
 
           <div className="grid grid-cols-2 gap-3">
             {videos.map((v) => (
-              <div key={v.id} className="rounded-xl bg-theme-surface overflow-hidden">
+              <div key={v.id} className="rounded-card bg-theme-surface overflow-hidden">
                 <div className="relative aspect-[9/16] bg-black">
                   {v.thumbnail_url ? (
                     <img
@@ -431,20 +431,20 @@ export default function AdminPage() {
                     />
                   )}
                   {v.duration_sec != null && (
-                    <span className="absolute bottom-2 right-2 text-[10px] font-semibold bg-black/70 text-white px-1.5 py-0.5 rounded">
+                    <span className="absolute bottom-2 right-2 text-label font-semibold bg-black/70 text-white px-2 py-1 rounded">
                       {Math.floor(v.duration_sec / 60)}:{String(v.duration_sec % 60).padStart(2, '0')}
                     </span>
                   )}
                 </div>
-                <div className="p-2.5 space-y-1.5">
-                  <p className="text-xs font-semibold text-theme-primary truncate">@{v.username}</p>
-                  <p className="text-[10px] text-theme-subtle">
+                <div className="p-3 space-y-2">
+                  <p className="text-label font-semibold text-theme-primary truncate">@{v.username}</p>
+                  <p className="text-label text-theme-muted">
                     {new Date(v.created_at).toLocaleDateString('ko-KR')}
                   </p>
                   <button
                     onClick={() => setDeleteVideoConfirmId(v.id)}
                     disabled={deleteVideo.isPending}
-                    className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+                    className="w-full flex items-center justify-center gap-2 rounded-card bg-danger px-3 py-2 text-label font-semibold text-white disabled:opacity-60"
                   >
                     <Trash2 size={12} />
                     {t('deleteButton')}
@@ -459,15 +459,15 @@ export default function AdminPage() {
               <button
                 onClick={() => setVideoPage((p) => Math.max(1, p - 1))}
                 disabled={videoPage === 1}
-                className="rounded-lg bg-theme-surface px-4 py-2 text-sm font-semibold text-theme-muted disabled:opacity-40"
+                className="rounded-card bg-theme-surface px-4 py-2 text-body font-semibold text-theme-muted disabled:opacity-40"
               >
                 {t('prevPage')}
               </button>
-              <span className="text-sm text-theme-muted">{t('videoPageLabel', { page: videoPage, totalPages: videoTotalPages })}</span>
+              <span className="text-body text-theme-muted">{t('videoPageLabel', { page: videoPage, totalPages: videoTotalPages })}</span>
               <button
                 onClick={() => setVideoPage((p) => Math.min(videoTotalPages, p + 1))}
                 disabled={videoPage === videoTotalPages}
-                className="rounded-lg bg-theme-surface px-4 py-2 text-sm font-semibold text-theme-muted disabled:opacity-40"
+                className="rounded-card bg-theme-surface px-4 py-2 text-body font-semibold text-theme-muted disabled:opacity-40"
               >
                 {t('nextPage')}
               </button>
@@ -479,19 +479,19 @@ export default function AdminPage() {
       {activeTab === 'challenges' && (
         <div className="space-y-3">
           {!challengesLoading && !challengesError && challengesData && (
-            <p className="text-xs text-theme-muted px-1">{t('totalChallenges', { count: challengesData.total })}</p>
+            <p className="text-label text-theme-muted px-1">{t('totalChallenges', { count: challengesData.total })}</p>
           )}
           {challengesLoading && <p className="text-center text-theme-muted py-10">{t('loading')}</p>}
-          {!challengesLoading && challengesError && <p className="text-center text-red-400 py-10">{t('loadFailed')}</p>}
+          {!challengesLoading && challengesError && <p className="text-center text-danger py-10">{t('loadFailed')}</p>}
           {!challengesLoading && !challengesError && challenges.length === 0 && (
-            <p className="text-center text-theme-subtle py-10">{t('noChallenges')}</p>
+            <p className="text-center text-theme-muted py-10">{t('noChallenges')}</p>
           )}
           {challenges.map((c) => (
-            <div key={c.id} className="rounded-xl bg-theme-surface p-4 space-y-2">
+            <div key={c.id} className="rounded-card bg-theme-surface p-4 space-y-2">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-theme-primary truncate">{c.title}</p>
-                  <div className="flex items-center gap-2 mt-0.5 text-xs text-theme-muted">
+                  <div className="flex items-center gap-2 mt-1 text-label text-theme-muted">
                     {c.creator_username && <span>@{c.creator_username}</span>}
                     <span>·</span>
                     <span>{t('challengeParticipants', { count: c.participant_count })}</span>
@@ -503,7 +503,7 @@ export default function AdminPage() {
                     )}
                   </div>
                 </div>
-                <span className={`shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full ${c.is_active ? 'bg-accent/15 text-accent' : 'bg-zinc-700/50 text-theme-muted'}`}>
+                <span className={`shrink-0 text-label font-semibold px-2 py-1 rounded-pill ${c.is_active ? 'bg-accent/15 text-accent' : 'bg-theme-surface2 text-theme-muted'}`}>
                   {c.is_active ? t('challengeStatusActive') : t('challengeStatusClosed')}
                 </span>
               </div>
@@ -512,7 +512,7 @@ export default function AdminPage() {
                   <button
                     onClick={() => setCloseChallengeConfirm({ id: c.id, title: c.title })}
                     disabled={closeChallenge.isPending}
-                    className="flex items-center gap-1.5 rounded-lg bg-orange-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
+                    className="flex items-center gap-2 rounded-card bg-warning px-3 py-2 text-label font-semibold text-theme-page disabled:opacity-60"
                   >
                     <XCircle size={12} />
                     {t('closeChallengeButton')}
@@ -522,7 +522,7 @@ export default function AdminPage() {
                   <button
                     onClick={() => setDeleteAdminChallengeConfirm({ id: c.id, title: c.title })}
                     disabled={deleteAdminChallenge.isPending}
-                    className="flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60"
+                    className="flex items-center gap-2 rounded-card bg-danger px-3 py-2 text-label font-semibold text-white disabled:opacity-60"
                   >
                     <Trash2 size={12} />
                     {t('deleteChallengeButton')}
@@ -541,15 +541,15 @@ export default function AdminPage() {
 
       {deleteVideoConfirmId !== null && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4" onClick={() => setDeleteVideoConfirmId(null)}>
-          <div className="w-full max-w-lg rounded-3xl bg-theme-surface px-6 pt-5 pb-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <p className="text-base font-bold text-theme-primary mb-1">{t('deleteVideoTitle')}</p>
-            <p className="text-sm text-theme-muted mb-5">{t('deleteVideoBody')}</p>
+          <div className="w-full max-w-lg rounded-card bg-theme-surface px-6 pt-5 pb-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <p className="text-title text-theme-primary mb-1">{t('deleteVideoTitle')}</p>
+            <p className="text-body text-theme-muted mb-5">{t('deleteVideoBody')}</p>
             <div className="flex gap-3">
-              <button onClick={() => setDeleteVideoConfirmId(null)} className="flex-1 rounded-xl bg-theme-surface2 py-3 text-sm text-theme-muted">{t('cancel')}</button>
+              <button onClick={() => setDeleteVideoConfirmId(null)} className="flex-1 rounded-card bg-theme-surface2 py-3 text-body text-theme-muted">{t('cancel')}</button>
               <button
                 onClick={() => { deleteVideo.mutate(deleteVideoConfirmId); setDeleteVideoConfirmId(null) }}
                 disabled={deleteVideo.isPending}
-                className="flex-1 rounded-xl bg-red-500 py-3 text-sm font-semibold text-white disabled:opacity-60"
+                className="flex-1 rounded-card bg-danger py-3 text-body font-semibold text-white disabled:opacity-60"
               >
                 {deleteVideo.isPending ? t('deletingVideo') : t('deleteButton')}
               </button>
@@ -560,16 +560,16 @@ export default function AdminPage() {
 
       {closeChallengeConfirm !== null && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4" onClick={() => setCloseChallengeConfirm(null)}>
-          <div className="w-full max-w-lg rounded-3xl bg-theme-surface px-6 pt-5 pb-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <p className="text-base font-bold text-theme-primary mb-1">{t('closeChallengeTitle')}</p>
-            <p className="text-sm text-theme-muted mb-1">"{closeChallengeConfirm.title}"</p>
-            <p className="text-sm text-theme-muted mb-5">{t('closeChallengeBody')}</p>
+          <div className="w-full max-w-lg rounded-card bg-theme-surface px-6 pt-5 pb-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <p className="text-title text-theme-primary mb-1">{t('closeChallengeTitle')}</p>
+            <p className="text-body text-theme-muted mb-1">"{closeChallengeConfirm.title}"</p>
+            <p className="text-body text-theme-muted mb-5">{t('closeChallengeBody')}</p>
             <div className="flex gap-3">
-              <button onClick={() => setCloseChallengeConfirm(null)} className="flex-1 rounded-xl bg-theme-surface2 py-3 text-sm text-theme-muted">{t('cancel')}</button>
+              <button onClick={() => setCloseChallengeConfirm(null)} className="flex-1 rounded-card bg-theme-surface2 py-3 text-body text-theme-muted">{t('cancel')}</button>
               <button
                 onClick={() => { closeChallenge.mutate(closeChallengeConfirm.id); setCloseChallengeConfirm(null) }}
                 disabled={closeChallenge.isPending}
-                className="flex-1 rounded-xl bg-orange-500 py-3 text-sm font-semibold text-white disabled:opacity-60"
+                className="flex-1 rounded-card bg-warning py-3 text-body font-semibold text-theme-page disabled:opacity-60"
               >
                 {closeChallenge.isPending ? t('closingChallenge') : t('closeChallengeButton')}
               </button>
@@ -580,16 +580,16 @@ export default function AdminPage() {
 
       {deleteAdminChallengeConfirm !== null && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4" onClick={() => setDeleteAdminChallengeConfirm(null)}>
-          <div className="w-full max-w-lg rounded-3xl bg-theme-surface px-6 pt-5 pb-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <p className="text-base font-bold text-theme-primary mb-1">{t('deleteChallengeTitle')}</p>
-            <p className="text-sm text-theme-muted mb-1">"{deleteAdminChallengeConfirm.title}"</p>
-            <p className="text-sm text-theme-muted mb-5">{t('deleteChallengeBody')}</p>
+          <div className="w-full max-w-lg rounded-card bg-theme-surface px-6 pt-5 pb-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <p className="text-title text-theme-primary mb-1">{t('deleteChallengeTitle')}</p>
+            <p className="text-body text-theme-muted mb-1">"{deleteAdminChallengeConfirm.title}"</p>
+            <p className="text-body text-theme-muted mb-5">{t('deleteChallengeBody')}</p>
             <div className="flex gap-3">
-              <button onClick={() => setDeleteAdminChallengeConfirm(null)} className="flex-1 rounded-xl bg-theme-surface2 py-3 text-sm text-theme-muted">{t('cancel')}</button>
+              <button onClick={() => setDeleteAdminChallengeConfirm(null)} className="flex-1 rounded-card bg-theme-surface2 py-3 text-body text-theme-muted">{t('cancel')}</button>
               <button
                 onClick={() => { deleteAdminChallenge.mutate(deleteAdminChallengeConfirm.id); setDeleteAdminChallengeConfirm(null) }}
                 disabled={deleteAdminChallenge.isPending}
-                className="flex-1 rounded-xl bg-red-500 py-3 text-sm font-semibold text-white disabled:opacity-60"
+                className="flex-1 rounded-card bg-danger py-3 text-body font-semibold text-white disabled:opacity-60"
               >
                 {deleteAdminChallenge.isPending ? t('deletingChallenge') : t('deleteChallengeButton')}
               </button>
@@ -600,15 +600,15 @@ export default function AdminPage() {
 
       {deleteUserConfirm !== null && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4" onClick={() => setDeleteUserConfirm(null)}>
-          <div className="w-full max-w-lg rounded-3xl bg-theme-surface px-6 pt-5 pb-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <p className="text-base font-bold text-theme-primary mb-1">{t('deleteUserTitle', { username: deleteUserConfirm.username })}</p>
-            <p className="text-sm text-theme-muted mb-5">{t('deleteUserBody')}</p>
+          <div className="w-full max-w-lg rounded-card bg-theme-surface px-6 pt-5 pb-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <p className="text-title text-theme-primary mb-1">{t('deleteUserTitle', { username: deleteUserConfirm.username })}</p>
+            <p className="text-body text-theme-muted mb-5">{t('deleteUserBody')}</p>
             <div className="flex gap-3">
-              <button onClick={() => setDeleteUserConfirm(null)} className="flex-1 rounded-xl bg-theme-surface2 py-3 text-sm text-theme-muted">{t('cancel')}</button>
+              <button onClick={() => setDeleteUserConfirm(null)} className="flex-1 rounded-card bg-theme-surface2 py-3 text-body text-theme-muted">{t('cancel')}</button>
               <button
                 onClick={() => { deleteUser.mutate(deleteUserConfirm.id); setDeleteUserConfirm(null) }}
                 disabled={deleteUser.isPending}
-                className="flex-1 rounded-xl bg-red-500 py-3 text-sm font-semibold text-white disabled:opacity-60"
+                className="flex-1 rounded-card bg-danger py-3 text-body font-semibold text-white disabled:opacity-60"
               >
                 {deleteUser.isPending ? t('deletingUser') : t('deleteButton')}
               </button>

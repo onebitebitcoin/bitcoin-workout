@@ -363,6 +363,7 @@ export default function SettingsPage() {
               className={`w-full ${ROW}`}
             >
               <div className="flex items-center gap-2">
+                {/* design-token-exempt: iOS 플랫폼 마크 색이다. 제품 팔레트가 아니라 플랫폼을 가리키는 색이라 테마를 따르지 않는다. */}
                 <Smartphone size={18} strokeWidth={1.75} className="text-blue-400" />
                 <span className={LABEL}>{t('profile:iosPwa')}</span>
               </div>

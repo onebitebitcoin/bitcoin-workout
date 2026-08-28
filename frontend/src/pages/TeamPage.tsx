@@ -41,17 +41,17 @@ function AgentCard({ agent }: { agent: Agent }) {
   const { t } = useTranslation('auth')
   const Icon = agent.icon
   return (
-    <div className="rounded-xl bg-theme-surface px-4 py-3.5 flex flex-col gap-2.5">
+    <div className="rounded-card bg-theme-surface px-4 py-4 flex flex-col gap-3">
       <div className="flex items-start gap-3">
-        <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-theme-surface2">
+        <div className="mt-1 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-card bg-theme-surface2">
           <Icon size={16} strokeWidth={1.5} className="text-accent" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-theme-primary">{t(`agents.${agent.name}.label`)}</span>
-            <span className="text-[10px] font-mono text-theme-subtle">{agent.name}</span>
+            <span className="text-body font-semibold text-theme-primary">{t(`agents.${agent.name}.label`)}</span>
+            <span className="text-label font-mono text-theme-muted">{agent.name}</span>
           </div>
-          <p className="mt-0.5 text-xs text-theme-muted leading-relaxed">{t(`agents.${agent.name}.description`)}</p>
+          <p className="mt-1 text-label text-theme-muted leading-relaxed">{t(`agents.${agent.name}.description`)}</p>
         </div>
       </div>
 
@@ -59,16 +59,16 @@ function AgentCard({ agent }: { agent: Agent }) {
         {agent.tools.map((tool) => (
           <span
             key={tool}
-            className="rounded-md bg-theme-surface2 px-1.5 py-0.5 text-[10px] font-mono text-theme-subtle"
+            className="rounded-card bg-theme-surface2 px-2 py-1 text-label font-mono text-theme-muted"
           >
             {tool}
           </span>
         ))}
       </div>
 
-      <div className="flex items-center gap-1.5">
-        <span className="text-[10px] text-theme-subtle">model</span>
-        <span className="text-[10px] font-mono text-accent">{agent.model}</span>
+      <div className="flex items-center gap-2">
+        <span className="text-label text-theme-muted">model</span>
+        <span className="text-label font-mono text-accent">{agent.model}</span>
       </div>
     </div>
   )
@@ -89,18 +89,18 @@ export default function TeamPage() {
           <ChevronLeft size={20} strokeWidth={1.5} />
         </button>
         <div>
-          <h1 className="text-base font-bold text-theme-primary">{t('teamPageTitle')}</h1>
-          <p className="text-xs text-theme-muted">{t('teamAgentCount', { count: AGENTS.length })}</p>
+          <h1 className="text-title text-theme-primary">{t('teamPageTitle')}</h1>
+          <p className="text-label text-theme-muted">{t('teamAgentCount', { count: AGENTS.length })}</p>
         </div>
       </div>
 
       <div className="px-4 space-y-6">
         <section>
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-[10px] font-medium uppercase tracking-widest text-theme-muted">
+            <span className="text-eyebrow text-theme-muted">
               {t('teamBuild')}
             </span>
-            <span className="text-[10px] text-theme-subtle">{t('teamBuildCount', { count: BUILD_AGENTS.length })}</span>
+            <span className="text-label text-theme-muted">{t('teamBuildCount', { count: BUILD_AGENTS.length })}</span>
           </div>
           <div className="space-y-2">
             {BUILD_AGENTS.map((agent) => (
@@ -111,10 +111,10 @@ export default function TeamPage() {
 
         <section>
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-[10px] font-medium uppercase tracking-widest text-theme-muted">
+            <span className="text-eyebrow text-theme-muted">
               {t('teamDiscuss')}
             </span>
-            <span className="text-[10px] text-theme-subtle">{t('teamDiscussCount', { count: DISCUSS_AGENTS.length })}</span>
+            <span className="text-label text-theme-muted">{t('teamDiscussCount', { count: DISCUSS_AGENTS.length })}</span>
           </div>
           <div className="space-y-2">
             {DISCUSS_AGENTS.map((agent) => (

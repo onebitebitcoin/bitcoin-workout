@@ -9,7 +9,7 @@ export function SkeletonCalendarGrid() {
       {Array.from({ length: 35 }).map((_, i) => (
         <div
           key={i}
-          className="aspect-square rounded-xl animate-shimmer"
+          className="aspect-square rounded-card animate-shimmer"
           style={{
             background: SHIMMER_BG,
             backgroundSize: '200% 100%',

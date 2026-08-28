@@ -70,7 +70,7 @@ export default function PostEditPage() {
   }
 
   if (isLoading) {
-    return <div className="flex h-[100dvh] items-center justify-center bg-theme-page text-theme-muted text-sm">{t('edit.loading')}</div>
+ return <div className="flex h-[100dvh] items-center justify-center bg-theme-page text-theme-muted text-body">{t('edit.loading')}</div>
   }
 
   return (
@@ -79,16 +79,16 @@ export default function PostEditPage() {
         <button onClick={() => navigate(-1)} className="flex-shrink-0 p-1 text-theme-muted hover:text-theme-primary" aria-label={t('common:back')}>
           <ChevronLeft size={20} strokeWidth={1.5} />
         </button>
-        <span className="text-sm font-semibold text-theme-primary">{t('edit.title')}</span>
+        <span className="text-body font-semibold text-theme-primary">{t('edit.title')}</span>
       </div>
 
       <div className="flex flex-1 flex-col px-6 pt-2 pb-6 overflow-y-auto gap-4">
         {/* 카테고리 */}
         <div>
-          <p className="mb-2 text-sm font-semibold text-theme-primary">{t('tagChallenge.category')}</p>
+          <p className="mb-2 text-body font-semibold text-theme-primary">{t('tagChallenge.category')}</p>
           <div className="flex gap-2 mb-3">
             {MAIN_CATEGORIES.map((cat) => (
-              <button key={cat} onClick={() => selectMain(cat)} className={`flex-1 rounded-xl py-3 text-sm font-medium transition-colors ${mainCategory === cat ? 'bg-accent text-accent-fg' : 'bg-theme-surface text-theme-muted'}`}>
+              <button key={cat} onClick={() => selectMain(cat)} className={`flex-1 rounded-card py-3 text-body font-medium transition-colors ${mainCategory === cat ? 'bg-accent text-accent-fg' : 'bg-theme-surface text-theme-muted'}`}>
                 {MAIN_CATEGORY_LABELS[cat]}
               </button>
             ))}
@@ -97,12 +97,12 @@ export default function PostEditPage() {
 
         {/* 설명 */}
         <div className="flex flex-col gap-1">
-          <p className="text-sm font-semibold text-theme-primary mb-1">{t('caption.captionLabel')} <span className="text-xs font-normal text-theme-subtle">{t('caption.captionOptional')}</span></p>
-          <textarea value={caption} onChange={(e) => setCaption(e.target.value.slice(0, 140))} maxLength={140} placeholder={t('caption.captionPlaceholder')} rows={3} className="resize-none rounded-xl bg-theme-surface px-4 py-3 text-theme-primary placeholder-theme-subtle outline-none focus:ring-2 focus:ring-accent" />
-          <p className="text-right text-xs text-theme-subtle">{caption.length}/140</p>
+          <p className="text-body font-semibold text-theme-primary mb-1">{t('caption.captionLabel')} <span className="text-label font-normal text-theme-muted">{t('caption.captionOptional')}</span></p>
+          <textarea value={caption} onChange={(e) => setCaption(e.target.value.slice(0, 140))} maxLength={140} placeholder={t('caption.captionPlaceholder')} rows={3} className="resize-none rounded-card bg-theme-surface px-4 py-3 text-theme-primary placeholder-theme-muted outline-none focus:ring-2 focus:ring-accent" />
+          <p className="text-right text-label text-theme-muted">{caption.length}/140</p>
         </div>
 
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && <p className="text-body text-danger">{error}</p>}
 
         <button
           onClick={() => {
@@ -112,7 +112,7 @@ export default function PostEditPage() {
             mutation.mutate()
           }}
           disabled={mutation.isPending}
-          className="mt-auto w-full rounded-xl bg-accent py-3 font-semibold text-accent-fg disabled:opacity-60"
+          className="mt-auto w-full rounded-card bg-accent py-3 font-semibold text-accent-fg disabled:opacity-60"
         >
           {mutation.isPending ? t('edit.saving') : t('edit.save')}
         </button>

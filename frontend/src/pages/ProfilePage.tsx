@@ -193,34 +193,34 @@ export default function ProfilePage() {
           size={36}
         />
 
-        <div className="flex-1 flex items-center gap-1.5 min-w-0">
-          <span className="text-sm font-semibold text-theme-primary truncate">{user?.username}</span>
+        <div className="flex-1 flex items-center gap-2 min-w-0">
+          <span className="text-body font-semibold text-theme-primary truncate">{user?.username}</span>
           {user?.is_admin && (
-            <span className="flex-shrink-0 flex items-center gap-0.5 rounded-full bg-accent/20 px-1.5 py-0.5 text-[10px] font-semibold text-accent">
+            <span className="flex-shrink-0 flex items-center gap-1 rounded-pill bg-accent/20 px-2 py-1 text-label font-semibold text-accent">
               <ShieldCheck size={9} />{t('adminBadge')}
             </span>
           )}
         </div>
         <button
           onClick={() => user && shareProfileLink(user.id, user.username, t)}
-          className="flex-shrink-0 p-1.5 text-theme-muted hover:text-theme-primary transition-colors lg:hidden"
+          className="flex-shrink-0 p-2 text-theme-muted hover:text-theme-primary transition-colors lg:hidden"
           aria-label={t('shareProfile')}
         >
           <Share2 size={16} strokeWidth={1.5} />
         </button>
         <button
           onClick={() => navigate('/notifications')}
-          className="relative flex-shrink-0 p-1.5 text-theme-muted hover:text-theme-primary transition-colors lg:hidden"
+          className="relative flex-shrink-0 p-2 text-theme-muted hover:text-theme-primary transition-colors lg:hidden"
           aria-label="알림"
         >
           <Bell size={16} strokeWidth={1.5} />
           {unreadCount > 0 && (
-            <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500" />
+            <span className="absolute top-1 right-1 h-2 w-2 rounded-pill bg-danger" />
           )}
         </button>
         <button
           onClick={() => navigate('/settings')}
-          className="flex-shrink-0 p-1.5 text-theme-muted hover:text-theme-primary transition-colors"
+          className="flex-shrink-0 p-2 text-theme-muted hover:text-theme-primary transition-colors"
         >
           <Settings size={16} strokeWidth={1.5} />
         </button>
@@ -230,7 +230,7 @@ export default function ProfilePage() {
         <div className="mx-4 mb-3">
           <button
             onClick={() => navigate('/admin')}
-            className="w-full flex items-center justify-center gap-2 rounded-xl bg-accent/10 border border-accent/30 px-4 py-3 text-sm font-semibold text-accent hover:bg-accent/20 transition-colors"
+            className="w-full flex items-center justify-center gap-2 rounded-card bg-accent/10 border border-accent/30 px-4 py-3 text-body font-semibold text-accent hover:bg-accent/20 transition-colors"
           >
             <ShieldCheck size={15} />
             {t('goToAdmin')}
@@ -238,15 +238,15 @@ export default function ProfilePage() {
         </div>
       )}
 
-      <div className="mx-4 mb-4 rounded-xl bg-theme-surface px-4 py-3">
+      <div className="mx-4 mb-4 rounded-card bg-theme-surface px-4 py-3">
         <div className="flex items-center gap-4 py-1">
-          <div className="flex items-center gap-1.5 text-orange-400">
+          <div className="flex items-center gap-2 text-accent-text">
             <Flame size={20} strokeWidth={2} />
-            <span className="text-2xl font-bold leading-none">{streak}</span>
-            <span className="text-sm font-medium text-theme-primary">{t('streakDays')}</span>
+            <span className="text-display leading-none">{streak}</span>
+            <span className="text-body font-medium text-theme-primary">{t('streakDays')}</span>
           </div>
           <div className="h-4 w-px bg-theme-border" />
-          <div className="text-sm text-theme-muted">
+          <div className="text-body text-theme-muted">
             {t('thisMonthWorkout')} <span className="font-semibold text-theme-primary">{t('workoutDays', { count: totalWorkoutDays })}</span>
           </div>
         </div>
@@ -256,17 +256,17 @@ export default function ProfilePage() {
         <div className="flex items-center justify-between mb-3">
           <button
             onClick={prevMonth}
-            className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-theme-surface transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-pill hover:bg-theme-surface transition-colors"
           >
             <ChevronLeft size={20} strokeWidth={2} className="text-theme-primary" />
           </button>
-          <span className="text-base font-semibold text-theme-primary">
+          <span className="text-title font-semibold text-theme-primary">
             {t('calendarYear', { year, month })}
           </span>
           <button
             onClick={nextMonth}
             disabled={isCurrentMonth}
-            className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-theme-surface transition-colors disabled:opacity-30"
+            className="flex h-8 w-8 items-center justify-center rounded-pill hover:bg-theme-surface transition-colors disabled:opacity-30"
           >
             <ChevronRight size={20} strokeWidth={2} className="text-theme-primary" />
           </button>
@@ -274,7 +274,7 @@ export default function ProfilePage() {
 
         <div className="grid grid-cols-7 mb-1">
           {daysOfWeek.map((d) => (
-            <div key={d} className="text-center text-xs font-medium text-theme-muted py-1">{d}</div>
+            <div key={d} className="text-center text-label font-medium text-theme-muted py-1">{d}</div>
           ))}
         </div>
 
@@ -283,7 +283,7 @@ export default function ProfilePage() {
         ) : (
           <div className="grid grid-cols-7 gap-1">
             {cells.map((cell, idx) => {
-              if (cell.day === null) return <div key={`empty-${idx}`} className="aspect-square" />
+ if (cell.day === null) return <div key={`empty-${idx}`} className="aspect-square" />
               const posts = cell.dateStr ? (workoutDays[cell.dateStr] ?? []) : []
               const hasWorkout = posts.length > 0
               const isToday = cell.day === todayNum
@@ -293,7 +293,7 @@ export default function ProfilePage() {
                   <button
                     key={cell.dateStr}
                     onClick={() => openDay(cell.dateStr!, posts)}
-                    className={`aspect-square relative overflow-hidden rounded-xl active:scale-95 transition-transform ${isToday ? 'ring-2 ring-accent ring-offset-1 ring-offset-[--bg-page]' : ''}`}
+                    className={`aspect-square relative overflow-hidden rounded-card active:scale-95 transition-transform ${isToday ? 'ring-2 ring-accent ring-offset-1 ring-offset-[--bg-page]' : ''}`}
                   >
                     {posts[0].thumbnail_url ? (
                       <img
@@ -311,13 +311,11 @@ export default function ProfilePage() {
                       />
                     )}
                     <div className="absolute inset-0 bg-black/30" />
-                    <span className="absolute inset-x-0 bottom-0 flex items-center justify-center pb-1.5 text-[11px] font-bold text-white leading-none">
+                    <span className="absolute inset-x-0 bottom-0 flex items-center justify-center pb-2 text-label font-bold text-white leading-none">
                       {cell.day}
                     </span>
                     {posts.length > 1 && (
-                      <div className="absolute top-1 right-1 min-w-[14px] h-3.5 rounded-full bg-accent flex items-center justify-center px-0.5">
-                        <span className="text-[8px] font-bold text-accent-fg leading-none">{posts.length}</span>
-                      </div>
+                      <div className="absolute top-1 right-1 h-1.5 w-1.5 rounded-pill bg-accent" />
                     )}
                   </button>
                 )
@@ -326,7 +324,7 @@ export default function ProfilePage() {
               return (
                 <div
                   key={cell.dateStr}
-                  className={`aspect-square flex items-center justify-center rounded-xl text-sm font-medium ${isToday ? 'ring-1 ring-accent text-accent' : 'text-theme-muted'}`}
+                  className={`aspect-square flex items-center justify-center rounded-card text-body font-medium ${isToday ? 'ring-1 ring-accent text-accent' : 'text-theme-muted'}`}
                 >
                   {cell.day}
                 </div>
@@ -338,18 +336,18 @@ export default function ProfilePage() {
 
       <div className="mb-6">
         <div className="flex items-center justify-between mb-3 px-4">
-          <p className="text-sm font-semibold text-theme-primary">{t('myVideos')}</p>
+          <p className="text-body font-semibold text-theme-primary">{t('myVideos')}</p>
           {myPosts.length > 0 && (
-            <span className="text-xs text-theme-muted">{t('videoCount', { count: myPosts.length })}</span>
+            <span className="text-label text-theme-muted">{t('videoCount', { count: myPosts.length })}</span>
           )}
         </div>
 
         {myPostsLoading ? (
-          <div className="flex h-24 items-center justify-center text-sm text-theme-muted">
+          <div className="flex h-24 items-center justify-center text-body text-theme-muted">
             {t('videosLoading')}
           </div>
         ) : myPosts.length === 0 ? (
-          <div className="mx-4 flex h-24 items-center justify-center rounded-xl bg-theme-surface text-sm text-theme-muted">
+          <div className="mx-4 flex h-24 items-center justify-center rounded-card bg-theme-surface text-body text-theme-muted">
             {t('noVideos')}
           </div>
         ) : (
@@ -362,7 +360,7 @@ export default function ProfilePage() {
               return (
                 <div
                   key={post.id}
-                  className="relative flex-shrink-0 overflow-hidden rounded-xl bg-theme-surface2 group cursor-pointer active:scale-95 transition-transform"
+                  className="relative flex-shrink-0 overflow-hidden rounded-card bg-theme-surface2 group cursor-pointer active:scale-95 transition-transform"
                   style={{ width: '28vw', aspectRatio: '9/16' }}
                   onClick={() => openMyPosts(idx)}
                 >
@@ -384,36 +382,36 @@ export default function ProfilePage() {
                   )}
                   <div className="absolute inset-0 bg-black/30" />
                   {isPending && (
-                    <div className="absolute top-1.5 left-1.5 h-2 w-2 rounded-full bg-yellow-400" />
+                    <div className="absolute top-1.5 left-1.5 h-2 w-2 rounded-pill bg-warning" />
                   )}
                   <div className="absolute top-1.5 right-1.5 flex gap-1">
                     <button
                       onClick={(e) => { e.stopPropagation(); navigate(`/posts/${post.id}/edit`) }}
-                      className="flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white/80"
+                      className="flex h-6 w-6 items-center justify-center rounded-pill bg-black/50 text-white/80"
                       aria-label={t('editAriaLabel')}
                     >
                       <Pencil size={11} strokeWidth={2} />
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(post.id) }}
-                      className="flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white/80"
+                      className="flex h-6 w-6 items-center justify-center rounded-pill bg-black/50 text-white/80"
                       aria-label={t('deleteAriaLabel')}
                     >
                       <Trash2 size={11} strokeWidth={2} />
                     </button>
                   </div>
-                  <div className="absolute bottom-1.5 right-1 flex flex-col items-end gap-0.5 text-white/90">
-                    <div className="flex items-center gap-0.5">
+                  <div className="absolute bottom-1.5 right-1 flex flex-col items-end gap-1 text-white/90">
+                    <div className="flex items-center gap-1">
                       <Heart size={9} strokeWidth={2} />
-                      <span className="text-[9px] font-medium">{post.like_count}</span>
+                      <span className="text-label font-medium">{post.like_count}</span>
                     </div>
-                    <div className="flex items-center gap-0.5">
+                    <div className="flex items-center gap-1">
                       <MessageCircle size={9} strokeWidth={2} />
-                      <span className="text-[9px] font-medium">{post.comment_count}</span>
+                      <span className="text-label font-medium">{post.comment_count}</span>
                     </div>
-                    <div className="flex items-center gap-0.5">
+                    <div className="flex items-center gap-1">
                       <Eye size={9} strokeWidth={2} />
-                      <span className="text-[9px] font-medium">{post.view_count}</span>
+                      <span className="text-label font-medium">{post.view_count}</span>
                     </div>
                   </div>
                 </div>
@@ -424,7 +422,7 @@ export default function ProfilePage() {
       </div>
 
       <div className="mx-4 mb-6 flex items-center justify-center">
-        <span className="text-xs text-theme-subtle">v{__APP_VERSION__}</span>
+        <span className="text-label text-theme-muted">v{__APP_VERSION__}</span>
       </div>
 
       {deleteConfirmId !== null && (
@@ -433,22 +431,22 @@ export default function ProfilePage() {
           onClick={() => setDeleteConfirmId(null)}
         >
           <div
-            className="w-full max-w-lg rounded-3xl bg-theme-surface px-6 pt-5 pb-6 shadow-2xl"
+            className="w-full max-w-lg rounded-card bg-theme-surface px-6 pt-5 pb-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="text-base font-bold text-theme-primary mb-1">{t('deleteConfirmTitle')}</p>
-            <p className="text-sm text-theme-muted mb-5">{t('deleteConfirmBody')}</p>
+            <p className="text-title text-theme-primary mb-1">{t('deleteConfirmTitle')}</p>
+            <p className="text-body text-theme-muted mb-5">{t('deleteConfirmBody')}</p>
             <div className="flex gap-3">
               <button
                 onClick={() => setDeleteConfirmId(null)}
-                className="flex-1 rounded-xl bg-theme-surface2 py-3 text-sm text-theme-muted"
+                className="flex-1 rounded-card bg-theme-surface2 py-3 text-body text-theme-muted"
               >
                 {t('common:cancel')}
               </button>
               <button
                 onClick={() => deleteMutation.mutate(deleteConfirmId)}
                 disabled={deleteMutation.isPending}
-                className="flex-1 rounded-xl bg-red-500 py-3 text-sm font-semibold text-white disabled:opacity-60"
+                className="flex-1 rounded-card bg-danger py-3 text-body font-semibold text-white disabled:opacity-60"
               >
                 {deleteMutation.isPending ? t('deleting') : t('common:delete')}
               </button>
@@ -462,15 +460,15 @@ export default function ProfilePage() {
           <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 pt-safe pt-4 pb-3 bg-gradient-to-b from-black/60 to-transparent pointer-events-none">
             <button
               onClick={closeModal}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-black/30 pointer-events-auto"
+              className="flex h-9 w-9 items-center justify-center rounded-pill bg-black/30 pointer-events-auto"
             >
               <ArrowLeft size={20} strokeWidth={2} color="white" />
             </button>
-            <span className="text-sm font-semibold text-white">
+            <span className="text-body font-semibold text-white">
               {selectedDate === '__my_posts__' ? t('myPostsLabel') : selectedDate.replace(/-/g, '.')}
             </span>
             {selectedPosts.length > 1 ? (
-              <span className="text-xs text-white/70">{videoIdx + 1} / {selectedPosts.length}</span>
+              <span className="text-label text-white/70">{videoIdx + 1} / {selectedPosts.length}</span>
             ) : (
               <div className="w-9" />
             )}
@@ -496,18 +494,18 @@ export default function ProfilePage() {
                   loop
                 />
                 <div className="absolute top-safe top-16 right-4 z-10 flex flex-col items-end gap-2">
-                  <div className="flex items-center gap-1.5 text-white/90 drop-shadow">
+                  <div className="flex items-center gap-2 text-white/90 drop-shadow">
                     <Heart size={14} strokeWidth={1.5} />
-                    <span className="text-sm font-medium">{post.like_count}</span>
+                    <span className="text-body font-medium">{post.like_count}</span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-white/90 drop-shadow">
+                  <div className="flex items-center gap-2 text-white/90 drop-shadow">
                     <Eye size={14} strokeWidth={1.5} />
-                    <span className="text-sm font-medium">{post.view_count}</span>
+                    <span className="text-body font-medium">{post.view_count}</span>
                   </div>
                 </div>
                 {post.caption && (
                   <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-6 pt-8 bg-gradient-to-t from-black/70 to-transparent">
-                    <p className="text-sm text-white/90 line-clamp-2">{post.caption}</p>
+                    <p className="text-body text-white/90 line-clamp-2">{post.caption}</p>
                   </div>
                 )}
               </div>

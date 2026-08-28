@@ -50,7 +50,7 @@ export default function PostDetailPage() {
   if (isLoading) {
     return (
       <div className="flex h-[100dvh] items-center justify-center bg-black">
-        <div className="h-8 w-8 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+        <div className="h-8 w-8 rounded-pill border-2 border-white/30 border-t-white animate-spin" />
       </div>
     )
   }
@@ -58,8 +58,8 @@ export default function PostDetailPage() {
   if (isError || !post) {
     return (
       <div className="flex h-[100dvh] flex-col items-center justify-center gap-3 bg-black">
-        <p className="text-sm text-white/60">영상을 찾을 수 없어요</p>
-        <button onClick={() => navigate(-1)} className="text-xs text-white/40 underline">
+        <p className="text-body text-white/60">영상을 찾을 수 없어요</p>
+        <button onClick={() => navigate(-1)} className="text-label text-white/40 underline">
           뒤로 가기
         </button>
       </div>
@@ -71,7 +71,7 @@ export default function PostDetailPage() {
       {/* 뒤로가기 버튼 */}
       <button
         onClick={() => navigate(-1)}
-        className="absolute top-4 left-4 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-black/40 text-white"
+        className="absolute top-4 left-4 z-20 flex h-9 w-9 items-center justify-center rounded-pill bg-black/40 text-white"
       >
         <ArrowLeft size={20} />
       </button>

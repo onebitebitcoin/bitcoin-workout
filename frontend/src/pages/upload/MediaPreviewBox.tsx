@@ -8,7 +8,7 @@ type SubtitlePosition = 'top' | 'center' | 'bottom'
 
 // StepSubtitle의 자막 미리보기와 동일한 매핑(크기·위치)을 재사용해 실제 burn 결과에 근접시킨다.
 const SIZE_TEXT_CLASS: Record<SubtitleSize, string> = {
-  small: 'text-[9px]', large: 'text-sm',
+  small: 'text-[9px]', large: 'text-sm', // design-token-exempt: 영상에 구워질 자막 크기의 미리보기다. UI 스케일이 아니라 burn 결과에 맞춘 값이라 바꾸면 미리보기가 실제와 달라진다.
 }
 const POSITION_FLEX_CLASS: Record<SubtitlePosition, string> = {
   top: 'justify-start pt-3', center: 'justify-center', bottom: 'justify-end pb-3',
@@ -42,7 +42,7 @@ export default function MediaPreviewBox({
 
   return (
     <div className="flex flex-col items-center gap-3">
-      <div className="w-full max-w-[200px] rounded-xl overflow-hidden bg-black" style={{ aspectRatio: '9/16' }}>
+      <div className="w-full max-w-[200px] rounded-card overflow-hidden bg-black" style={{ aspectRatio: '9/16' }}>
         <div className="relative w-full h-full">
           {showFilteredFrame ? (
             <img src={filteredPreviewUrl ?? undefined} className="w-full h-full object-contain" alt="" />
@@ -53,7 +53,7 @@ export default function MediaPreviewBox({
           )}
           {hasSubtitle && (
             <div className={`absolute inset-0 flex flex-col items-center px-2 ${POSITION_FLEX_CLASS[subtitlePosition]}`}>
-              <div className="px-2 py-0.5 rounded max-w-full text-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)' }}>
+              <div className="px-2 py-1 rounded max-w-full text-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)' }}>
                 <span className={`text-white font-medium break-words ${SIZE_TEXT_CLASS[subtitleSize]}`}>{previewText}</span>
               </div>
             </div>
@@ -62,7 +62,7 @@ export default function MediaPreviewBox({
       </div>
 
       {showFilteredFrame && (
-        <p className="text-[10px] text-theme-subtle text-center max-w-[200px]">{t('preview.filterNote')}</p>
+        <p className="text-label text-theme-muted text-center max-w-[200px]">{t('preview.filterNote')}</p>
       )}
 
       {items.length > 1 && (
@@ -72,14 +72,14 @@ export default function MediaPreviewBox({
               key={m.id}
               type="button"
               onClick={() => setActive(i)}
-              className={`relative w-9 h-14 rounded-lg overflow-hidden border-2 ${i === active ? 'border-accent' : 'border-transparent'}`}
+              className={`relative w-9 h-14 rounded-card overflow-hidden border-2 ${i === active ? 'border-accent' : 'border-transparent'}`}
             >
               {m.kind === 'video' ? (
                 <video src={m.previewUrl} className="w-full h-full object-cover" muted playsInline />
               ) : (
                 <img src={m.previewUrl} className="w-full h-full object-cover" alt="" />
               )}
-              <span className="absolute bottom-0 right-0 bg-black/70 text-white text-[9px] px-1 rounded-tl">{i + 1}</span>
+              <span className="absolute bottom-0 right-0 bg-black/70 text-white text-label px-1 rounded-tl">{i + 1}</span>
             </button>
           ))}
         </div>

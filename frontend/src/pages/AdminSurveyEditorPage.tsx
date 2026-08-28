@@ -177,7 +177,7 @@ export default function AdminSurveyEditorPage() {
   if (!isAdmin) {
     return (
       <div className="flex h-[100dvh] items-center justify-center bg-theme-page">
-        <p className="text-sm text-theme-muted">{t('admin.adminOnly')}</p>
+        <p className="text-body text-theme-muted">{t('admin.adminOnly')}</p>
       </div>
     )
   }
@@ -190,18 +190,18 @@ export default function AdminSurveyEditorPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate('/admin/surveys')}
-            className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-theme-surface transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-pill hover:bg-theme-surface transition-colors"
           >
             <ArrowLeft size={18} strokeWidth={2} className="text-theme-primary" />
           </button>
-          <h1 className="text-xl font-bold text-theme-primary">
+          <h1 className="text-display text-theme-primary">
             {isEdit ? t('admin.editor.editTitle') : t('admin.editor.newTitle')}
           </h1>
         </div>
         <button
           onClick={handleSave}
           disabled={save.isPending}
-          className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-fg disabled:opacity-60"
+          className="rounded-card bg-accent px-4 py-2 text-body font-semibold text-accent-fg disabled:opacity-60"
         >
           {save.isPending ? t('admin.editor.saving') : t('admin.editor.saveButton')}
         </button>
@@ -209,47 +209,47 @@ export default function AdminSurveyEditorPage() {
 
       <div className="flex-1 overflow-y-auto px-4 pb-24 space-y-6">
         <div className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-theme-muted">{t('admin.editor.titleLabel')}</label>
+          <div className="space-y-2">
+            <label className="text-label font-semibold text-theme-muted">{t('admin.editor.titleLabel')}</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={t('admin.editor.titlePlaceholder')}
-              className="w-full rounded-xl border border-theme-border bg-theme-surface px-4 py-3 text-sm text-theme-primary placeholder:text-theme-subtle outline-none focus:border-accent"
+              className="w-full rounded-card border border-theme-border bg-theme-surface px-4 py-3 text-body text-theme-primary placeholder:text-theme-muted outline-none focus:border-accent"
             />
-            {titleError && <p className="text-xs text-red-400">{titleError}</p>}
+            {titleError && <p className="text-label text-danger">{titleError}</p>}
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-theme-muted">{t('admin.editor.descriptionLabel')}</label>
+          <div className="space-y-2">
+            <label className="text-label font-semibold text-theme-muted">{t('admin.editor.descriptionLabel')}</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder={t('admin.editor.descriptionPlaceholder')}
               rows={3}
-              className="w-full resize-none rounded-xl border border-theme-border bg-theme-surface px-4 py-3 text-sm text-theme-primary placeholder:text-theme-subtle outline-none focus:border-accent"
+              className="w-full resize-none rounded-card border border-theme-border bg-theme-surface px-4 py-3 text-body text-theme-primary placeholder:text-theme-muted outline-none focus:border-accent"
             />
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-theme-muted">{t('admin.editor.closesAtLabel')}</label>
+          <div className="space-y-2">
+            <label className="text-label font-semibold text-theme-muted">{t('admin.editor.closesAtLabel')}</label>
             <input
               type="datetime-local"
               value={closesAt}
               onChange={(e) => setClosesAt(e.target.value)}
-              className="w-full rounded-xl border border-theme-border bg-theme-surface px-4 py-3 text-sm text-theme-primary outline-none focus:border-accent"
+              className="w-full rounded-card border border-theme-border bg-theme-surface px-4 py-3 text-body text-theme-primary outline-none focus:border-accent"
             />
           </div>
         </div>
 
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-theme-primary">{t('admin.editor.questionsLabel')}</p>
+            <p className="text-body font-semibold text-theme-primary">{t('admin.editor.questionsLabel')}</p>
             <button
               type="button"
               onClick={addQuestion}
-              className="flex items-center gap-1.5 rounded-xl bg-theme-surface px-3 py-1.5 text-xs font-semibold text-theme-muted hover:text-theme-primary"
+              className="flex items-center gap-2 rounded-card bg-theme-surface px-3 py-2 text-label font-semibold text-theme-muted hover:text-theme-primary"
             >
               <Plus size={12} />
               {t('admin.editor.addQuestion')}
@@ -257,14 +257,14 @@ export default function AdminSurveyEditorPage() {
           </div>
 
           {questions.map((q, qi) => (
-            <div key={q.id} className="rounded-xl bg-theme-surface p-4 space-y-4">
+            <div key={q.id} className="rounded-card bg-theme-surface p-4 space-y-4">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-theme-muted shrink-0">Q{qi + 1}</span>
+                <span className="text-label font-bold text-theme-muted shrink-0">Q{qi + 1}</span>
                 <div className="flex-1 min-w-0">
                   <select
                     value={q.type}
                     onChange={(e) => updateQuestion(qi, { type: e.target.value as QuestionType })}
-                    className="w-full rounded-lg bg-theme-surface2 px-3 py-1.5 text-xs text-theme-primary outline-none"
+                    className="w-full rounded-card bg-theme-surface2 px-3 py-2 text-label text-theme-primary outline-none"
                   >
                     {QUESTION_TYPES.map((t_) => (
                       <option key={t_} value={t_}>
@@ -295,7 +295,7 @@ export default function AdminSurveyEditorPage() {
                   <button
                     type="button"
                     onClick={() => removeQuestion(qi)}
-                    className="rounded p-1 text-red-400 hover:text-red-300"
+                    className="rounded p-1 text-danger hover:text-danger"
                     aria-label={t('admin.editor.deleteQuestion')}
                   >
                     <Trash2 size={14} />
@@ -309,10 +309,10 @@ export default function AdminSurveyEditorPage() {
                   value={q.title}
                   onChange={(e) => updateQuestion(qi, { title: e.target.value })}
                   placeholder={t('admin.editor.questionTitlePlaceholder')}
-                  className="w-full rounded-lg border border-theme-border bg-theme-surface2 px-3 py-2 text-sm text-theme-primary placeholder:text-theme-subtle outline-none focus:border-accent"
+                  className="w-full rounded-card border border-theme-border bg-theme-surface2 px-3 py-2 text-body text-theme-primary placeholder:text-theme-muted outline-none focus:border-accent"
                 />
 
-                <label className="flex cursor-pointer items-center gap-2 text-xs">
+                <label className="flex cursor-pointer items-center gap-2 text-label">
                   <input
                     type="checkbox"
                     checked={q.required}
@@ -333,12 +333,12 @@ export default function AdminSurveyEditorPage() {
                           value={opt}
                           onChange={(e) => updateOption(qi, oi, e.target.value)}
                           placeholder={t('admin.editor.optionPlaceholder')}
-                          className="flex-1 rounded-lg border border-theme-border bg-theme-surface2 px-3 py-2 text-xs text-theme-primary placeholder:text-theme-subtle outline-none focus:border-accent"
+                          className="flex-1 rounded-card border border-theme-border bg-theme-surface2 px-3 py-2 text-label text-theme-primary placeholder:text-theme-muted outline-none focus:border-accent"
                         />
                         <button
                           type="button"
                           onClick={() => removeOption(qi, oi)}
-                          className="shrink-0 rounded p-1 text-theme-muted hover:text-red-400"
+                          className="shrink-0 rounded p-1 text-theme-muted hover:text-danger"
                         >
                           <X size={12} />
                         </button>
@@ -347,7 +347,7 @@ export default function AdminSurveyEditorPage() {
                     <button
                       type="button"
                       onClick={() => addOption(qi)}
-                      className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-xs text-theme-muted hover:text-theme-primary"
+                      className="flex items-center gap-1 rounded-card px-2 py-2 text-label text-theme-muted hover:text-theme-primary"
                     >
                       <Plus size={11} />
                       {t('admin.editor.addOption')}
@@ -358,39 +358,39 @@ export default function AdminSurveyEditorPage() {
                 {q.type === 'scale' && (
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <label className="text-xs text-theme-muted">{t('admin.editor.scaleMin')}</label>
+                      <label className="text-label text-theme-muted">{t('admin.editor.scaleMin')}</label>
                       <input
                         type="number"
                         value={q.scale_min}
                         onChange={(e) => updateQuestion(qi, { scale_min: e.target.value })}
-                        className="w-full rounded-lg border border-theme-border bg-theme-surface2 px-3 py-2 text-xs text-theme-primary outline-none focus:border-accent"
+                        className="w-full rounded-card border border-theme-border bg-theme-surface2 px-3 py-2 text-label text-theme-primary outline-none focus:border-accent"
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs text-theme-muted">{t('admin.editor.scaleMax')}</label>
+                      <label className="text-label text-theme-muted">{t('admin.editor.scaleMax')}</label>
                       <input
                         type="number"
                         value={q.scale_max}
                         onChange={(e) => updateQuestion(qi, { scale_max: e.target.value })}
-                        className="w-full rounded-lg border border-theme-border bg-theme-surface2 px-3 py-2 text-xs text-theme-primary outline-none focus:border-accent"
+                        className="w-full rounded-card border border-theme-border bg-theme-surface2 px-3 py-2 text-label text-theme-primary outline-none focus:border-accent"
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs text-theme-muted">{t('admin.editor.scaleMinLabel')}</label>
+                      <label className="text-label text-theme-muted">{t('admin.editor.scaleMinLabel')}</label>
                       <input
                         type="text"
                         value={q.scale_min_label}
                         onChange={(e) => updateQuestion(qi, { scale_min_label: e.target.value })}
-                        className="w-full rounded-lg border border-theme-border bg-theme-surface2 px-3 py-2 text-xs text-theme-primary outline-none focus:border-accent"
+                        className="w-full rounded-card border border-theme-border bg-theme-surface2 px-3 py-2 text-label text-theme-primary outline-none focus:border-accent"
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs text-theme-muted">{t('admin.editor.scaleMaxLabel')}</label>
+                      <label className="text-label text-theme-muted">{t('admin.editor.scaleMaxLabel')}</label>
                       <input
                         type="text"
                         value={q.scale_max_label}
                         onChange={(e) => updateQuestion(qi, { scale_max_label: e.target.value })}
-                        className="w-full rounded-lg border border-theme-border bg-theme-surface2 px-3 py-2 text-xs text-theme-primary outline-none focus:border-accent"
+                        className="w-full rounded-card border border-theme-border bg-theme-surface2 px-3 py-2 text-label text-theme-primary outline-none focus:border-accent"
                       />
                     </div>
                   </div>
@@ -400,8 +400,8 @@ export default function AdminSurveyEditorPage() {
           ))}
 
           {questions.length === 0 && (
-            <div className="rounded-xl bg-theme-surface px-4 py-8 text-center">
-              <p className="text-sm text-theme-subtle">{t('admin.noSurveys')}</p>
+            <div className="rounded-card bg-theme-surface px-4 py-8 text-center">
+              <p className="text-body text-theme-muted">{t('admin.noSurveys')}</p>
             </div>
           )}
         </div>

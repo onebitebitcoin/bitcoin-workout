@@ -63,11 +63,11 @@ export default function RegisterPage() {
 
   return (
     <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-theme-page px-6">
-      <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-2xl bg-theme-surface text-accent">
+      <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-card bg-theme-surface text-accent">
         <LogoMark aria-label={t('logoAlt')} role="img" size={40} />
       </div>
-      <p className="mb-1 text-2xl font-bold text-accent">Bitcoiners</p>
-      <p className="mb-8 text-sm text-theme-muted">{t('registerTitle')}</p>
+      <p className="mb-1 text-display text-accent">Bitcoiners</p>
+      <p className="mb-8 text-body text-theme-muted">{t('registerTitle')}</p>
 
       <div className="w-full max-w-sm">
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
@@ -77,7 +77,7 @@ export default function RegisterPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full rounded-lg bg-theme-surface px-4 py-3 text-theme-primary placeholder-theme-subtle outline-none focus:ring-2 focus:ring-accent"
+            className="w-full rounded-card bg-theme-surface px-4 py-3 text-theme-primary placeholder-theme-muted outline-none focus:ring-2 focus:ring-accent"
           />
           <input
             type="text"
@@ -85,17 +85,17 @@ export default function RegisterPage() {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
-            className="w-full rounded-lg bg-theme-surface px-4 py-3 text-theme-primary placeholder-theme-subtle outline-none focus:ring-2 focus:ring-accent"
+            className="w-full rounded-card bg-theme-surface px-4 py-3 text-theme-primary placeholder-theme-muted outline-none focus:ring-2 focus:ring-accent"
           />
           <input
             type="text"
             placeholder={t('lightningAddressPlaceholder')}
             value={lightningAddress}
             onChange={(e) => setLightningAddress(e.target.value)}
-            className="w-full rounded-lg bg-theme-surface px-4 py-3 text-theme-primary placeholder-theme-subtle outline-none focus:ring-2 focus:ring-accent"
+            className="w-full rounded-card bg-theme-surface px-4 py-3 text-theme-primary placeholder-theme-muted outline-none focus:ring-2 focus:ring-accent"
           />
           <div className="flex justify-end -mt-2">
-            <Link to="/lightning-guide" className="text-xs text-accent underline underline-offset-2">
+            <Link to="/lightning-guide" className="text-label text-accent underline underline-offset-2">
               {t('howToCreateWallet')}
             </Link>
           </div>
@@ -105,20 +105,20 @@ export default function RegisterPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full rounded-lg bg-theme-surface px-4 py-3 text-theme-primary placeholder-theme-subtle outline-none focus:ring-2 focus:ring-accent"
+            className="w-full rounded-card bg-theme-surface px-4 py-3 text-theme-primary placeholder-theme-muted outline-none focus:ring-2 focus:ring-accent"
           />
-          {emailError && <p className="text-sm text-red-400">{emailError}</p>}
+          {emailError && <p className="text-body text-danger">{emailError}</p>}
           <button
             type="submit"
             disabled={emailLoading}
-            className="w-full rounded-lg bg-accent py-3 font-semibold text-accent-fg transition-opacity disabled:opacity-60"
+            className="w-full rounded-card bg-accent py-3 font-semibold text-accent-fg transition-opacity disabled:opacity-60"
           >
             {emailLoading ? t('processing') : t('registerButton')}
           </button>
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="w-full text-sm text-theme-muted underline"
+            className="w-full text-body text-theme-muted underline"
           >
             {t('alreadyHaveAccount')}
           </button>

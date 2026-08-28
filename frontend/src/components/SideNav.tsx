@@ -16,10 +16,10 @@ export default function SideNav() {
   }
 
   const navItem = ({ isActive }: { isActive: boolean }) =>
-    `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors ${
+    `flex items-center gap-3 rounded-card px-4 py-3 text-body font-medium transition-colors ${
       isActive
         ? 'bg-theme-surface2 text-accent-text'
-        : 'text-theme-subtle hover:bg-theme-surface2 hover:text-theme-primary'
+        : 'text-theme-muted hover:bg-theme-surface2 hover:text-theme-primary'
     }`
 
   return (
@@ -27,7 +27,7 @@ export default function SideNav() {
       {/* 로고 */}
       <div className="flex items-center gap-2 px-6 py-5">
         <LogoMark size={28} className="text-accent" />
-        <span className="text-base font-bold text-theme-primary">Bitcoiners</span>
+        <span className="text-title text-theme-primary">Bitcoiners</span>
       </div>
 
       {/* 네비게이션 항목 */}
@@ -44,7 +44,7 @@ export default function SideNav() {
 
         <button
           onClick={handleUpload}
-          className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-theme-subtle transition-colors hover:bg-theme-surface2 hover:text-theme-primary"
+          className="flex items-center gap-3 rounded-card px-4 py-3 text-body font-medium text-theme-muted transition-colors hover:bg-theme-surface2 hover:text-theme-primary"
           aria-label={t('nav.uploadAria')}
         >
           <Plus size={20} strokeWidth={1.5} />
@@ -56,9 +56,10 @@ export default function SideNav() {
           <span className="relative">
             <Bell size={20} strokeWidth={1.5} />
             {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
+              <span
+                className="absolute -top-1 -right-1 h-2 w-2 rounded-pill bg-danger ring-2 ring-theme-surface"
+                aria-label={t('nav.unreadAria', { count: unreadCount })}
+              />
             )}
           </span>
           <span>{t('nav.notifications')}</span>

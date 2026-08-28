@@ -67,6 +67,15 @@ export default function HistoryPage() {
   const firstIdx = getFirstDayIndex(year, month)
   const workoutDays = data?.workout_days ?? {}
   const streak = data?.streak ?? 0
+  // 5단계인데 색은 3종뿐이라 100일과 30일이, 14일과 7일이 서로 같은 색이었다.
+  // 단계는 이미 문구가 말하므로 색은 하나로 둔다.
+  const streakBadge =
+    streak >= 100 ? 'badge100'
+    : streak >= 30 ? 'badge30'
+    : streak >= 14 ? 'badge14'
+    : streak >= 7 ? 'badge7'
+    : streak >= 3 ? 'badge3'
+    : null
   const totalWorkoutDays = data?.total_days ?? 0
 
   const isCurrentMonth =
@@ -83,54 +92,34 @@ export default function HistoryPage() {
   return (
     <div className="flex flex-col h-[100dvh] bg-theme-page overflow-y-auto pb-nav-safe lg:max-w-2xl lg:mx-auto">
       <div className="px-4 pt-6 pb-3">
-        <h1 className="text-xl font-bold text-theme-primary">{t('historyTitle')}</h1>
+        <h1 className="text-display text-theme-primary">{t('historyTitle')}</h1>
       </div>
 
-      <div className="mx-4 mb-4 rounded-xl bg-theme-surface px-4 py-4">
+      <div className="mx-4 mb-4 rounded-card bg-theme-surface px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 text-orange-400">
+            <div className="flex items-center gap-2 text-accent-text">
               <Flame size={24} strokeWidth={2} />
-              <span className="text-3xl font-bold leading-none">{streak}</span>
+              <span className="text-display leading-none">{streak}</span>
             </div>
             <div>
-              <p className="text-sm font-semibold text-theme-primary">{t('streakDays')}</p>
+              <p className="text-body font-semibold text-theme-primary">{t('streakDays')}</p>
               {streak === 0 && (
-                <p className="text-xs text-theme-muted">{t('streakStart')}</p>
+                <p className="text-label text-theme-muted">{t('streakStart')}</p>
               )}
             </div>
           </div>
           <div className="text-right">
-            {streak >= 100 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-2.5 py-1 text-xs font-bold text-amber-400">
-                <Award size={12} /> {t('badge100')}
-              </span>
-            )}
-            {streak >= 30 && streak < 100 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-2.5 py-1 text-xs font-bold text-amber-400">
-                <Award size={12} /> {t('badge30')}
-              </span>
-            )}
-            {streak >= 14 && streak < 30 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/20 px-2.5 py-1 text-xs font-bold text-orange-400">
-                <Award size={12} /> {t('badge14')}
-              </span>
-            )}
-            {streak >= 7 && streak < 14 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/20 px-2.5 py-1 text-xs font-bold text-orange-400">
-                <Award size={12} /> {t('badge7')}
-              </span>
-            )}
-            {streak >= 3 && streak < 7 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-yellow-500/20 px-2.5 py-1 text-xs font-bold text-yellow-400">
-                <Award size={12} /> {t('badge3')}
+            {streakBadge && (
+              <span className="inline-flex items-center gap-1 rounded-pill bg-accent/15 px-3 py-1 text-label font-semibold text-accent-text">
+                <Award size={14} strokeWidth={1.75} /> {t(streakBadge)}
               </span>
             )}
           </div>
         </div>
         <div className="mt-3 h-px bg-theme-border" />
         <div className="mt-3 flex items-center justify-between">
-          <p className="text-sm text-theme-muted">
+          <p className="text-body text-theme-muted">
             {t('thisMonthWorkout')}{' '}
             <span className="font-semibold text-theme-primary">{t('workoutDays', { count: totalWorkoutDays })}</span>
           </p>
@@ -143,7 +132,7 @@ export default function HistoryPage() {
                 window.navigator.clipboard?.writeText(text).then(() => alert(t('clipboardCopied'))).catch(() => undefined)
               }
             }}
-            className="flex items-center gap-1 rounded-lg bg-accent/10 px-3 py-1.5 text-xs font-medium text-accent hover:bg-accent/20 transition-colors"
+            className="flex items-center gap-1 rounded-card bg-accent/10 px-3 py-2 text-label font-medium text-accent hover:bg-accent/20 transition-colors"
           >
             <Share2 size={12} />
             {t('shareButton')}
@@ -154,17 +143,17 @@ export default function HistoryPage() {
       <div className="flex items-center justify-between px-4 mb-3">
         <button
           onClick={prevMonth}
-          className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-theme-surface transition-colors"
+          className="flex h-8 w-8 items-center justify-center rounded-pill hover:bg-theme-surface transition-colors"
         >
           <ChevronLeft size={20} strokeWidth={2} className="text-theme-primary" />
         </button>
-        <span className="text-base font-semibold text-theme-primary">
+        <span className="text-title font-semibold text-theme-primary">
           {t('calendarYear', { year, month })}
         </span>
         <button
           onClick={nextMonth}
           disabled={isCurrentMonth}
-          className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-theme-surface transition-colors disabled:opacity-30"
+          className="flex h-8 w-8 items-center justify-center rounded-pill hover:bg-theme-surface transition-colors disabled:opacity-30"
         >
           <ChevronRight size={20} strokeWidth={2} className="text-theme-primary" />
         </button>
@@ -172,7 +161,7 @@ export default function HistoryPage() {
 
       <div className="px-4">
         {isLoading ? (
-          <div className="flex h-48 items-center justify-center text-theme-muted text-sm">
+          <div className="flex h-48 items-center justify-center text-theme-muted text-body">
             {t('historyLoading')}
           </div>
         ) : (
@@ -181,7 +170,7 @@ export default function HistoryPage() {
               {daysOfWeek.map((d) => (
                 <div
                   key={d}
-                  className="text-center text-xs font-medium text-theme-muted py-1"
+                  className="text-center text-label font-medium text-theme-muted py-1"
                 >
                   {d}
                 </div>
@@ -190,7 +179,7 @@ export default function HistoryPage() {
             <div className="grid grid-cols-7 gap-1">
             {cells.map((cell, idx) => {
               if (cell.day === null) {
-                return <div key={`empty-${idx}`} className="aspect-square" />
+ return <div key={`empty-${idx}`} className="aspect-square" />
               }
               const hasWorkout = cell.dateStr !== null && workoutDays[cell.dateStr]?.length > 0
               const isToday = cell.day === todayNum
@@ -202,7 +191,7 @@ export default function HistoryPage() {
                     key={cell.dateStr}
                     onClick={() => openDay(cell.dateStr!, posts)}
                     className={`
-                      aspect-square relative overflow-hidden rounded-xl
+                      aspect-square relative overflow-hidden rounded-card
                       active:scale-95 transition-transform
                       ${isToday ? 'ring-2 ring-accent ring-offset-1 ring-offset-[--bg-page]' : ''}
                     `}
@@ -224,11 +213,11 @@ export default function HistoryPage() {
                       />
                     )}
                     <div className="absolute inset-0 bg-black/30" />
-                    <span className="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-white leading-none">
+                    <span className="absolute inset-0 flex items-center justify-center text-label font-bold text-white leading-none">
                       {cell.day}
                     </span>
                     {posts.length > 1 && (
-                      <div className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-accent" />
+                      <div className="absolute top-1 right-1 h-1.5 w-1.5 rounded-pill bg-accent" />
                     )}
                   </button>
                 )
@@ -238,8 +227,8 @@ export default function HistoryPage() {
                 <div
                   key={cell.dateStr}
                   className={`
-                    aspect-square flex items-center justify-center rounded-xl
-                    text-sm font-medium
+                    aspect-square flex items-center justify-center rounded-card
+                    text-body font-medium
                     ${isToday ? 'ring-1 ring-accent text-accent' : 'text-theme-muted'}
                   `}
                 >
@@ -257,15 +246,15 @@ export default function HistoryPage() {
           <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 pt-safe pt-4 pb-3 bg-gradient-to-b from-black/60 to-transparent">
             <button
               onClick={closeModal}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-black/30"
+              className="flex h-9 w-9 items-center justify-center rounded-pill bg-black/30"
             >
               <ArrowLeft size={20} strokeWidth={2} color="white" />
             </button>
-            <span className="text-sm font-semibold text-white">
+            <span className="text-body font-semibold text-white">
               {selectedDate.replace(/-/g, '.')}
             </span>
             {selectedPosts.length > 1 ? (
-              <span className="text-xs text-white/70">
+              <span className="text-label text-white/70">
                 {videoIdx + 1} / {selectedPosts.length}
               </span>
             ) : (
@@ -284,27 +273,27 @@ export default function HistoryPage() {
 
           <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-6 pt-16 bg-gradient-to-t from-black/70 to-transparent">
             <div className="flex items-center gap-4 mb-2">
-              <div className="flex items-center gap-1.5 text-white/80">
+              <div className="flex items-center gap-2 text-white/80">
                 <Heart size={14} strokeWidth={1.5} />
-                <span className="text-sm">{selectedPosts[videoIdx].like_count}</span>
+                <span className="text-body">{selectedPosts[videoIdx].like_count}</span>
               </div>
-              <div className="flex items-center gap-1.5 text-white/80">
+              <div className="flex items-center gap-2 text-white/80">
                 <Eye size={14} strokeWidth={1.5} />
-                <span className="text-sm">{selectedPosts[videoIdx].view_count}</span>
+                <span className="text-body">{selectedPosts[videoIdx].view_count}</span>
               </div>
             </div>
             {selectedPosts[videoIdx].caption && (
-              <p className="text-sm text-white/90 line-clamp-2 mb-3">
+              <p className="text-body text-white/90 line-clamp-2 mb-3">
                 {selectedPosts[videoIdx].caption}
               </p>
             )}
             {selectedPosts.length > 1 && (
-              <div className="flex gap-1.5">
+              <div className="flex gap-2">
                 {selectedPosts.map((_, i) => (
                   <button
                     key={i}
                     onClick={() => setVideoIdx(i)}
-                    className={`h-1 flex-1 rounded-full transition-all ${
+                    className={`h-1 flex-1 rounded-pill transition-all ${
                       i === videoIdx ? 'bg-accent' : 'bg-white/30'
                     }`}
                   />

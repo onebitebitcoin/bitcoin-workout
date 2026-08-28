@@ -78,12 +78,12 @@ export default function SharedVideoPage() {
   return (
     <div className="flex flex-col h-[100dvh] bg-black">
       <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 pt-safe pt-4 pb-3 bg-gradient-to-b from-black/60 to-transparent">
-        <button onClick={() => navigate('/')} className="flex h-9 w-9 items-center justify-center rounded-full bg-black/30">
+        <button onClick={() => navigate('/')} className="flex h-9 w-9 items-center justify-center rounded-pill bg-black/30">
           <ArrowLeft size={20} color="white" />
         </button>
         <div className="flex items-center gap-2">
           <Target size={16} color="white" />
-          <span className="text-sm font-semibold text-white">Bitcoiners</span>
+          <span className="text-body font-semibold text-white">Bitcoiners</span>
         </div>
         <div className="w-9" />
       </div>
@@ -100,19 +100,19 @@ export default function SharedVideoPage() {
 
       <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-8 pt-16 bg-gradient-to-t from-black/70 to-transparent">
         <p className="text-white font-semibold mb-1">@{post.username}</p>
-        {post.caption && <p className="text-white/80 text-sm mb-3">{post.caption}</p>}
+        {post.caption && <p className="text-white/80 text-body mb-3">{post.caption}</p>}
         <div className="flex items-center gap-4 mb-4">
-          <div className="flex items-center gap-1.5 text-white/80">
-            <Heart size={14} /><span className="text-sm">{post.like_count}</span>
+          <div className="flex items-center gap-2 text-white/80">
+            <Heart size={14} /><span className="text-body">{post.like_count}</span>
           </div>
-          <div className="flex items-center gap-1.5 text-white/80">
-            <Eye size={14} /><span className="text-sm">{post.view_count}</span>
+          <div className="flex items-center gap-2 text-white/80">
+            <Eye size={14} /><span className="text-body">{post.view_count}</span>
           </div>
         </div>
         {!token && (
           <button
             onClick={() => navigate('/login')}
-            className="w-full rounded-xl bg-accent py-3 text-sm font-semibold text-accent-fg"
+            className="w-full rounded-card bg-accent py-3 text-body font-semibold text-accent-fg"
           >
             {t('loginCta')}
           </button>

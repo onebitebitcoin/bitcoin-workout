@@ -67,7 +67,7 @@ export default function AdminSurveysListPage() {
   if (!isAdmin) {
     return (
       <div className="flex h-[100dvh] flex-col items-center justify-center bg-theme-page">
-        <p className="text-sm text-theme-muted">{t('admin.adminOnly')}</p>
+        <p className="text-body text-theme-muted">{t('admin.adminOnly')}</p>
       </div>
     )
   }
@@ -81,15 +81,15 @@ export default function AdminSurveysListPage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/admin')}
-              className="flex h-8 w-8 items-center justify-center rounded-full hover:bg-theme-surface transition-colors"
+              className="flex h-8 w-8 items-center justify-center rounded-pill hover:bg-theme-surface transition-colors"
             >
               <ArrowLeft size={18} strokeWidth={2} className="text-theme-primary" />
             </button>
-            <h1 className="text-xl font-bold text-theme-primary">{t('admin.title')}</h1>
+            <h1 className="text-display text-theme-primary">{t('admin.title')}</h1>
           </div>
           <button
             onClick={() => navigate('/admin/surveys/new')}
-            className="flex items-center gap-1.5 rounded-xl bg-accent px-3 py-2 text-xs font-semibold text-accent-fg"
+            className="flex items-center gap-2 rounded-card bg-accent px-3 py-2 text-label font-semibold text-accent-fg"
           >
             <Plus size={14} />
             {t('admin.newSurvey')}
@@ -99,26 +99,26 @@ export default function AdminSurveysListPage() {
 
       <div className="flex-1 overflow-y-auto px-4 pb-24 space-y-3">
         {isLoading && (
-          <p className="py-10 text-center text-sm text-theme-muted">{t('admin.loading')}</p>
+          <p className="py-10 text-center text-body text-theme-muted">{t('admin.loading')}</p>
         )}
         {!isLoading && isError && (
-          <p className="py-10 text-center text-sm text-red-400">{t('admin.loadFailed')}</p>
+          <p className="py-10 text-center text-body text-danger">{t('admin.loadFailed')}</p>
         )}
         {!isLoading && !isError && surveys.length === 0 && (
-          <p className="py-10 text-center text-sm text-theme-subtle">{t('admin.noSurveys')}</p>
+          <p className="py-10 text-center text-body text-theme-muted">{t('admin.noSurveys')}</p>
         )}
 
         {surveys.map((s) => (
-          <div key={s.id} className="rounded-xl bg-theme-surface p-4 space-y-3">
+          <div key={s.id} className="rounded-card bg-theme-surface p-4 space-y-3">
             <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-theme-primary truncate">{s.title}</p>
-                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-theme-muted">
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-label text-theme-muted">
                   <span
-                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                    className={`rounded-pill px-2 py-1 text-label font-semibold ${
                       s.is_active
-                        ? 'bg-green-500/15 text-green-400'
-                        : 'bg-theme-surface2 text-theme-subtle'
+                        ? 'bg-success/15 text-success'
+                        : 'bg-theme-surface2 text-theme-muted'
                     }`}
                   >
                     {s.is_active ? t('admin.active') : t('admin.inactive')}
@@ -136,14 +136,14 @@ export default function AdminSurveysListPage() {
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => navigate(`/admin/surveys/${s.id}/edit`)}
-                className="flex items-center gap-1 rounded-lg bg-theme-surface2 px-3 py-1.5 text-xs font-semibold text-theme-muted hover:text-theme-primary"
+                className="flex items-center gap-1 rounded-card bg-theme-surface2 px-3 py-2 text-label font-semibold text-theme-muted hover:text-theme-primary"
               >
                 <Pencil size={11} />
                 {t('admin.editButton')}
               </button>
               <button
                 onClick={() => navigate(`/admin/surveys/${s.id}/responses`)}
-                className="flex items-center gap-1 rounded-lg bg-theme-surface2 px-3 py-1.5 text-xs font-semibold text-theme-muted hover:text-theme-primary"
+                className="flex items-center gap-1 rounded-card bg-theme-surface2 px-3 py-2 text-label font-semibold text-theme-muted hover:text-theme-primary"
               >
                 <BarChart2 size={11} />
                 {t('admin.responsesButton')}
@@ -151,7 +151,7 @@ export default function AdminSurveysListPage() {
               {s.is_open && (
                 <button
                   onClick={() => setCloseConfirmId(s.id)}
-                  className="flex items-center gap-1 rounded-lg bg-theme-surface2 px-3 py-1.5 text-xs font-semibold text-theme-muted hover:text-theme-primary"
+                  className="flex items-center gap-1 rounded-card bg-theme-surface2 px-3 py-2 text-label font-semibold text-theme-muted hover:text-theme-primary"
                 >
                   <X size={11} />
                   {t('admin.closeButton')}
@@ -159,14 +159,14 @@ export default function AdminSurveysListPage() {
               )}
               <button
                 onClick={() => handleCopyLink(s.slug)}
-                className="flex items-center gap-1 rounded-lg bg-theme-surface2 px-3 py-1.5 text-xs font-semibold text-theme-muted hover:text-theme-primary"
+                className="flex items-center gap-1 rounded-card bg-theme-surface2 px-3 py-2 text-label font-semibold text-theme-muted hover:text-theme-primary"
               >
                 <Link2 size={11} />
                 {t('admin.copyLinkButton')}
               </button>
               <button
                 onClick={() => setDeleteConfirmId(s.id)}
-                className="flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white"
+                className="flex items-center gap-1 rounded-card bg-danger px-3 py-2 text-label font-semibold text-white"
               >
                 <Trash2 size={11} />
                 {t('admin.deleteButton')}
@@ -182,22 +182,22 @@ export default function AdminSurveysListPage() {
           onClick={() => setCloseConfirmId(null)}
         >
           <div
-            className="w-full max-w-sm rounded-3xl bg-theme-surface px-6 pt-5 pb-6 shadow-2xl"
+            className="w-full max-w-sm rounded-card bg-theme-surface px-6 pt-5 pb-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="mb-1 text-base font-bold text-theme-primary">{t('admin.closeConfirmTitle')}</p>
-            <p className="mb-5 text-sm text-theme-muted">{t('admin.closeConfirmMessage')}</p>
+            <p className="mb-1 text-title text-theme-primary">{t('admin.closeConfirmTitle')}</p>
+            <p className="mb-5 text-body text-theme-muted">{t('admin.closeConfirmMessage')}</p>
             <div className="flex gap-3">
               <button
                 onClick={() => setCloseConfirmId(null)}
-                className="flex-1 rounded-xl bg-theme-surface2 py-3 text-sm text-theme-muted"
+                className="flex-1 rounded-card bg-theme-surface2 py-3 text-body text-theme-muted"
               >
                 {t('admin.cancel')}
               </button>
               <button
                 onClick={() => closeSurvey.mutate(closeConfirmId)}
                 disabled={closeSurvey.isPending}
-                className="flex-1 rounded-xl bg-accent py-3 text-sm font-semibold text-accent-fg disabled:opacity-60"
+                className="flex-1 rounded-card bg-accent py-3 text-body font-semibold text-accent-fg disabled:opacity-60"
               >
                 {t('admin.confirm')}
               </button>
@@ -212,22 +212,22 @@ export default function AdminSurveysListPage() {
           onClick={() => setDeleteConfirmId(null)}
         >
           <div
-            className="w-full max-w-sm rounded-3xl bg-theme-surface px-6 pt-5 pb-6 shadow-2xl"
+            className="w-full max-w-sm rounded-card bg-theme-surface px-6 pt-5 pb-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="mb-1 text-base font-bold text-theme-primary">{t('admin.deleteConfirmTitle')}</p>
-            <p className="mb-5 text-sm text-theme-muted">{t('admin.deleteConfirmMessage')}</p>
+            <p className="mb-1 text-title text-theme-primary">{t('admin.deleteConfirmTitle')}</p>
+            <p className="mb-5 text-body text-theme-muted">{t('admin.deleteConfirmMessage')}</p>
             <div className="flex gap-3">
               <button
                 onClick={() => setDeleteConfirmId(null)}
-                className="flex-1 rounded-xl bg-theme-surface2 py-3 text-sm text-theme-muted"
+                className="flex-1 rounded-card bg-theme-surface2 py-3 text-body text-theme-muted"
               >
                 {t('admin.cancel')}
               </button>
               <button
                 onClick={() => deleteSurvey.mutate(deleteConfirmId)}
                 disabled={deleteSurvey.isPending}
-                className="flex-1 rounded-xl bg-red-500 py-3 text-sm font-semibold text-white disabled:opacity-60"
+                className="flex-1 rounded-card bg-danger py-3 text-body font-semibold text-white disabled:opacity-60"
               >
                 {t('admin.deleteButton')}
               </button>

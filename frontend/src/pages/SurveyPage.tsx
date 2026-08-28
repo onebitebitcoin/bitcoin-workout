@@ -88,14 +88,14 @@ export default function SurveyPage() {
                 step={1}
                 value={current ?? min}
                 onChange={(e) => setAnswers((prev) => ({ ...prev, [q.id]: Number(e.target.value) }))}
-                className="h-2 w-full cursor-pointer appearance-none rounded-full bg-theme-surface2 accent-accent"
+                className="h-2 w-full cursor-pointer appearance-none rounded-pill bg-theme-surface2 accent-accent"
               />
-              <span className="w-8 shrink-0 text-center text-lg font-bold text-accent">
-                {current ?? <span className="text-theme-muted text-sm">—</span>}
+              <span className="w-8 shrink-0 text-center text-title text-accent">
+                {current ?? <span className="text-theme-muted text-body">—</span>}
               </span>
             </div>
             {(q.scale_min_label || q.scale_max_label) && (
-              <div className="flex justify-between text-xs text-theme-muted">
+              <div className="flex justify-between text-label text-theme-muted">
                 <span>{min} · {q.scale_min_label}</span>
                 <span>{q.scale_max_label} · {max}</span>
               </div>
@@ -109,7 +109,7 @@ export default function SurveyPage() {
             {(q.options ?? []).map((opt) => (
               <label
                 key={opt}
-                className="flex cursor-pointer items-center gap-3 rounded-xl bg-theme-surface px-4 py-3 transition-colors hover:bg-theme-surface2"
+                className="flex cursor-pointer items-center gap-3 rounded-card bg-theme-surface px-4 py-3 transition-colors hover:bg-theme-surface2"
               >
                 <input
                   type="radio"
@@ -119,7 +119,7 @@ export default function SurveyPage() {
                   onChange={() => setAnswers((prev) => ({ ...prev, [q.id]: opt }))}
                   className="accent-accent"
                 />
-                <span className="text-sm text-theme-primary">{opt}</span>
+                <span className="text-body text-theme-primary">{opt}</span>
               </label>
             ))}
           </div>
@@ -132,7 +132,7 @@ export default function SurveyPage() {
             {(q.options ?? []).map((opt) => (
               <label
                 key={opt}
-                className="flex cursor-pointer items-center gap-3 rounded-xl bg-theme-surface px-4 py-3 transition-colors hover:bg-theme-surface2"
+                className="flex cursor-pointer items-center gap-3 rounded-card bg-theme-surface px-4 py-3 transition-colors hover:bg-theme-surface2"
               >
                 <input
                   type="checkbox"
@@ -147,7 +147,7 @@ export default function SurveyPage() {
                   }}
                   className="accent-accent"
                 />
-                <span className="text-sm text-theme-primary">{opt}</span>
+                <span className="text-body text-theme-primary">{opt}</span>
               </label>
             ))}
           </div>
@@ -160,7 +160,7 @@ export default function SurveyPage() {
             onChange={(e) => setAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
             placeholder={q.required ? undefined : t('form.optionalPlaceholder')}
             rows={4}
-            className="w-full resize-none rounded-xl bg-theme-surface px-4 py-3 text-sm text-theme-primary placeholder:text-theme-subtle outline-none"
+            className="w-full resize-none rounded-card bg-theme-surface px-4 py-3 text-body text-theme-primary placeholder:text-theme-muted outline-none"
           />
         )
       }
@@ -174,7 +174,7 @@ export default function SurveyPage() {
   if (isError) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-theme-page">
-        <p className="text-sm text-red-400">{t('error.load')}</p>
+        <p className="text-body text-danger">{t('error.load')}</p>
       </div>
     )
   }
@@ -182,7 +182,7 @@ export default function SurveyPage() {
   if (!survey) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-theme-page">
-        <p className="text-sm text-theme-muted">{t('notFound')}</p>
+        <p className="text-body text-theme-muted">{t('notFound')}</p>
       </div>
     )
   }
@@ -192,8 +192,8 @@ export default function SurveyPage() {
       <div className="flex min-h-[100dvh] items-center justify-center bg-theme-page px-4">
         <div className="w-full max-w-sm space-y-4 text-center">
           <CheckCircle size={48} className="mx-auto text-accent" />
-          <h1 className="text-xl font-bold text-theme-primary">{t('alreadyDone.title')}</h1>
-          <p className="text-sm text-theme-muted">{t('alreadyDone.message')}</p>
+          <h1 className="text-display text-theme-primary">{t('alreadyDone.title')}</h1>
+          <p className="text-body text-theme-muted">{t('alreadyDone.message')}</p>
         </div>
       </div>
     )
@@ -204,8 +204,8 @@ export default function SurveyPage() {
       <div className="flex min-h-[100dvh] items-center justify-center bg-theme-page px-4">
         <div className="w-full max-w-sm space-y-4 text-center">
           <XCircle size={48} className="mx-auto text-theme-muted" />
-          <h1 className="text-xl font-bold text-theme-primary">{t('closed.title')}</h1>
-          <p className="text-sm text-theme-muted">{t('closed.message')}</p>
+          <h1 className="text-display text-theme-primary">{t('closed.title')}</h1>
+          <p className="text-body text-theme-muted">{t('closed.message')}</p>
         </div>
       </div>
     )
@@ -217,15 +217,15 @@ export default function SurveyPage() {
         {step === 'intro' && (
           <div className="space-y-6">
             <div className="space-y-3">
-              <h1 className="text-2xl font-bold text-theme-primary">{survey.title}</h1>
+              <h1 className="text-display text-theme-primary">{survey.title}</h1>
               {survey.description && (
-                <p className="text-sm text-theme-muted leading-relaxed">{survey.description}</p>
+                <p className="text-body text-theme-muted leading-relaxed">{survey.description}</p>
               )}
             </div>
             <button
               type="button"
               onClick={() => setStep('form')}
-              className="w-full rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-accent-fg"
+              className="w-full rounded-card bg-accent px-4 py-3 text-body font-semibold text-accent-fg"
             >
               {t('intro.startButton')}
             </button>
@@ -237,13 +237,13 @@ export default function SurveyPage() {
             {survey.questions.map((q, idx) => (
               <div key={q.id} className="space-y-3">
                 <div>
-                  <p className="text-sm font-semibold text-theme-primary">
-                    <span className="mr-1.5 text-theme-muted">{idx + 1}.</span>
+                  <p className="text-body font-semibold text-theme-primary">
+                    <span className="mr-2 text-theme-muted">{idx + 1}.</span>
                     {q.title}
-                    {q.required && <span className="ml-1 text-xs text-red-400">*</span>}
+                    {q.required && <span className="ml-1 text-label text-danger">*</span>}
                   </p>
                   {q.description && (
-                    <p className="mt-1 text-xs text-theme-muted">{q.description}</p>
+                    <p className="mt-1 text-label text-theme-muted">{q.description}</p>
                   )}
                 </div>
                 {renderQuestionInput(q)}
@@ -251,14 +251,14 @@ export default function SurveyPage() {
             ))}
 
             {formError && (
-              <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-400">{formError}</p>
+              <p className="rounded-card bg-danger/10 px-4 py-3 text-body text-danger">{formError}</p>
             )}
 
             <div className="flex justify-end">
               <button
                 type="button"
                 onClick={handleNext}
-                className="rounded-xl bg-accent px-6 py-3 text-sm font-semibold text-accent-fg"
+                className="rounded-card bg-accent px-6 py-3 text-body font-semibold text-accent-fg"
               >
                 {t('form.nextButton')}
               </button>
@@ -268,25 +268,25 @@ export default function SurveyPage() {
 
         {step === 'review' && (
           <div className="space-y-6">
-            <h2 className="text-lg font-bold text-theme-primary">{t('review.title')}</h2>
+            <h2 className="text-title text-theme-primary">{t('review.title')}</h2>
             <div className="space-y-3">
               {survey.questions.map((q, idx) => (
-                <div key={q.id} className="rounded-xl bg-theme-surface px-4 py-3 space-y-1">
-                  <p className="text-xs font-semibold text-theme-muted"><span className="mr-1">{idx + 1}.</span>{q.title}</p>
-                  <p className="text-sm text-theme-primary">{formatAnswer(q, answers[q.id])}</p>
+                <div key={q.id} className="rounded-card bg-theme-surface px-4 py-3 space-y-1">
+                  <p className="text-label font-semibold text-theme-muted"><span className="mr-1">{idx + 1}.</span>{q.title}</p>
+                  <p className="text-body text-theme-primary">{formatAnswer(q, answers[q.id])}</p>
                 </div>
               ))}
             </div>
 
             {submit.isError && (
-              <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-400">{t('error.submit')}</p>
+              <p className="rounded-card bg-danger/10 px-4 py-3 text-body text-danger">{t('error.submit')}</p>
             )}
 
             <div className="flex gap-3">
               <button
                 type="button"
                 onClick={() => setStep('form')}
-                className="flex-1 rounded-xl bg-theme-surface2 px-4 py-3 text-sm font-semibold text-theme-muted"
+                className="flex-1 rounded-card bg-theme-surface2 px-4 py-3 text-body font-semibold text-theme-muted"
               >
                 {t('review.editButton')}
               </button>
@@ -294,7 +294,7 @@ export default function SurveyPage() {
                 type="button"
                 onClick={() => submit.mutate(answers)}
                 disabled={submit.isPending}
-                className="flex-1 rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-accent-fg disabled:opacity-60"
+                className="flex-1 rounded-card bg-accent px-4 py-3 text-body font-semibold text-accent-fg disabled:opacity-60"
               >
                 {submit.isPending ? t('review.submittingButton') : t('review.submitButton')}
               </button>
@@ -305,8 +305,8 @@ export default function SurveyPage() {
         {step === 'done' && (
           <div className="space-y-4 py-16 text-center">
             <CheckCircle size={56} className="mx-auto text-accent" />
-            <h2 className="text-xl font-bold text-theme-primary">{t('done.title')}</h2>
-            <p className="text-sm text-theme-muted">{t('done.message')}</p>
+            <h2 className="text-display text-theme-primary">{t('done.title')}</h2>
+            <p className="text-body text-theme-muted">{t('done.message')}</p>
           </div>
         )}
       </div>

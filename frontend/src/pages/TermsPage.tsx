@@ -14,8 +14,8 @@ export default function TermsPage() {
         <h1 className="font-bold text-theme-primary">{t('termsTitle')}</h1>
       </div>
 
-      <div className="px-4 pt-5 pb-6 space-y-6 text-sm text-theme-muted leading-relaxed">
-        <p className="text-xs font-semibold uppercase tracking-widest text-theme-muted">{t('termsServiceGuide')}</p>
+      <div className="px-4 pt-5 pb-6 space-y-6 text-body text-theme-muted leading-relaxed">
+        <p className="text-label font-semibold uppercase tracking-widest text-theme-muted">{t('termsServiceGuide')}</p>
         <section>
           <h2 className="font-semibold text-theme-primary mb-2">{t('termsSection.intro.title')}</h2>
           <p>{t('termsSection.intro.body')}</p>
@@ -29,7 +29,7 @@ export default function TermsPage() {
           <p>{t('termsSection.uploadPolicy.body')}</p>
         </section>
         <div className="h-px bg-theme-border" />
-        <p className="text-xs font-semibold uppercase tracking-widest text-theme-muted">{t('termsSection.termsLabel')}</p>
+        <p className="text-label font-semibold uppercase tracking-widest text-theme-muted">{t('termsSection.termsLabel')}</p>
         <section>
           <h2 className="font-semibold text-theme-primary mb-2">{t('termsSection.article1.title')}</h2>
           <p>{t('termsSection.article1.body')}</p>

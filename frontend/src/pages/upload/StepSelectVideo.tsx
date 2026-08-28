@@ -24,15 +24,15 @@ export default function StepSelectVideo({ fileInputRef, error, setError, onFileC
       />
       <label
         htmlFor="video-file-input"
-        className={`flex flex-col items-center gap-3 rounded-2xl border-2 border-dashed p-12 transition-colors cursor-pointer ${
-          error ? 'border-red-500 text-red-400' : 'border-theme-border text-theme-muted hover:border-accent hover:text-accent'
+        className={`flex flex-col items-center gap-3 rounded-card border-2 border-dashed p-12 transition-colors cursor-pointer ${
+          error ? 'border-danger text-danger' : 'border-theme-border text-theme-muted hover:border-accent hover:text-accent'
         }`}
       >
         <LogoMark size={48} />
         <span>{t('selectVideo.prompt')}</span>
-        <span className="text-xs">{t('selectVideo.hint')}</span>
+        <span className="text-label">{t('selectVideo.hint')}</span>
       </label>
-      {error && <p className="text-sm text-red-400 text-center">{error}</p>}
+      {error && <p className="text-body text-danger text-center">{error}</p>}
     </div>
   )
 }

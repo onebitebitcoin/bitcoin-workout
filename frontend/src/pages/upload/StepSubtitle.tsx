@@ -43,7 +43,7 @@ interface Props {
 }
 
 const SIZE_TEXT_CLASS: Record<SubtitleSize, string> = {
-  small: 'text-[9px]', large: 'text-sm',
+  small: 'text-[9px]', large: 'text-sm', // design-token-exempt: 영상에 구워질 자막 크기의 미리보기다. UI 스케일이 아니라 burn 결과에 맞춘 값이라 바꾸면 미리보기가 실제와 달라진다.
 }
 const POSITION_FLEX_CLASS: Record<SubtitlePosition, string> = {
   top: 'justify-start pt-3', center: 'justify-center', bottom: 'justify-end pb-3',
@@ -109,18 +109,18 @@ export default function StepSubtitle(props: Props) {
   return (
     <div className="flex flex-1 flex-col px-6 pt-4 gap-4 overflow-y-auto">
       <div>
-        <p className="text-sm font-semibold text-theme-primary">{t('subtitle.title')} <span className="text-xs font-normal text-theme-subtle">{t('subtitle.optional')}</span></p>
-        <p className="text-xs text-theme-muted mt-1">{t('subtitle.hint')}</p>
+        <p className="text-body font-semibold text-theme-primary">{t('subtitle.title')} <span className="text-label font-normal text-theme-muted">{t('subtitle.optional')}</span></p>
+        <p className="text-label text-theme-muted mt-1">{t('subtitle.hint')}</p>
       </div>
 
       {/* 소스 선택 탭 */}
-      <div className="flex gap-1.5">
+      <div className="flex gap-2">
         {SOURCES.filter((s) => s.show).map(({ value, label, icon: Icon }) => (
           <button
             key={value}
             type="button"
             onClick={() => setSubtitleSource(value)}
-            className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-medium transition-colors ${
+            className={`flex flex-1 items-center justify-center gap-2 rounded-card py-3 text-label font-medium transition-colors ${
               subtitleSource === value ? 'bg-accent text-accent-fg' : 'bg-theme-surface text-theme-muted'
             }`}
           >
@@ -131,62 +131,62 @@ export default function StepSubtitle(props: Props) {
 
       {/* 영상 음성 추출 */}
       {subtitleSource === 'video' && (
-        <div className="rounded-xl bg-theme-surface p-4 flex flex-col gap-3">
+        <div className="rounded-card bg-theme-surface p-4 flex flex-col gap-3">
           {videoAudioStatus === 'analyzing' && (
-            <div className="flex items-center gap-2"><Loader2 size={14} className="animate-spin text-accent" /><span className="text-xs text-theme-muted">{t('record.analyzing')}</span></div>
+            <div className="flex items-center gap-2"><Loader2 size={14} className="animate-spin text-accent" /><span className="text-label text-theme-muted">{t('record.analyzing')}</span></div>
           )}
           {subtitleExtracting && videoAudioStatus !== 'analyzing' && (
-            <div className="flex items-center gap-2"><Loader2 size={14} className="animate-spin text-accent" /><span className="text-xs text-theme-muted">{t('record.extracting')}</span></div>
+            <div className="flex items-center gap-2"><Loader2 size={14} className="animate-spin text-accent" /><span className="text-label text-theme-muted">{t('record.extracting')}</span></div>
           )}
           {videoAudioStatus === 'has_audio' && !subtitleExtracting && hasExtracted && (
             <>
               <div className="flex items-center justify-between">
-                <p className="text-xs text-theme-muted">{t('record.extractedLabel')}</p>
-                <button onClick={onClearSubtitle} className="flex items-center gap-1 text-xs text-theme-muted hover:text-red-400"><X size={11} /> {t('record.removeSubtitle')}</button>
+                <p className="text-label text-theme-muted">{t('record.extractedLabel')}</p>
+                <button onClick={onClearSubtitle} className="flex items-center gap-1 text-label text-theme-muted hover:text-danger"><X size={11} /> {t('record.removeSubtitle')}</button>
               </div>
-              <textarea value={editLines} onChange={(e) => handleEditChange(e.target.value)} rows={4} className="w-full resize-none rounded-xl bg-theme-surface2 px-3 py-2 text-sm text-theme-primary outline-none focus:ring-2 focus:ring-accent" />
+              <textarea value={editLines} onChange={(e) => handleEditChange(e.target.value)} rows={4} className="w-full resize-none rounded-card bg-theme-surface2 px-3 py-2 text-body text-theme-primary outline-none focus:ring-2 focus:ring-accent" />
             </>
           )}
           {videoAudioStatus === 'no_audio' && (
-            <div className="flex items-start gap-2"><VolumeX size={14} className="text-theme-muted mt-0.5" /><p className="text-xs text-theme-muted">{t('record.noAudio')}</p></div>
+            <div className="flex items-start gap-2"><VolumeX size={14} className="text-theme-muted mt-1" /><p className="text-label text-theme-muted">{t('record.noAudio')}</p></div>
           )}
           {videoAudioStatus === 'error' && (
-            <div className="flex items-start gap-2"><AlertCircle size={14} className="text-theme-subtle mt-0.5" /><p className="text-xs text-theme-subtle">{t('record.extractFailed')}</p></div>
+            <div className="flex items-start gap-2"><AlertCircle size={14} className="text-theme-muted mt-1" /><p className="text-label text-theme-muted">{t('record.extractFailed')}</p></div>
           )}
         </div>
       )}
 
       {/* 녹음 */}
       {subtitleSource === 'record' && (
-        <div className="rounded-xl bg-theme-surface p-4 flex flex-col gap-4">
-          <p className="text-xs text-theme-muted leading-relaxed">{t('record.recordingHint', { maxSeconds })}</p>
+        <div className="rounded-card bg-theme-surface p-4 flex flex-col gap-4">
+          <p className="text-label text-theme-muted leading-relaxed">{t('record.recordingHint', { maxSeconds })}</p>
           <div className="flex flex-col items-center gap-3">
             {recordingDone ? (
               <div className="flex flex-col items-center gap-2">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent/20"><Mic size={26} strokeWidth={1.5} className="text-accent" /></div>
-                <span className="text-xs text-accent font-medium">{t('record.recordingDone', { time: timeStr })}</span>
-                <button onClick={onRetake} className="flex items-center gap-1 text-xs text-theme-muted"><X size={12} /> {t('record.retake')}</button>
+                <div className="flex h-16 w-16 items-center justify-center rounded-pill bg-accent/20"><Mic size={26} strokeWidth={1.5} className="text-accent" /></div>
+                <span className="text-label text-accent font-medium">{t('record.recordingDone', { time: timeStr })}</span>
+                <button onClick={onRetake} className="flex items-center gap-1 text-label text-theme-muted"><X size={12} /> {t('record.retake')}</button>
               </div>
             ) : !recording ? (
-              <button onClick={startRecording} className="flex h-16 w-16 items-center justify-center rounded-full bg-accent"><Mic size={26} strokeWidth={1.5} className="text-black" /></button>
+              <button onClick={startRecording} className="flex h-16 w-16 items-center justify-center rounded-pill bg-accent"><Mic size={26} strokeWidth={1.5} className="text-black" /></button>
             ) : (
               <div className="flex flex-col items-center gap-2">
-                <button onClick={stopRecording} className="flex h-16 w-16 items-center justify-center rounded-full bg-red-600"><MicOff size={26} strokeWidth={1.5} className="text-black" /></button>
-                <span className="text-sm font-mono text-red-400">{timeStr}</span>
+                <button onClick={stopRecording} className="flex h-16 w-16 items-center justify-center rounded-pill bg-danger"><MicOff size={26} strokeWidth={1.5} className="text-black" /></button>
+                <span className="text-body font-mono text-danger">{timeStr}</span>
               </div>
             )}
-            <div className="w-full h-1.5 rounded-full bg-theme-surface2 overflow-hidden"><div className="h-full rounded-full bg-red-500 transition-all duration-1000" style={{ width: `${progressPct}%` }} /></div>
+            <div className="w-full h-1.5 rounded-pill bg-theme-surface2 overflow-hidden"><div className="h-full rounded-pill bg-danger transition-all duration-1000" style={{ width: `${progressPct}%` }} /></div>
           </div>
           {recordingDone && !subtitleExtracting && !hasExtracted && (
-            <button onClick={onExtractFromAudio} className="flex items-center justify-center gap-1.5 rounded-lg bg-accent/20 border border-accent/30 px-3 py-2.5 text-sm text-accent font-medium"><Mic size={14} /> {t('record.extractFromAudio')}</button>
+            <button onClick={onExtractFromAudio} className="flex items-center justify-center gap-2 rounded-card bg-accent/20 border border-accent/30 px-3 py-3 text-body text-accent font-medium"><Mic size={14} /> {t('record.extractFromAudio')}</button>
           )}
           {subtitleExtracting && (
-            <div className="flex items-center gap-2"><Loader2 size={14} className="animate-spin text-accent" /><span className="text-xs text-theme-muted">{t('record.extracting')}</span></div>
+            <div className="flex items-center gap-2"><Loader2 size={14} className="animate-spin text-accent" /><span className="text-label text-theme-muted">{t('record.extracting')}</span></div>
           )}
           {recordingDone && hasExtracted && (
             <>
-              <p className="text-xs text-theme-muted">{t('record.recordedSubtitleLabel')}</p>
-              <textarea value={editLines} onChange={(e) => handleEditChange(e.target.value)} rows={3} className="w-full resize-none rounded-xl bg-theme-surface2 px-3 py-2 text-sm text-theme-primary outline-none focus:ring-2 focus:ring-accent" />
+              <p className="text-label text-theme-muted">{t('record.recordedSubtitleLabel')}</p>
+              <textarea value={editLines} onChange={(e) => handleEditChange(e.target.value)} rows={3} className="w-full resize-none rounded-card bg-theme-surface2 px-3 py-2 text-body text-theme-primary outline-none focus:ring-2 focus:ring-accent" />
             </>
           )}
         </div>
@@ -194,29 +194,29 @@ export default function StepSubtitle(props: Props) {
 
       {/* 직접 입력 */}
       {subtitleSource === 'text' && (
-        <div className="rounded-xl bg-theme-surface p-4 flex flex-col gap-2">
-          <p className="text-xs text-theme-muted">{t('subtitle.textHint')}</p>
+        <div className="rounded-card bg-theme-surface p-4 flex flex-col gap-2">
+          <p className="text-label text-theme-muted">{t('subtitle.textHint')}</p>
           <textarea
             value={subtitleRawText}
             onChange={(e) => setSubtitleRawText(e.target.value.slice(0, 500))}
             maxLength={500}
             rows={4}
             placeholder={t('subtitle.textPlaceholder')}
-            className="w-full resize-none rounded-xl bg-theme-surface2 px-3 py-2 text-sm text-theme-primary placeholder-theme-subtle outline-none focus:ring-2 focus:ring-accent"
+            className="w-full resize-none rounded-card bg-theme-surface2 px-3 py-2 text-body text-theme-primary placeholder-theme-muted outline-none focus:ring-2 focus:ring-accent"
           />
-          <p className="text-right text-xs text-theme-subtle">{subtitleRawText.length}/500</p>
+          <p className="text-right text-label text-theme-muted">{subtitleRawText.length}/500</p>
         </div>
       )}
 
       {/* 원본 음성 토글 (영상 있을 때) */}
       {hasVideo && (
-        <button onClick={() => setMuteOriginalAudio(!muteOriginalAudio)} className="flex items-center justify-between rounded-xl bg-theme-surface px-4 py-3">
-          <div className="flex items-center gap-1.5 text-xs text-theme-muted">
-            {muteOriginalAudio ? <VolumeX size={13} className="text-theme-subtle" /> : <Volume2 size={13} className="text-accent" />}
+        <button onClick={() => setMuteOriginalAudio(!muteOriginalAudio)} className="flex items-center justify-between rounded-card bg-theme-surface px-4 py-3">
+          <div className="flex items-center gap-2 text-label text-theme-muted">
+            {muteOriginalAudio ? <VolumeX size={13} className="text-theme-muted" /> : <Volume2 size={13} className="text-accent" />}
             <span>{muteOriginalAudio ? t('record.muteOriginal') : t('record.keepOriginal')}</span>
           </div>
-          <div className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 ${muteOriginalAudio ? 'bg-theme-surface2' : 'bg-accent'}`}>
-            <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform duration-200 ${muteOriginalAudio ? 'translate-x-1' : 'translate-x-[18px]'}`} />
+          <div className={`relative inline-flex h-5 w-9 items-center rounded-pill transition-colors duration-200 ${muteOriginalAudio ? 'bg-theme-surface2' : 'bg-accent'}`}>
+            <span className={`inline-block h-3.5 w-3.5 transform rounded-pill bg-white shadow transition-transform duration-200 ${muteOriginalAudio ? 'translate-x-1' : 'translate-x-[18px]'}`} />
           </div>
         </button>
       )}
@@ -224,39 +224,39 @@ export default function StepSubtitle(props: Props) {
       {/* 고급 설정 (자막 스타일) — 링크로 펼침 */}
       {showStyle && (
         <div>
-          <button type="button" onClick={() => setShowStyleDetail((v) => !v)} className="flex items-center gap-1 text-xs text-theme-muted underline underline-offset-2">
+          <button type="button" onClick={() => setShowStyleDetail((v) => !v)} className="flex items-center gap-1 text-label text-theme-muted underline underline-offset-2">
             {t('caption.subtitleStyle')}
             <ChevronDown size={13} className={`transition-transform ${showStyleDetail ? 'rotate-180' : ''}`} />
           </button>
           {showStyleDetail && (
           <div className="space-y-3 mt-3">
           <div className="flex items-center gap-3">
-            <span className="text-xs text-theme-muted w-10 flex-shrink-0">{t('caption.subtitleSize')}</span>
-            <div className="flex gap-1.5">
+            <span className="text-label text-theme-muted w-10 flex-shrink-0">{t('caption.subtitleSize')}</span>
+            <div className="flex gap-2">
               {(['small', 'large'] as SubtitleSize[]).map((s) => (
-                <button key={s} type="button" onClick={() => onSubtitleSizeChange(s)} className={`rounded-lg px-3 py-1.5 text-xs font-medium ${subtitleSize === s ? 'bg-accent text-accent-fg' : 'bg-theme-surface2 text-theme-muted'}`}>{SIZE_LABELS[s]}</button>
+                <button key={s} type="button" onClick={() => onSubtitleSizeChange(s)} className={`rounded-card px-3 py-2 text-label font-medium ${subtitleSize === s ? 'bg-accent text-accent-fg' : 'bg-theme-surface2 text-theme-muted'}`}>{SIZE_LABELS[s]}</button>
               ))}
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-theme-muted w-10 flex-shrink-0">{t('caption.subtitlePosition')}</span>
-            <div className="flex gap-1.5">
+            <span className="text-label text-theme-muted w-10 flex-shrink-0">{t('caption.subtitlePosition')}</span>
+            <div className="flex gap-2">
               {(['top', 'center', 'bottom'] as SubtitlePosition[]).map((p) => (
-                <button key={p} type="button" onClick={() => onSubtitlePositionChange(p)} className={`rounded-lg px-3 py-1.5 text-xs font-medium ${subtitlePosition === p ? 'bg-accent text-accent-fg' : 'bg-theme-surface2 text-theme-muted'}`}>{POSITION_LABELS[p]}</button>
+                <button key={p} type="button" onClick={() => onSubtitlePositionChange(p)} className={`rounded-card px-3 py-2 text-label font-medium ${subtitlePosition === p ? 'bg-accent text-accent-fg' : 'bg-theme-surface2 text-theme-muted'}`}>{POSITION_LABELS[p]}</button>
               ))}
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-theme-muted w-10 flex-shrink-0">{t('caption.subtitleLanguage')}</span>
-            <div className="flex gap-1.5">
+            <span className="text-label text-theme-muted w-10 flex-shrink-0">{t('caption.subtitleLanguage')}</span>
+            <div className="flex gap-2">
               {LANGUAGE_OPTIONS.map(({ value, label }) => (
-                <button key={value} type="button" onClick={() => onSubtitleLanguageChange(value)} className={`rounded-lg px-2 py-1.5 text-xs font-medium ${subtitleLanguage === value ? 'bg-accent text-accent-fg' : 'bg-theme-surface2 text-theme-muted'}`}>{label}</button>
+                <button key={value} type="button" onClick={() => onSubtitleLanguageChange(value)} className={`rounded-card px-2 py-2 text-label font-medium ${subtitleLanguage === value ? 'bg-accent text-accent-fg' : 'bg-theme-surface2 text-theme-muted'}`}>{label}</button>
               ))}
             </div>
           </div>
-          <div className="rounded-xl overflow-hidden bg-black" style={{ aspectRatio: '9/16', maxHeight: '180px' }}>
+          <div className="rounded-card overflow-hidden bg-black" style={{ aspectRatio: '9/16', maxHeight: '180px' }}>
             <div className={`relative w-full h-full flex flex-col items-center px-2 ${POSITION_FLEX_CLASS[subtitlePosition]}`}>
-              <div className="px-2 py-0.5 rounded max-w-full text-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)' }}>
+              <div className="px-2 py-1 rounded max-w-full text-center" style={{ backgroundColor: 'rgba(0,0,0,0.8)' }}>
                 <span className={`text-white font-medium break-words ${SIZE_TEXT_CLASS[subtitleSize]}`}>{previewText}</span>
               </div>
             </div>
@@ -266,13 +266,13 @@ export default function StepSubtitle(props: Props) {
         </div>
       )}
 
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-body text-danger">{error}</p>}
 
       <div className="mt-auto flex flex-col items-center gap-3 pb-2">
-        <button onClick={onNext} disabled={recording || subtitleExtracting} className="w-full flex items-center justify-center gap-2 rounded-xl bg-accent py-3 font-semibold text-accent-fg disabled:opacity-40">
+        <button onClick={onNext} disabled={recording || subtitleExtracting} className="w-full flex items-center justify-center gap-2 rounded-card bg-accent py-3 font-semibold text-accent-fg disabled:opacity-40">
           {t('record.next')} <ChevronRight size={18} />
         </button>
-        <button onClick={() => { setSubtitleSource('none'); onNext() }} className="text-sm text-theme-muted underline underline-offset-2 py-1">
+        <button onClick={() => { setSubtitleSource('none'); onNext() }} className="text-body text-theme-muted underline underline-offset-2 py-1">
           {t('record.skip')}
         </button>
       </div>

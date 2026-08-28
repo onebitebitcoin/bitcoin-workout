@@ -154,7 +154,7 @@ export default function ChallengeCreatePage() {
   if (!user) {
     return (
       <div className="flex h-[100dvh] flex-col items-center justify-center gap-3 bg-theme-page lg:max-w-2xl lg:mx-auto">
-        <p className="text-theme-muted text-sm">{t('create.loginRequired')}</p>
+        <p className="text-theme-muted text-body">{t('create.loginRequired')}</p>
       </div>
     )
   }
@@ -166,19 +166,19 @@ export default function ChallengeCreatePage() {
         <button onClick={() => navigate(-1)} className="text-theme-muted">
           <ArrowLeft size={20} />
         </button>
-        <h1 className="text-lg font-bold text-theme-primary">{t('create.title')}</h1>
+        <h1 className="text-title text-theme-primary">{t('create.title')}</h1>
       </div>
 
       <div className="px-4 flex flex-col gap-4">
 
         {/* image upload */}
         <div>
-          <label className="block text-xs text-theme-muted mb-2">{t('create.image')}</label>
+          <label className="block text-label text-theme-muted mb-2">{t('create.image')}</label>
           {imageSrc ? (
             <div className="flex flex-col gap-2">
               <div
                 ref={previewRef}
-                className="relative w-full aspect-square overflow-hidden rounded-2xl bg-black cursor-grab active:cursor-grabbing touch-none"
+                className="relative w-full aspect-square overflow-hidden rounded-card bg-black cursor-grab active:cursor-grabbing touch-none"
                 onPointerDown={onPointerDown}
                 onPointerMove={onPointerMove}
                 onPointerUp={onPointerUp}
@@ -215,15 +215,15 @@ export default function ChallengeCreatePage() {
                   className="absolute pointer-events-none flex items-center justify-center"
                   style={{ inset: CROP_INSET }}
                 >
-                  <div className="flex items-center gap-1.5 rounded-full bg-black/40 px-3 py-1">
+                  <div className="flex items-center gap-2 rounded-pill bg-black/40 px-3 py-1">
                     <Move size={12} className="text-white/80" />
-                    <span className="text-xs text-white/80">{t('create.dragHint')}</span>
+                    <span className="text-label text-white/80">{t('create.dragHint')}</span>
                   </div>
                 </div>
               </div>
               <label
                 htmlFor="challenge-image-input"
-                className="text-xs text-theme-muted text-center py-1 cursor-pointer"
+                className="text-label text-theme-muted text-center py-1 cursor-pointer"
               >
                 {t('create.changeImage')}
               </label>
@@ -231,10 +231,10 @@ export default function ChallengeCreatePage() {
           ) : (
             <label
               htmlFor="challenge-image-input"
-              className="w-full aspect-square rounded-2xl bg-theme-surface flex flex-col items-center justify-center gap-2 text-theme-muted border-2 border-dashed border-theme-border cursor-pointer"
+              className="w-full aspect-square rounded-card bg-theme-surface flex flex-col items-center justify-center gap-2 text-theme-muted border-2 border-dashed border-theme-border cursor-pointer"
             >
               <ImagePlus size={28} strokeWidth={1.5} />
-              <span className="text-xs">{t('create.selectImage')}</span>
+              <span className="text-label">{t('create.selectImage')}</span>
             </label>
           )}
           <input
@@ -249,110 +249,110 @@ export default function ChallengeCreatePage() {
 
         {/* title */}
         <div>
-          <label className="block text-xs text-theme-muted mb-1">{t('create.challengeTitle')}</label>
+          <label className="block text-label text-theme-muted mb-1">{t('create.challengeTitle')}</label>
           <input
             value={form.title}
             onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
             placeholder={t('create.titlePlaceholder')}
-            className="w-full rounded-xl bg-theme-surface px-3 py-2.5 text-sm text-theme-primary placeholder-theme-subtle outline-none"
+            className="w-full rounded-card bg-theme-surface px-3 py-3 text-body text-theme-primary placeholder-theme-muted outline-none"
           />
         </div>
 
         {/* description */}
         <div>
-          <label className="block text-xs text-theme-muted mb-1">{t('create.description')} <span className="text-red-400">*</span></label>
+          <label className="block text-label text-theme-muted mb-1">{t('create.description')} <span className="text-danger">*</span></label>
           <textarea
             value={form.description}
             onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
             placeholder={t('create.descriptionPlaceholder')}
             rows={3}
-            className="w-full rounded-xl bg-theme-surface px-3 py-2.5 text-sm text-theme-primary placeholder-theme-subtle outline-none resize-none"
+            className="w-full rounded-card bg-theme-surface px-3 py-3 text-body text-theme-primary placeholder-theme-muted outline-none resize-none"
           />
         </div>
 
         {/* reward title */}
         <div>
-          <label className="block text-xs text-theme-muted mb-1">{t('create.rewardTitle')}</label>
-          <div className="flex items-center gap-2 rounded-xl bg-theme-surface px-3 py-2.5">
+          <label className="block text-label text-theme-muted mb-1">{t('create.rewardTitle')}</label>
+          <div className="flex items-center gap-2 rounded-card bg-theme-surface px-3 py-3">
             <Trophy size={14} className="text-accent flex-shrink-0" />
             <input
               value={form.reward_title}
               onChange={(e) => setForm((f) => ({ ...f, reward_title: e.target.value }))}
               placeholder={t('create.rewardPlaceholder')}
-              className="flex-1 bg-transparent text-sm text-theme-primary placeholder-theme-subtle outline-none"
+              className="flex-1 bg-transparent text-body text-theme-primary placeholder-theme-muted outline-none"
             />
           </div>
         </div>
 
         {/* goal */}
         <div>
-          <label className="block text-xs text-theme-muted mb-1">{t('create.goal')} <span className="text-theme-subtle">{t('create.goalOptional')}</span></label>
+          <label className="block text-label text-theme-muted mb-1">{t('create.goal')} <span className="text-theme-muted">{t('create.goalOptional')}</span></label>
           <input
             value={form.goal_description}
             onChange={(e) => setForm((f) => ({ ...f, goal_description: e.target.value }))}
             placeholder={t('create.goalPlaceholder')}
-            className="w-full rounded-xl bg-theme-surface px-3 py-2.5 text-sm text-theme-primary placeholder-theme-subtle outline-none"
+            className="w-full rounded-card bg-theme-surface px-3 py-3 text-body text-theme-primary placeholder-theme-muted outline-none"
           />
         </div>
 
         {/* recruit period */}
         <div>
-          <label className="block text-xs text-theme-muted mb-1">{t('create.recruitPeriod')} <span className="text-theme-subtle">{t('create.recruitOptional')}</span></label>
+          <label className="block text-label text-theme-muted mb-1">{t('create.recruitPeriod')} <span className="text-theme-muted">{t('create.recruitOptional')}</span></label>
           <div className="grid grid-cols-2 gap-3">
             <input
               type="date"
               value={form.recruit_start}
               onChange={(e) => setForm((f) => ({ ...f, recruit_start: e.target.value }))}
-              className="w-full rounded-xl bg-theme-surface px-3 py-2.5 text-sm text-theme-primary outline-none"
+              className="w-full rounded-card bg-theme-surface px-3 py-3 text-body text-theme-primary outline-none"
             />
             <input
               type="date"
               value={form.recruit_end}
               onChange={(e) => setForm((f) => ({ ...f, recruit_end: e.target.value }))}
-              className="w-full rounded-xl bg-theme-surface px-3 py-2.5 text-sm text-theme-primary outline-none"
+              className="w-full rounded-card bg-theme-surface px-3 py-3 text-body text-theme-primary outline-none"
             />
           </div>
         </div>
 
         {/* challenge period */}
         <div>
-          <label className="block text-xs text-theme-muted mb-1">{t('create.challengePeriod')}</label>
+          <label className="block text-label text-theme-muted mb-1">{t('create.challengePeriod')}</label>
           <div className="grid grid-cols-2 gap-3">
             <input
               type="date"
               value={form.start_date}
               onChange={(e) => setForm((f) => ({ ...f, start_date: e.target.value }))}
-              className="w-full rounded-xl bg-theme-surface px-3 py-2.5 text-sm text-theme-primary outline-none"
+              className="w-full rounded-card bg-theme-surface px-3 py-3 text-body text-theme-primary outline-none"
             />
             <input
               type="date"
               value={form.end_date}
               onChange={(e) => setForm((f) => ({ ...f, end_date: e.target.value }))}
-              className="w-full rounded-xl bg-theme-surface px-3 py-2.5 text-sm text-theme-primary outline-none"
+              className="w-full rounded-card bg-theme-surface px-3 py-3 text-body text-theme-primary outline-none"
             />
           </div>
         </div>
 
         {/* max participants */}
         <div>
-          <label className="block text-xs text-theme-muted mb-1">{t('create.maxParticipants')} <span className="text-theme-subtle">{t('create.maxParticipantsOptional')}</span></label>
+          <label className="block text-label text-theme-muted mb-1">{t('create.maxParticipants')} <span className="text-theme-muted">{t('create.maxParticipantsOptional')}</span></label>
           <input
             type="number"
             min={1}
             value={form.max_participants}
             onChange={(e) => setForm((f) => ({ ...f, max_participants: e.target.value }))}
             placeholder={t('create.maxParticipantsPlaceholder')}
-            className="w-full rounded-xl bg-theme-surface px-3 py-2.5 text-sm text-theme-primary placeholder-theme-subtle outline-none"
+            className="w-full rounded-card bg-theme-surface px-3 py-3 text-body text-theme-primary placeholder-theme-muted outline-none"
           />
         </div>
 
-        {error && <p className="text-xs text-red-400">{error}</p>}
+        {error && <p className="text-label text-danger">{error}</p>}
 
         {/* submit */}
         <button
           onClick={() => mutation.mutate()}
           disabled={mutation.isPending || !form.title || !form.description || !form.reward_title || !form.start_date || !form.end_date}
-          className="mt-6 mb-4 rounded-2xl bg-accent py-4 text-sm font-semibold text-accent-fg disabled:opacity-50"
+          className="mt-6 mb-4 rounded-card bg-accent py-4 text-body font-semibold text-accent-fg disabled:opacity-50"
         >
           {mutation.isPending ? t('create.submitting') : t('create.submitButton')}
         </button>

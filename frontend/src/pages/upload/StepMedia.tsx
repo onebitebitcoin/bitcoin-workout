@@ -82,7 +82,7 @@ function SortableCard({ item, onRemove }: { item: MediaItem; onRemove: (id: stri
     <div
       ref={setNodeRef}
       style={style}
-      className="relative aspect-square overflow-hidden rounded-xl bg-theme-surface2 touch-none"
+      className="relative aspect-square overflow-hidden rounded-card bg-theme-surface2 touch-none"
     >
       {item.kind === 'image' ? (
         <img src={item.previewUrl} alt="" className="h-full w-full object-cover" />
@@ -94,18 +94,18 @@ function SortableCard({ item, onRemove }: { item: MediaItem; onRemove: (id: stri
         type="button"
         {...attributes}
         {...listeners}
-        className="absolute left-1 top-1 rounded-md bg-black/60 p-1 text-white"
+        className="absolute left-1 top-1 rounded-card bg-black/60 p-1 text-white"
         aria-label="reorder"
       >
         <GripVertical size={14} />
       </button>
-      <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
+      <span className="absolute bottom-1 left-1 rounded bg-black/60 px-2 py-1 text-label text-white">
         {item.kind === 'video' ? <Film size={11} className="inline" /> : `${IMAGE_CLIP_SECONDS}s`}
       </span>
       <button
         type="button"
         onClick={() => onRemove(item.id)}
-        className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white"
+        className="absolute right-1 top-1 rounded-pill bg-black/60 p-1 text-white"
         aria-label="remove"
       >
         <X size={13} />
@@ -167,16 +167,16 @@ function FilterDropdown({
         aria-expanded={open}
         aria-label={label}
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-3 rounded-xl border border-theme-border bg-theme-surface2 p-3 text-left"
+        className="flex w-full items-center gap-3 rounded-card border border-theme-border bg-theme-surface2 p-3 text-left"
       >
         {FILTER_ICONS[selected.key]}
         <div className="flex-1">
-          <p className="text-sm font-semibold text-theme-primary">{selected.title}</p>
-          <p className="text-xs text-theme-muted mt-0.5 leading-relaxed">{selected.hint}</p>
+          <p className="text-body font-semibold text-theme-primary">{selected.title}</p>
+          <p className="text-label text-theme-muted mt-1 leading-relaxed">{selected.hint}</p>
         </div>
         <ChevronDown
           size={16}
-          className={`shrink-0 text-theme-subtle transition-transform ${open ? 'rotate-180' : ''}`}
+          className={`shrink-0 text-theme-muted transition-transform ${open ? 'rotate-180' : ''}`}
         />
       </button>
 
@@ -184,7 +184,7 @@ function FilterDropdown({
         <div
           role="listbox"
           aria-label={label}
-          className="absolute left-0 right-0 top-[calc(100%+6px)] z-20 rounded-xl border border-theme-border bg-theme-surface p-1.5 shadow-xl"
+          className="absolute left-0 right-0 top-[calc(100%+6px)] z-20 rounded-card border border-theme-border bg-theme-surface p-2 shadow-xl"
         >
           {options.map((o) => {
             const isSel = o.value === value
@@ -196,14 +196,14 @@ function FilterDropdown({
                 aria-selected={isSel}
                 aria-label={o.title}
                 onClick={() => { onChange(o.value); setOpen(false) }}
-                className={`flex w-full items-center gap-3 rounded-lg p-2.5 text-left transition-colors ${
+                className={`flex w-full items-center gap-3 rounded-card p-3 text-left transition-colors ${
                   isSel ? 'bg-accent/10' : 'hover:bg-theme-surface2'
                 }`}
               >
                 {FILTER_ICONS[o.key]}
                 <div className="flex-1">
-                  <p className="text-sm font-semibold text-theme-primary">{o.title}</p>
-                  <p className="text-xs text-theme-muted mt-0.5 leading-relaxed">{o.hint}</p>
+                  <p className="text-body font-semibold text-theme-primary">{o.title}</p>
+                  <p className="text-label text-theme-muted mt-1 leading-relaxed">{o.hint}</p>
                 </div>
                 {isSel && <Check size={15} className="shrink-0 text-accent" />}
               </button>
@@ -284,8 +284,8 @@ export default function StepMedia({
   return (
     <div className="flex flex-1 flex-col px-6 pt-4 gap-4 overflow-y-auto">
       <div>
-        <p className="text-sm font-semibold text-theme-primary">{t('media.title')}</p>
-        <p className="text-xs text-theme-muted mt-1 leading-relaxed">{t('media.hint')}</p>
+        <p className="text-body font-semibold text-theme-primary">{t('media.title')}</p>
+        <p className="text-label text-theme-muted mt-1 leading-relaxed">{t('media.hint')}</p>
       </div>
 
       <input
@@ -312,27 +312,27 @@ export default function StepMedia({
 
       <label
         htmlFor="media-file-input"
-        className={`flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-8 transition-colors cursor-pointer ${
-          error ? 'border-red-500 text-red-400' : 'border-theme-border text-theme-muted hover:border-accent hover:text-accent'
+        className={`flex flex-col items-center justify-center gap-2 rounded-card border-2 border-dashed p-8 transition-colors cursor-pointer ${
+          error ? 'border-danger text-danger' : 'border-theme-border text-theme-muted hover:border-accent hover:text-accent'
         }`}
       >
         <ImagePlus size={32} strokeWidth={1.5} />
-        <span className="text-sm">{t('media.addPrompt')}</span>
-        <span className="text-xs text-theme-subtle">
+        <span className="text-body">{t('media.addPrompt')}</span>
+        <span className="text-label text-theme-muted">
           {t('media.counter', { images: imageCount, maxImages: MAX_IMAGES, video: hasVideo ? 1 : 0 })}
         </span>
       </label>
 
       {items.length > 0 && (
-        <p className={`text-xs text-center ${overLimit ? 'text-red-400' : 'text-theme-subtle'}`}>
+        <p className={`text-label text-center ${overLimit ? 'text-danger' : 'text-theme-muted'}`}>
           {t('media.estimatedLength', { seconds: Math.round(estimatedSeconds) })}
           {overLimit && ` — ${t('media.tooLong', { max: MAX_TOTAL_SECONDS })}`}
         </p>
       )}
 
       {items.length > 0 && (
-        <div className="rounded-2xl bg-theme-surface p-4">
-          <p className="text-sm font-semibold text-theme-primary mb-3">{t('filter.title')}</p>
+        <div className="rounded-card bg-theme-surface p-4">
+          <p className="text-body font-semibold text-theme-primary mb-3">{t('filter.title')}</p>
 
           <FilterDropdown
             label={t('filter.title')}
@@ -349,7 +349,7 @@ export default function StepMedia({
           {videoFilter && (
             <div className="mt-3 flex flex-col items-center gap-2">
               {previewLoading && (
-                <div className="flex items-center gap-2 py-6 text-xs text-theme-muted">
+                <div className="flex items-center gap-2 py-6 text-label text-theme-muted">
                   <Loader2 size={14} className="animate-spin" />
                   {t('filter.previewLoading')}
                 </div>
@@ -358,24 +358,24 @@ export default function StepMedia({
                 <img
                   src={previewUrl}
                   alt={t('filter.previewLabel')}
-                  className="max-h-56 max-w-full rounded-xl object-contain"
+                  className="max-h-56 max-w-full rounded-card object-contain"
                 />
               )}
               {!previewLoading && previewError && (
-                <p className="py-2 text-xs text-theme-muted">{t('filter.previewFailed')}</p>
+                <p className="py-2 text-label text-theme-muted">{t('filter.previewFailed')}</p>
               )}
             </div>
           )}
         </div>
       )}
 
-      {error && <p className="text-sm text-red-400 text-center">{error}</p>}
+      {error && <p className="text-body text-danger text-center">{error}</p>}
 
       <div className="mt-auto pb-2">
         <button
           onClick={onNext}
           disabled={!canProceed}
-          className="w-full rounded-xl bg-accent py-3 font-semibold text-accent-fg disabled:opacity-40"
+          className="w-full rounded-card bg-accent py-3 font-semibold text-accent-fg disabled:opacity-40"
         >
           {t('media.next')}
         </button>

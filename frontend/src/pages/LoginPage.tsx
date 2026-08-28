@@ -34,15 +34,15 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-[100dvh] flex-col items-center justify-center bg-theme-page px-6">
-      <div className="relative mb-5 flex h-20 w-20 items-center justify-center rounded-3xl bg-theme-surface text-accent ring-1 ring-white/5">
-        <div className="absolute inset-0 rounded-3xl bg-accent opacity-15 blur-2xl scale-[2] pointer-events-none" />
+      <div className="relative mb-5 flex h-20 w-20 items-center justify-center rounded-card bg-theme-surface text-accent ring-1 ring-white/5">
+        <div className="absolute inset-0 rounded-card bg-accent opacity-15 blur-2xl scale-[2] pointer-events-none" />
         <LogoMark aria-label={t('logoAlt')} role="img" size={44} />
       </div>
-      <p className="mb-1 text-2xl font-bold text-accent">Bitcoiners</p>
-      <p className="mb-8 text-sm text-theme-muted">{t('tagline')}</p>
+      <p className="mb-1 text-display text-accent">Bitcoiners</p>
+      <p className="mb-8 text-body text-theme-muted">{t('tagline')}</p>
 
       {errorParam && (
-        <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-500/10 px-4 py-2 text-sm text-red-400">
+        <div className="mb-4 flex items-center gap-2 rounded-card bg-danger/10 px-4 py-2 text-body text-danger">
           <AlertCircle size={16} />
           <span>
             {errorParam === 'google_auth_failed'
@@ -53,11 +53,11 @@ export default function LoginPage() {
       )}
 
       <div className="w-full max-w-sm space-y-3">
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-2">
           <button
             onClick={handleGoogleLogin}
             disabled={googleLoading}
-            className="flex w-full items-center justify-center gap-3 rounded-lg border border-theme-border bg-theme-surface px-4 py-3 font-medium text-theme-primary transition-colors hover:bg-theme-surface2 disabled:opacity-60"
+            className="flex w-full items-center justify-center gap-3 rounded-card border border-theme-border bg-theme-surface px-4 py-3 font-medium text-theme-primary transition-colors hover:bg-theme-surface2 disabled:opacity-60"
           >
             {googleLoading ? (
               <svg className="h-4 w-4 animate-spin text-theme-muted" viewBox="0 0 24 24" fill="none">
@@ -75,7 +75,7 @@ export default function LoginPage() {
             {googleLoading ? t('googleConnecting') : t('continueWithGoogle')}
           </button>
           {googleError && (
-            <div className="flex items-center gap-2 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400">
+            <div className="flex items-center gap-2 rounded-card bg-danger/10 px-3 py-2 text-label text-danger">
               <AlertCircle size={13} />
               {googleError}
             </div>
@@ -84,21 +84,21 @@ export default function LoginPage() {
 
         <button
           onClick={() => navigate('/login/lightning')}
-          className="flex w-full items-center justify-center gap-3 rounded-lg border border-theme-border bg-theme-surface px-4 py-3 font-medium text-theme-primary transition-colors hover:bg-theme-surface2"
+          className="flex w-full items-center justify-center gap-3 rounded-card border border-theme-border bg-theme-surface px-4 py-3 font-medium text-theme-primary transition-colors hover:bg-theme-surface2"
         >
-          <Zap size={18} className="text-yellow-500" />
+          <Zap size={18} className="text-lightning" />
           {t('continueWithLightning')}
         </button>
 
         <div className="flex items-center gap-3">
           <div className="h-px flex-1 bg-theme-border" />
-          <span className="text-xs text-theme-subtle">{t('or')}</span>
+          <span className="text-label text-theme-muted">{t('or')}</span>
           <div className="h-px flex-1 bg-theme-border" />
         </div>
 
         <button
           onClick={() => navigate('/login/email')}
-          className="flex w-full items-center justify-center gap-3 rounded-lg border border-theme-border bg-theme-surface px-4 py-3 font-medium text-theme-primary transition-colors hover:bg-theme-surface2"
+          className="flex w-full items-center justify-center gap-3 rounded-card border border-theme-border bg-theme-surface px-4 py-3 font-medium text-theme-primary transition-colors hover:bg-theme-surface2"
         >
           <Mail size={18} className="text-theme-muted" />
           {t('loginWithEmail')}

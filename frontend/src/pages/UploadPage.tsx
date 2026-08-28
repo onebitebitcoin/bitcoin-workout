@@ -501,16 +501,16 @@ export default function UploadPage() {
       <div className="flex h-[100dvh] flex-col items-center justify-center gap-6 bg-theme-page px-6 lg:max-w-2xl lg:mx-auto overflow-hidden relative">
         <div className="fixed inset-0 pointer-events-none overflow-hidden z-10">
           {confettiItems.map((c) => (
-            <span key={c.id} className="absolute top-0 rounded-sm animate-confetti-fall"
+            <span key={c.id} className="absolute top-0 rounded-card animate-confetti-fall"
               style={{ left: c.left, width: c.size, height: c.size, backgroundColor: c.color, animationDuration: c.duration, animationDelay: c.delay }} />
           ))}
         </div>
-        <div className="w-full max-w-sm rounded-2xl bg-theme-surface p-6 relative z-20">
+        <div className="w-full max-w-sm rounded-card bg-theme-surface p-6 relative z-20">
           <div className="flex items-center gap-2 mb-4">
-            <Flame size={20} className="text-orange-400" />
-            <span className="text-sm font-semibold text-theme-primary">{t('done.title')}</span>
+            <Flame size={20} className="text-accent-text" />
+            <span className="text-body font-semibold text-theme-primary">{t('done.title')}</span>
           </div>
-          {caption && <p className="text-sm text-theme-muted mb-4">"{caption}"</p>}
+          {caption && <p className="text-body text-theme-muted mb-4">"{caption}"</p>}
         </div>
         <div className="flex w-full max-w-sm flex-col gap-3 relative z-20">
           <button
@@ -521,11 +521,11 @@ export default function UploadPage() {
                 window.navigator.clipboard?.writeText(shareText).then(() => toast.success(t('error.clipboardCopied'))).catch(() => undefined)
               }
             }}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent py-3 font-semibold text-accent-fg"
+            className="flex w-full items-center justify-center gap-2 rounded-card bg-accent py-3 font-semibold text-accent-fg"
           >
             <Share2 size={18} />{t('done.share')}
           </button>
-          <button onClick={() => navigate('/')} className="w-full rounded-xl bg-theme-surface py-3 text-sm text-theme-muted">
+          <button onClick={() => navigate('/')} className="w-full rounded-card bg-theme-surface py-3 text-body text-theme-muted">
             {t('done.viewFeed')}
           </button>
         </div>
@@ -539,23 +539,23 @@ export default function UploadPage() {
     return (
       <div className="flex h-[100dvh] flex-col items-center justify-center gap-5 bg-theme-page px-6 lg:max-w-2xl lg:mx-auto">
         <LogoMark size={48} className="animate-bounce text-accent" />
-        <p className="text-base font-semibold text-theme-primary">{statusLabel}</p>
-        <div className="w-64 flex flex-col items-center gap-1.5">
-          <div className="h-1.5 w-full rounded-full bg-theme-surface2">
-            <div className="h-1.5 rounded-full bg-accent transition-all duration-500" style={{ width: `${uploadProgress}%` }} />
+        <p className="text-title font-semibold text-theme-primary">{statusLabel}</p>
+        <div className="w-64 flex flex-col items-center gap-2">
+          <div className="h-1.5 w-full rounded-pill bg-theme-surface2">
+            <div className="h-1.5 rounded-pill bg-accent transition-all duration-500" style={{ width: `${uploadProgress}%` }} />
           </div>
           {/* 퍼센트 대신 경과 시간 — 필터 렌더 구간에서 진행률이 오래 머무르면 멈춘 것처럼
               보이는데, 계속 올라가는 초 카운터가 "진행 중"임을 정직하게 알려준다. */}
-          <span className="text-xs tabular-nums text-theme-muted">{t('processing.elapsed', { seconds: elapsedSec })}</span>
+          <span className="text-label tabular-nums text-theme-muted">{t('processing.elapsed', { seconds: elapsedSec })}</span>
         </div>
-        <p className="max-w-xs text-center text-xs leading-relaxed text-theme-muted">
+        <p className="max-w-xs text-center text-label leading-relaxed text-theme-muted">
           {t('processing.hint')}
         </p>
         {error && (
-          <div className="w-full max-w-sm rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-400 text-center">
+          <div className="w-full max-w-sm rounded-card bg-danger/10 px-4 py-3 text-body text-danger text-center">
             {error}
             <button onClick={() => { clearJob(); setError(''); setPipelineJobId(null); setPipelineStatus(null) }}
-              className="block mx-auto mt-2 text-xs text-theme-muted underline">{t('processing.reset')}</button>
+              className="block mx-auto mt-2 text-label text-theme-muted underline">{t('processing.reset')}</button>
           </div>
         )}
       </div>
@@ -575,26 +575,26 @@ export default function UploadPage() {
           ) : (
             <div className="w-7 flex-shrink-0" />
           )}
-          <span className="text-sm font-semibold text-theme-primary">{t('pageTitle')}</span>
+          <span className="text-body font-semibold text-theme-primary">{t('pageTitle')}</span>
         </div>
         <div data-testid="step-bar" className="flex items-start">
           {STEPS_KEYS.flatMap((key, i) => {
             const isCompleted = i < step
             const isActive = i === step
             const nodes = [
-              <div key={`step-${i}`} className="flex flex-col items-center gap-1.5">
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 transition-all ${
-                  isCompleted ? 'bg-accent text-accent-fg' : isActive ? 'bg-accent text-accent-fg ring-4 ring-accent/20' : 'bg-theme-surface2 text-theme-subtle'
+              <div key={`step-${i}`} className="flex flex-col items-center gap-2">
+                <div className={`w-7 h-7 rounded-pill flex items-center justify-center flex-shrink-0 transition-all ${
+                  isCompleted ? 'bg-accent text-accent-fg' : isActive ? 'bg-accent text-accent-fg ring-4 ring-accent/20' : 'bg-theme-surface2 text-theme-muted'
                 }`}>
-                  {isCompleted ? <Check size={12} strokeWidth={2.5} /> : <span className="text-[11px] font-bold">{i + 1}</span>}
+                  {isCompleted ? <Check size={12} strokeWidth={2.5} /> : <span className="text-label font-bold">{i + 1}</span>}
                 </div>
-                <span className={`text-[9px] leading-tight text-center font-medium ${isActive ? 'text-accent' : isCompleted ? 'text-theme-muted' : 'text-theme-subtle'}`}>
+                <span className={`text-label leading-tight text-center font-medium ${isActive ? 'text-accent' : isCompleted ? 'text-theme-muted' : 'text-theme-muted'}`}>
                   {t(`steps.${key}`)}
                 </span>
               </div>,
             ]
             if (i < STEPS_KEYS.length - 1) {
-              nodes.push(<div key={`line-${i}`} className={`flex-1 h-0.5 mt-3.5 transition-colors ${isCompleted ? 'bg-accent' : 'bg-theme-surface2'}`} />)
+              nodes.push(<div key={`line-${i}`} className={`flex-1 h-0.5 mt-4 transition-colors ${isCompleted ? 'bg-accent' : 'bg-theme-surface2'}`} />)
             }
             return nodes
           })}

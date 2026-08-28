@@ -105,14 +105,14 @@ export default function UserProfilePage() {
     <div className="flex flex-col h-[100dvh] bg-theme-page pb-nav-safe lg:max-w-2xl lg:mx-auto">
       <div className="flex items-center gap-3 px-4 pt-5 pb-4">
         <div className="w-5 h-5 rounded bg-theme-surface2 flex-shrink-0" />
-        <div className="w-10 h-10 rounded-full bg-theme-surface2 flex-shrink-0" />
-        <div className="flex-1 flex flex-col gap-1.5">
+        <div className="w-10 h-10 rounded-pill bg-theme-surface2 flex-shrink-0" />
+        <div className="flex-1 flex flex-col gap-2">
           <div className="h-3 w-24 rounded bg-theme-surface2" />
           <div className="h-2.5 w-16 rounded bg-theme-surface2" />
         </div>
       </div>
-      <div className="flex gap-1.5 px-4 mb-4">
-        {[1,2,3].map(i => <div key={i} className="flex-1 h-9 rounded-xl bg-theme-surface2" />)}
+      <div className="flex gap-2 px-4 mb-4">
+        {[1,2,3].map(i => <div key={i} className="flex-1 h-9 rounded-card bg-theme-surface2" />)}
       </div>
       <div className="grid grid-cols-3 gap-px mx-px">
         {Array.from({length: 9}).map((_, i) => (
@@ -125,7 +125,7 @@ export default function UserProfilePage() {
   if (isError || !data) {
     return (
       <div className="flex h-[100dvh] flex-col items-center justify-center gap-2 bg-theme-page lg:max-w-2xl lg:mx-auto">
-        <p className="text-sm text-theme-muted">{t('userNotFound')}</p>
+        <p className="text-body text-theme-muted">{t('userNotFound')}</p>
       </div>
     )
   }
@@ -146,8 +146,8 @@ export default function UserProfilePage() {
         </button>
         <UserAvatar username={user.username} avatarUrl={user.avatar_url} size={40} />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-theme-primary leading-tight">@{user.username}</p>
-          <div className="flex items-center gap-3 text-xs text-theme-muted mt-0.5">
+          <p className="text-body font-semibold text-theme-primary leading-tight">@{user.username}</p>
+          <div className="flex items-center gap-3 text-label text-theme-muted mt-1">
             <button onClick={() => navigate(`/users/${user.id}/followers`)} className="hover:text-theme-primary">
               <span className="font-semibold text-theme-primary">{data.follower_count}</span> {t('followers')}
             </button>
@@ -160,7 +160,7 @@ export default function UserProfilePage() {
           <button
             onClick={() => followMutation.mutate(!data.is_following)}
             disabled={followMutation.isPending}
-            className={`flex-shrink-0 flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-60 ${
+            className={`flex-shrink-0 flex items-center gap-1 rounded-pill px-3 py-2 text-label font-semibold transition-colors disabled:opacity-60 ${
               data.is_following ? 'bg-theme-surface2 text-theme-muted' : 'bg-accent text-accent-fg'
             }`}
           >
@@ -169,19 +169,19 @@ export default function UserProfilePage() {
         )}
         <button
           onClick={() => shareProfileLink(user.id, user.username, t)}
-          className="flex-shrink-0 p-1.5 text-theme-muted hover:text-theme-primary transition-colors"
+          className="flex-shrink-0 p-2 text-theme-muted hover:text-theme-primary transition-colors"
           aria-label={t('shareProfile')}
         >
           <Share2 size={18} strokeWidth={1.5} />
         </button>
       </div>
 
-      <div className="flex gap-1.5 px-4 mb-4">
+      <div className="flex gap-2 px-4 mb-4">
         {tabs.map(({ key, label, count }) => (
           <button
             key={key}
             onClick={() => setActiveTab(key)}
-            className={`flex-1 rounded-xl py-2 text-xs font-medium transition-colors ${
+            className={`flex-1 rounded-card py-2 text-label font-medium transition-colors ${
               activeTab === key
                 ? 'bg-accent text-accent-fg'
                 : 'bg-theme-surface text-theme-muted'
@@ -196,7 +196,7 @@ export default function UserProfilePage() {
       {activeTab === 'videos' && (
         posts.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 gap-2">
-            <p className="text-sm text-theme-muted">{t('noUserVideos')}</p>
+            <p className="text-body text-theme-muted">{t('noUserVideos')}</p>
           </div>
         ) : (
           <div className="grid grid-cols-3 gap-px mx-px">
@@ -224,18 +224,18 @@ export default function UserProfilePage() {
                   />
                 )}
                 <div className="absolute inset-0 bg-black/30" />
-                <div className="absolute bottom-1.5 right-1 flex flex-col items-end gap-0.5 text-white/90">
-                  <div className="flex items-center gap-0.5">
+                <div className="absolute bottom-1.5 right-1 flex flex-col items-end gap-1 text-white/90">
+                  <div className="flex items-center gap-1">
                     <Heart size={9} strokeWidth={2} />
-                    <span className="text-[9px] font-medium">{post.like_count}</span>
+                    <span className="text-label font-medium">{post.like_count}</span>
                   </div>
-                  <div className="flex items-center gap-0.5">
+                  <div className="flex items-center gap-1">
                     <MessageCircle size={9} strokeWidth={2} />
-                    <span className="text-[9px] font-medium">{post.comment_count}</span>
+                    <span className="text-label font-medium">{post.comment_count}</span>
                   </div>
-                  <div className="flex items-center gap-0.5">
+                  <div className="flex items-center gap-1">
                     <Eye size={9} strokeWidth={2} />
-                    <span className="text-[9px] font-medium">{post.view_count}</span>
+                    <span className="text-label font-medium">{post.view_count}</span>
                   </div>
                 </div>
               </div>
@@ -249,7 +249,7 @@ export default function UserProfilePage() {
           {active_challenges.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-2">
               <Target size={36} className="text-theme-surface2" strokeWidth={1.5} />
-              <p className="text-sm text-theme-muted">{t('noActiveChallenges')}</p>
+              <p className="text-body text-theme-muted">{t('noActiveChallenges')}</p>
             </div>
           ) : (
             <div className="flex flex-col gap-3">
@@ -261,24 +261,24 @@ export default function UserProfilePage() {
                 return (
                   <div
                     key={c.challenge_id}
-                    className="rounded-2xl bg-theme-surface px-4 py-3 cursor-pointer active:opacity-80"
+                    className="rounded-card bg-theme-surface px-4 py-3 cursor-pointer active:opacity-80"
                     onClick={() => navigate(`/challenges/${c.challenge_id}`)}
                   >
-                    <div className="flex justify-between items-center text-sm mb-2">
+                    <div className="flex justify-between items-center text-body mb-2">
                       <span className="font-medium text-theme-primary truncate flex-1 mr-2">
                         {c.title}
                       </span>
-                      <span className="text-xs text-theme-muted flex-shrink-0">
+                      <span className="text-label text-theme-muted flex-shrink-0">
                         {t('challengeCount', { upload: c.upload_count, total: c.condition_value })}
                       </span>
                     </div>
-                    <div className="h-1.5 w-full rounded-full bg-theme-surface2">
+                    <div className="h-1.5 w-full rounded-pill bg-theme-surface2">
                       <div
-                        className="h-1.5 rounded-full bg-accent transition-all"
+                        className="h-1.5 rounded-pill bg-accent transition-all"
                         style={{ width: `${progress}%` }}
                       />
                     </div>
-                    <p className="text-xs text-theme-muted mt-1.5">{t('challengeProgress', { progress })}</p>
+                    <p className="text-label text-theme-muted mt-2">{t('challengeProgress', { progress })}</p>
                   </div>
                 )
               })}
@@ -292,21 +292,21 @@ export default function UserProfilePage() {
           {titles.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 gap-2">
               <Trophy size={36} className="text-theme-surface2" strokeWidth={1.5} />
-              <p className="text-sm text-theme-muted">{t('noTitles')}</p>
+              <p className="text-body text-theme-muted">{t('noTitles')}</p>
             </div>
           ) : (
             <div className="flex flex-col gap-3">
               {titles.map((titleItem, i) => (
                 <div
                   key={i}
-                  className="rounded-2xl bg-theme-surface px-4 py-3 flex items-center gap-3"
+                  className="rounded-card bg-theme-surface px-4 py-3 flex items-center gap-3"
                 >
-                  <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-accent/15">
+                  <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-pill bg-accent/15">
                     <Trophy size={16} className="text-accent" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-accent">{titleItem.title}</p>
-                    <p className="text-xs text-theme-muted truncate">{titleItem.challenge_title}</p>
+                    <p className="text-body font-semibold text-accent">{titleItem.title}</p>
+                    <p className="text-label text-theme-muted truncate">{titleItem.challenge_title}</p>
                   </div>
                 </div>
               ))}
@@ -320,13 +320,13 @@ export default function UserProfilePage() {
           <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 pt-safe pt-4 pb-3 bg-gradient-to-b from-black/60 to-transparent pointer-events-none">
             <button
               onClick={closeViewer}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-black/30 pointer-events-auto"
+              className="flex h-9 w-9 items-center justify-center rounded-pill bg-black/30 pointer-events-auto"
             >
               <ArrowLeft size={20} strokeWidth={2} color="white" />
             </button>
-            <span className="text-sm font-semibold text-white">@{user.username}</span>
+            <span className="text-body font-semibold text-white">@{user.username}</span>
             {posts.length > 1 ? (
-              <span className="text-xs text-white/70">{activeVideoIdx + 1} / {posts.length}</span>
+              <span className="text-label text-white/70">{activeVideoIdx + 1} / {posts.length}</span>
             ) : (
               <div className="w-9" />
             )}
@@ -352,22 +352,22 @@ export default function UserProfilePage() {
                   loop
                 />
                 <div className="absolute top-safe top-16 right-4 z-10 flex flex-col items-end gap-2">
-                  <div className="flex items-center gap-1.5 text-white/90 drop-shadow">
+                  <div className="flex items-center gap-2 text-white/90 drop-shadow">
                     <Heart size={14} strokeWidth={1.5} />
-                    <span className="text-sm font-medium">{post.like_count}</span>
+                    <span className="text-body font-medium">{post.like_count}</span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-white/90 drop-shadow">
+                  <div className="flex items-center gap-2 text-white/90 drop-shadow">
                     <MessageCircle size={14} strokeWidth={1.5} />
-                    <span className="text-sm font-medium">{post.comment_count}</span>
+                    <span className="text-body font-medium">{post.comment_count}</span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-white/90 drop-shadow">
+                  <div className="flex items-center gap-2 text-white/90 drop-shadow">
                     <Eye size={14} strokeWidth={1.5} />
-                    <span className="text-sm font-medium">{post.view_count}</span>
+                    <span className="text-body font-medium">{post.view_count}</span>
                   </div>
                 </div>
                 {post.caption && (
                   <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-6 pt-8 bg-gradient-to-t from-black/70 to-transparent">
-                    <p className="text-sm text-white/90 line-clamp-2">{post.caption}</p>
+                    <p className="text-body text-white/90 line-clamp-2">{post.caption}</p>
                   </div>
                 )}
               </div>
