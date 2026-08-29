@@ -192,19 +192,19 @@ export default function StepSubtitle(props: Props) {
         </div>
       )}
 
-      {/* 직접 입력 */}
+      {/* 직접 입력 — 카드 안에 카드를 두지 않는다. 안내문은 placeholder 로 합치고
+          글자 수는 입력칸 안쪽 여백에 얹어 컨테이너를 하나로 유지한다. */}
       {subtitleSource === 'text' && (
-        <div className="rounded-card bg-theme-surface p-4 flex flex-col gap-2">
-          <p className="text-label text-theme-muted">{t('subtitle.textHint')}</p>
+        <div className="relative">
           <textarea
             value={subtitleRawText}
             onChange={(e) => setSubtitleRawText(e.target.value.slice(0, 500))}
             maxLength={500}
             rows={4}
             placeholder={t('subtitle.textPlaceholder')}
-            className="w-full resize-none rounded-card bg-theme-surface2 px-3 py-2 text-body text-theme-primary placeholder-theme-muted outline-none focus:ring-2 focus:ring-accent"
+            className="block w-full resize-none rounded-card bg-theme-surface px-4 py-3 pb-8 text-body text-theme-primary placeholder-theme-muted outline-none focus:ring-2 focus:ring-accent"
           />
-          <p className="text-right text-label text-theme-muted">{subtitleRawText.length}/500</p>
+          <span className="pointer-events-none absolute bottom-3 right-4 text-label text-theme-muted">{subtitleRawText.length}/500</span>
         </div>
       )}
 

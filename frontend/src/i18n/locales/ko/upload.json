@@ -28,8 +28,7 @@
     "sourceVideo": "영상 음성",
     "sourceRecord": "녹음",
     "sourceText": "직접 입력",
-    "textHint": "후기를 적으면 영상 전체에 자막으로 나눠 담아드려요.",
-    "textPlaceholder": "예) 오늘 점심은 라이트닝으로 결제했다"
+    "textPlaceholder": "후기를 적으면 영상 전체에 자막으로 나눠 담아드려요. 예) 오늘 점심은 라이트닝으로 결제했다"
   },
   "selectVideo": {
     "prompt": "영상을 선택하세요",

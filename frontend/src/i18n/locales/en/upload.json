@@ -28,8 +28,7 @@
     "sourceVideo": "Video audio",
     "sourceRecord": "Record",
     "sourceText": "Type",
-    "textHint": "Write a note and we'll split it into subtitles across the video.",
-    "textPlaceholder": "e.g. Paid for lunch with Lightning today"
+    "textPlaceholder": "Write a note and we'll split it into subtitles across the video. e.g. Paid for lunch with Lightning today"
   },
   "selectVideo": {
     "prompt": "Select a video",
