@@ -1,3 +1,7 @@
+# [아카이브 — 사용하지 않는 유닛 파일]
+# /opt/stackhealth-worker 전용 서버 배포용. 운영에서 쓰는 유닛은 이것이 아니라
+# 호스트에만 있는 stack-health-worker@.service (WorkingDirectory=/home/measly/stack-health/worker) 다.
+# 상세: CLAUDE.md "워커 멀티 인스턴스"
 [Unit]
 Description=Stack Health Video Merge Worker (instance %i)
 After=network.target

@@ -40,10 +40,11 @@ bitcoiners/
 | 팔로우 | `backend/app/models/follow.py` + `app/routes/users.py`(follow/followers/following) + `frontend/src/pages/{UserProfilePage,FollowListPage}.tsx` |
 | 알림 (인앱) | `backend/app/models/notification.py` + `app/services/notification.py` + `app/routes/notifications.py` + `frontend/src/pages/NotificationsPage.tsx`(`/notifications`) + `frontend/src/hooks/useUnreadNotifications.ts` |
 | 친구 초대 (referral) | `backend/app/services/referral.py` + `users.referral_code/referred_by_id` + `GET /users/me/referral` + `frontend/src/pages/InvitePage.tsx` (`/invite`), `?ref=` 캡처는 `App.tsx` |
+| 오렌지 나무 (성장 시각화) | `backend/app/services/btc_price.py`(CoinGecko 시세·Redis 캐시) + `posts.btc_price_krw`(기록 시점 가격 박제) + `GET /users/me/tree` + `frontend/src/components/OrangeTree.tsx` + `ProfilePage.tsx`. 규칙과 설계 의도는 `docs/orange-tree.md` |
 | 설문 기능 | `backend/app/{models,schemas,routes}/survey.py` + `frontend/src/pages/SurveyPage.tsx` + `AdminSurveys*.tsx` |
 | 배포/인프라 | `scripts/deploy.sh` + `Dockerfile` + `CLAUDE.md`(blue-green 주의사항) |
 | 도메인 전환 (서버 도메인 변경) | `docs/DOMAIN-CUTOVER.md` — DNS·인증서·nginx server_name·Google OAuth redirect_uri 재등록 순서와 각 단계 롤백 절차 |
-| 워커 배포 | 실제 운영: `stack-health-worker@{1,2}.service`(systemd --user, host 전용) + `scripts/deploy.sh` — 인스턴스 수는 `worker/.env`의 `WORKER_INSTANCES`. `worker/DEPLOY.md`/`worker/stackhealth-worker@.service`/`worker/deploy.sh`는 별도 `/opt` 전용서버 경로(미사용). 상세: `CLAUDE.md`(워커 멀티 인스턴스 주의사항) |
+| 워커 배포 | `stack-health-worker@{1,2}.service`(systemd --user, host 전용 파일) + `scripts/deploy.sh` — 인스턴스 수는 `worker/.env`의 `WORKER_INSTANCES`. 워커 전용 배포 스크립트는 없다. 상세: `CLAUDE.md`(워커 멀티 인스턴스 주의사항) |
 | 에러 코드 | `ERR_CODE.md` + `backend/app/services/error_codes.py` |
 | 환경변수 | `.env.example` + `backend/ENV_VARS.md` |
 
@@ -57,7 +58,7 @@ bitcoiners/
 - **schemas/** (Pydantic): `user` `video` `challenge` `survey`
 - **services/** (비즈니스 로직):
   - `auth.py` JWT / `google_oauth.py` Google 로그인 / `lnauth.py` Lightning 로그인(LNURL-auth)
-  - `timeframe.py` 주/월/일 UTC 경계 계산 / `share_token.py` 공유 링크 토큰
+  - `timeframe.py` **날짜 경계 단일 원본** — `SERVICE_TZ`(Asia/Seoul) 고정. 캘린더·스트릭·나무 단계·일일 제한이 전부 여기를 거친다. 요청에서 타임존을 받지 않는다 / `share_token.py` 공유 링크 토큰
   - `r2.py` Cloudflare R2 업로드 / `job_queue.py` Redis 잡 큐 enqueue
   - `subtitles.py` 자막 생성·환각 필터 / `rate_limit.py` / `notify.py` 텔레그램(운영자) 알림 / `notification.py` 인앱(사용자) 알림 생성 / `error_codes.py`
 - **tests/**: 도메인별 `test_*.py` (pytest) — 실행: `cd backend && .venv/bin/pytest -q`
@@ -77,7 +78,7 @@ bitcoiners/
 - **api/**: `client.ts`(fetch wrapper) `types.ts` `errors.ts`
 - **store/** (Zustand): `auth` `theme` `ui` / **hooks/**: `useVersionCheck` `useUnreadNotifications`
 - **utils/**: `subtitles` `calendar` `profileColor` `videoFilter` / **lib/**: `constants` `platform` `share`
-- **constants/**: `category.ts` — 업로드 메인 카테고리 2종(`비트코인` `일상`), 리브랜딩(운동 전용 → 비트코이너의 하루 전반)으로 도입된 단일 소스. DB(`posts.tags[0]`, `challenges.categories`)에 한글 원본 문자열 그대로 저장 — 값 변경 시 alembic 데이터 마이그레이션 필요
+- **constants/**: `category.ts` — 업로드 메인 카테고리 2종(`비트코인` `일상`), 리브랜딩(운동 전용 → 나의 비트코인 기록 전반)으로 도입된 단일 소스. DB(`posts.tags[0]`, `challenges.categories`)에 한글 원본 문자열 그대로 저장 — 값 변경 시 alembic 데이터 마이그레이션 필요
 - **i18n/**: `index.ts`(i18next 초기화, `localStorage` 기반 언어 감지) + `locales/{ko,en}/*.json`(네임스페이스 10개 — common/auth/feed/upload/challenge/profile/admin/errors/notification/survey). ko/en 키 집합이 반드시 일치해야 한다 — 한쪽에만 키를 추가하면 `fallbackLng: 'ko'` 설정 때문에 라이브러리가 에러 없이 다른 언어 UI에 한국어 원문을 그대로 섞어 보여준다
 - **테스트**: 유닛 `src/__tests__/` (Vitest) / E2E `e2e/*.spec.ts` (Playwright, `06-i18n.spec.ts`는 언어 전환 스모크 테스트)
 - 빌드: `cd frontend && npm run build`
@@ -87,7 +88,7 @@ bitcoiners/
 - **진입점**: `worker.py` — Redis 큐 폴링, ffmpeg 동시실행 리스 세마포어(Lua)
 - **tasks/**: `full_pipeline.py`(단일 영상 업로드 파이프라인) `full_pipeline_multi.py`(다중 미디어 파이프라인) `compose.py`(영상≤1+이미지≤5 순서대로 concat) `merge.py`(영상+오디오 병합) `image_merge.py` `subtitle_extract.py` `subtitle.py`(+`build_srt_from_text` 텍스트→자막) + `backfill_*.py`(일회성 백필)
 - `queue_client.py` Redis 잡 dequeue/ack / `notify.py` 텔레그램 / `health_check.py`
-- 배포: 실제 운영은 `stack-health-worker@{1,2}.service`(systemd --user, host 전용 유닛) — 상세 `CLAUDE.md` 참고. repo의 `deploy.sh`/`stackhealth-worker@.service`/`DEPLOY.md`는 별도 `/opt` 전용서버 경로(이 서버에서 미사용)
+- 배포: `stack-health-worker@{1,2}.service`(systemd --user, host 전용 유닛)를 `scripts/deploy.sh`가 앱과 함께 재시작한다 — 상세 `CLAUDE.md` 참고. 워커 전용 배포 스크립트는 없다(`/opt` 전용서버 경로 문서는 `archive-meta/worker-opt/`)
 
 ## 운영/배포
 
@@ -107,7 +108,8 @@ bitcoiners/
 | `docs/discussion-report-spec.md` | 토론/보고 워크플로 단일 원본 |
 | `AGENTS.md` | 최상위 작업 계약 (에이전트 14종, 검증 기준) |
 | `ERR_CODE.md` | 에러 코드 정의 |
-| `docs/DOMAIN-CUTOVER.md` | 서버 도메인을 stackhealth.life → bitcoiners.life로 바꿀 때 실행하는 인프라 전환 절차서. DNS·인증서·nginx·Google OAuth 재등록 순서와 각 단계 롤백 방법을 다룬다 |
+| `docs/DOMAIN-CUTOVER.md` | 서버 도메인을 stackhealth.life → story.onebitebitcoin.com로 바꿀 때 실행하는 인프라 전환 절차서. DNS·인증서·nginx·Google OAuth 재등록 순서와 각 단계 롤백 방법을 다룬다 |
+| `docs/orange-tree.md` | 나의 오렌지 나무(성장 시각화). 나무=내 기록 / 열매=비트코인 가격으로 축을 가른 이유, 단계·열매 판정 규칙, 시세 조회 실패 시 동작 |
 | `meetings/INDEX.md` | 회의록 인덱스 |
 
 ## 탐색하지 않아도 되는 곳

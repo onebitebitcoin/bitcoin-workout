@@ -1,4 +1,4 @@
-# SPEC.md — 비트코이너는 뭐하고 사나
+# SPEC.md — 나의 비트코인 기록
 
 > 버전: 0.52.0 (운영 중)
 > 런칭 목표: 2026-05-28
@@ -10,7 +10,7 @@
 
 ## 1. 프로젝트 개요
 
-비트코인 공부, 라이트닝 결제, 운동, 노드 운영, 모임 등 비트코이너의 하루를 60초 기록으로 SNS 피드(인스타 릴스/유튜브 쇼츠 형태)에 공유하는 웹 플랫폼. 카테고리는 비트코인·일상 두 가지다.
+비트코인 공부, 라이트닝 결제, 운동, 노드 운영, 모임 등 나의 비트코인 기록을 60초 영상으로 SNS 피드(인스타 릴스/유튜브 쇼츠 형태)에 남기는 웹 플랫폼. 카테고리는 비트코인·일상 두 가지다.
 
 ### 핵심 가치
 - 비트코이너 생활 습관 형성 + 기록 공유
@@ -27,6 +27,18 @@
 
 > **이 규칙을 어기면 히스토리 캘린더와 스트릭이 날짜 경계에서 어긋납니다.**
 
+### 두 가지를 구분한다
+
+| | 무엇 | 값 |
+|---|---|---|
+| **저장** | DB에 시각을 어떻게 넣나 | 항상 **UTC** (timezone-aware) |
+| **경계** | 그 시각을 며칠로 세나 | 항상 **Asia/Seoul** 고정 |
+
+저장은 UTC, 날짜를 세는 기준은 KST 하나다. 클라이언트가 자기 타임존을 요청마다 보내던
+구조(`?timezone=`, `X-Client-Timezone`)는 제거됐다 — 영상 확정 기능의 글로벌 UTC 집계
+요구에서 나온 것인데 그 기능이 사라지면서 근거도 없어졌고, 같은 날짜를 요청마다 다르게
+계산할 여지만 남아 있었다. 주 사용자가 한국이라 KST로 고정했다.
+
 ### 원칙
 
 | 레이어 | 규칙 |
@@ -34,30 +46,20 @@
 | **DB** | 모든 datetime 컬럼은 `TIMESTAMPTZ` (UTC). naive datetime 저장 금지 |
 | **Backend Python** | `datetime.now(timezone.utc)` 사용. `datetime.now()` (naive) 사용 금지 |
 | **Backend API 응답** | 모든 datetime 필드는 ISO 8601 UTC 오프셋 포함 (`2026-05-28T15:30:00+00:00`) |
-| **Frontend** | `new Date(isoString)` — 브라우저가 UTC 파싱 → 클라이언트 timezone 자동 표시 |
-| **Timezone-aware API** | 사용자에게 날짜/시간을 보여주거나 히스토리 캘린더를 그릴 때만 `?timezone=` 쿼리 파라미터 또는 `X-Client-Timezone` 헤더로 클라이언트 timezone을 명시적으로 수신 |
+| **날짜 경계** | `app/services/timeframe.py`의 `SERVICE_TZ`(Asia/Seoul) 하나만 쓴다. 날짜 문자열은 `to_local_date()`, "오늘"의 시작은 `today_start()` |
+| **Frontend** | `new Date(isoString)` 으로 파싱하고, 표시할 때 `Asia/Seoul`로 포맷한다 |
+
+캘린더·스트릭·나무 단계·일일 제한(댓글/업로드)·조회수 중복 제거가 **전부 같은 경계**를
+본다. 한 화면에서 두 숫자가 어긋나지 않으려면 새 기능도 반드시 `timeframe.py`를 거쳐야 한다.
 
 ### 금지 사항
 
 - `DateTime` (timezone=False) SQLAlchemy 컬럼 신규 추가 금지
-- `KST = timezone(timedelta(hours=9))` 하드코딩 및 DB 비교에 사용 금지
 - `datetime.now()` 또는 `datetime.utcnow()` (naive) 사용 금지 → `datetime.now(timezone.utc)` 사용
 - `.replace(tzinfo=None)` 으로 timezone 정보를 제거한 뒤 DB에 저장 금지
-- `_DB_TZ = ZoneInfo("Asia/Seoul")` 류의 "DB가 KST 저장" 가정 금지
-
-### 글로벌 UTC 비즈니스 기준
-
-서비스의 집계 기준은 국가별 로컬 자정이 아니라 **글로벌 UTC 캘린더**입니다.
-사용자에게 보여주는 날짜/시간만 브라우저 또는 `X-Client-Timezone` 기준 로컬 타임으로 변환합니다.
-
-| 항목 | 설명 |
-|------|------|
-| 주간 경계 | UTC 기준 월요일 00:00 시작 |
-| 월간 통계 | UTC 기준 매월 1일 00:00 시작 |
-| 조회수 일일 중복 제거 | UTC 자정 기준 리셋 |
-| 화면 표시 | API의 UTC ISO datetime을 사용자 로컬 타임존으로 변환해 표시 |
-
-`X-Client-Timezone`은 표시/캘린더용 보조 정보이며, 집계 기간을 바꾸면 안 됩니다.
+- `_DB_TZ = ZoneInfo("Asia/Seoul")` 류의 "DB가 KST 저장" 가정 금지 — 저장은 UTC다
+- 날짜 경계를 각 라우트에서 따로 계산하지 말 것. `ZoneInfo`를 새로 import하고 있다면 잘못 가고 있는 것이다
+- 요청에서 타임존을 받지 말 것 (`?timezone=`, `X-Client-Timezone` 부활 금지)
 
 ---
 
@@ -560,10 +562,11 @@ Response: { "status": "ok", "version": "0.26.1" }
 # healthcheck: /health
 ```
 
-### Worker (별도 Ubuntu 서버)
-- 상세 내용: `worker/DEPLOY.md` 참조
+### Worker (앱과 같은 서버)
+- 서비스: systemd `--user` 템플릿 유닛 `stack-health-worker@{1..N}`
+- 인스턴스 수는 `worker/.env`의 `WORKER_INSTANCES`. `scripts/deploy.sh`가 이 값을 읽어 push 배포 때 전부 재시작한다 (워커 전용 배포 스크립트는 없다)
 - 필수 환경변수: `REDIS_URL`, `R2_*` (백엔드와 동일)
-- 서비스: systemd `stackhealth-worker.service`
+- 상세: `CLAUDE.md`의 "워커 멀티 인스턴스" 절
 
 ---
 

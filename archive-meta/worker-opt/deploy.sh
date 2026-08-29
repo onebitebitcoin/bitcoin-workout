@@ -1,5 +1,15 @@
 #!/bin/bash
-# Bitcoiners Video Worker - Ubuntu 배포 스크립트
+# ============================================================================
+# [아카이브 — 실행되지 않는 스크립트]
+#
+# /opt/stackhealth-worker 에 워커를 단일 전용 서버로 설치하는 스크립트다.
+# 현재 운영은 이 경로를 쓰지 않는다 — 워커는 앱과 같은 서버에서 systemd --user
+# 템플릿 유닛 stack-health-worker@{1..N} 으로 돌고, scripts/deploy.sh 가 재시작한다.
+# 운영 서버에 /opt/stackhealth-worker 는 존재하지 않는다.
+#
+# 실제 워커 운영은 CLAUDE.md 의 "워커 멀티 인스턴스" 절을 본다.
+# ============================================================================
+# Orange Story Video Worker - Ubuntu 배포 스크립트
 # 도메인: server.stackhealth.life
 # 사용법: sudo bash deploy.sh
 #
@@ -18,7 +28,7 @@ SERVICE_NAME="stackhealth-worker"
 WORKER_INSTANCES="${WORKER_INSTANCES:-1}"
 
 echo "======================================"
-echo " Bitcoiners Worker 배포 시작"
+echo " Orange Story Worker 배포 시작"
 echo " 설치 경로: $INSTALL_DIR"
 echo "======================================"
 

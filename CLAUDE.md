@@ -1,4 +1,4 @@
-# Bitcoiners — Claude Code 작업 지침
+# Orange Story — Claude Code 작업 지침
 
 ## 탐색 인덱스 — 파일 탐색 전 필수 (MANDATORY)
 
@@ -22,6 +22,30 @@
 - 훅 스크립트: `.claude/hooks/usage_prompt.py`, `usage_stop.py`, `usage_report.py`
 
 ## 배포 인프라 — 반드시 숙지
+
+### 인프라 식별자는 브랜드명과 무관하다 (MANDATORY)
+
+> **`stackhealth` / `stack-health` / `stack_health`가 이름에 남아 있는 것은 리브랜딩 누락이 아니다. 의도적으로 유지하는 것이니 일괄 치환하지 마라.**
+
+제품명은 Orange Story지만, 아래 식별자들은 서버·스토어·CI에 묶여 있어 이름을 바꾸면 배포나 서비스가 깨진다. 브랜드로 노출되는 곳(화면·메타태그·앱 표시명·공유 카드)은 이미 전부 Orange Story로 정리돼 있다.
+
+| 식별자 | 어디에 묶여 있나 | 바꾸면 |
+|---|---|---|
+| `/home/measly/stack-health/` | `.github/workflows/deploy.yml`이 이 절대경로로 `scripts/deploy.sh`를 호출 | 배포가 "파일 없음"으로 실패 |
+| `stack-health-app-{blue,green,dev}` | 호스트 systemd `--user` 유닛 (repo에 없음) | `deploy.sh`의 슬롯 전환 실패 |
+| `stack-health-worker@{1..N}`, `-dev` | 〃 | 워커가 재시작되지 않음 |
+| `stackhealth_app` | nginx upstream **블록 이름**. `deploy.sh`가 생성하고 서버 블록의 `proxy_pass`가 이 이름을 가리킨다 | 502 |
+| `/usr/local/bin/stackhealth-nginx-switch` | `deploy.sh:125`가 `sudo`로 호출하는 전환 래퍼 (NOPASSWD 등록됨, repo에 없는 호스트 전용 파일) | 배포 중 슬롯 전환 불가 |
+| `/etc/nginx/conf.d/stackhealth-upstream.conf` | 위 래퍼가 갱신하는, 실제 nginx가 읽는 파일 | 502 (장애 이력 참고) |
+| `/tmp/stackhealth-deploy.lock` | 동시 배포 방지 flock 대상 | 배포 두 개가 겹칠 수 있음 |
+| `stack_health_dev` | dev DB 이름 (`.env.dev`) | dev 마이그레이션 실패 |
+| `com.stackhealth.app` | Android 패키지 ID (Play 스토어 등록값) | **별개 앱 취급 — 기존 사용자가 업데이트를 못 받음** |
+| `mobile/pubspec.yaml`의 `name: stack_health` | Dart 패키지 이름, 앱 내부 import 경로 | 빌드 실패 |
+| `server.stackhealth.life` | Redis 호스트. 실제 값은 서버 `worker/.env`의 `REDIS_URL`(저장소에 없음) | 워커가 Redis에 연결 못 함 |
+
+이름을 정말 정리하고 싶다면 **서버를 새로 구축할 때**가 자연스러운 시점이다. 돌아가는 서버에서 위 항목을 동시에 바꾸는 것은 되돌리기 어렵고 얻는 것이 없다.
+
+한편 **웹 도메인**(`stackhealth.life` → `story.onebitebitcoin.com`)은 사용자에게 보이므로 전환 대상이며, 절차는 `docs/DOMAIN-CUTOVER.md`에 있다.
 
 ### Blue-Green 배포 구조
 
@@ -54,7 +78,7 @@ EOF'
 sudo nginx -s reload
 ```
 
-`deploy.sh`는 두 파일을 모두 업데이트하도록 수정되어 있다 (`scripts/deploy.sh` Step 7).
+배포 시에는 `deploy.sh`가 두 파일을 모두 갱신한다 (`scripts/deploy.sh` Step 7). 다만 실제 nginx 설정은 **직접 쓰지 않고** `sudo /usr/local/bin/stackhealth-nginx-switch <포트>`(NOPASSWD 등록된 호스트 전용 래퍼)를 호출하고, repo의 `nginx/upstream.conf`는 그 뒤에 참조용으로 덮어쓴다.
 
 ### 워커(worker) 멀티 인스턴스 — 핵심 주의사항
 
@@ -62,7 +86,7 @@ sudo nginx -s reload
 
 - 인스턴스 개수는 `worker/.env`의 `WORKER_INSTANCES`로 정하고, `scripts/deploy.sh`가 이 값을 읽어 `stack-health-worker@1..N`을 전부 재시작한다 (push 배포 시 자동).
 - `backend/app/services/cartoon.py`, `muscle_heat.py`의 `_worker_pool_size()`는 **`FFMPEG_ACTIVE_JOBS`**(worker.py가 렌더 시작 직전 `ffmpeg:slots` 리스 점유 수로 매 잡마다 주입하는 실시간 활성 잡 수)로 코어 예산을 나눠 프로세스 풀 크기를 정한다 — 잡이 1개뿐이면 코어 예산을 다 쓰고, 여러 잡이 겹치면 나눠 쓴다. `WORKER_INSTANCES`는 `FFMPEG_ACTIVE_JOBS`가 없을 때(단독 실행·테스트)만 쓰는 폴백이라 **정적 상한이 아니다** — 기본 8코어 기준 프로세스 풀은 잡 1개면 `(8-2)/1=6`, 잡 2개가 겹치면 `(8-2)/2=3`으로 실시간으로 바뀐다. 두 값(`FFMPEG_ACTIVE_JOBS` 키 이름)이 `worker/worker.py`(설정)와 두 backend 모듈(사용) 양쪽에 문자열로 하드코딩돼 있어, 한쪽만 고치면 조용히 `WORKER_INSTANCES` 폴백으로 흡수되고 에러 없이 성능만 저하된다 — 변경 시 둘 다 확인.
-- **`worker/deploy.sh` + repo의 `worker/stackhealth-worker@.service`는 이것과 다른, 별도의 `/opt/stackhealth-worker` 단일 전용서버 배포 경로용이다 (`worker/DEPLOY.md` 참고). 이 서버에는 `/opt/stackhealth-worker`가 존재하지 않고, 어떤 자동화도 그 스크립트를 실행하지 않는다 — 혼동 금지.**
+- 워커 전용 배포 스크립트는 **없다**. push 배포 하나로 앱과 함께 나간다. (`/opt/stackhealth-worker` 단일 전용서버 배포용 문서·스크립트가 예전에 `worker/`에 있었는데, 실행되지 않는 경로라 `archive-meta/worker-opt/`로 옮겼다.)
 
 ### 장애 이력 (2026-05-31)
 

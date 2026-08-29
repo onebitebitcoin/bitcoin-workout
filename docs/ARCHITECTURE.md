@@ -1,13 +1,13 @@
-# Bitcoiners 시스템 아키텍처
+# Orange Story 시스템 아키텍처
 
-> 비트코이너의 하루를 60초 기록으로 공유하는 SNS 플랫폼 (https://bitcoiners.life)
+> 나의 비트코인 기록을 60초 영상으로 남기는 SNS 플랫폼 (https://story.onebitebitcoin.com)
 > 파일 단위 탐색은 `docs/INDEX.md`를 먼저 본다.
 
 ## 1. 전체 구성도
 
 ```
                         ┌─────────────────────────────┐
-  사용자 (웹/모바일앱)   │   nginx (bitcoiners.life)    │
+  사용자 (웹/모바일앱)   │   nginx (story.onebitebitcoin.com)    │
  ───────────────────►  │  upstream: blue 8017 / green │
                         │  8018 (blue-green 전환)      │
                         └──────────────┬──────────────┘
@@ -53,7 +53,7 @@
 - SPA. 라우팅은 `src/App.tsx` (React Router + `RequireAuth` 가드).
 - 상태: Zustand(`store/` — auth/theme/ui) + TanStack Query(서버 상태).
 - API 호출은 전부 `src/api/client.ts` 경유. 에러 코드는 `ERR_CODE.md`와 동기.
-- 업로드 플로우는 단계형 컴포넌트(`pages/upload/StepRecord → StepSelectVideo → StepCaption → StepTagChallenge`).
+- 업로드 플로우는 단계형 컴포넌트(`pages/upload/StepMedia → StepSubtitle → StepMeta`).
 - 빌드 산출물은 Docker 이미지에 포함되어 backend가 서빙.
 
 ### Video Worker — `worker/` (독립 프로세스, systemd)
@@ -111,7 +111,7 @@ AppLinks                                  (앱 링크/메타)
 | 앱 배포 | Docker multi-stage (frontend build → backend) + blue-green |
 | 슬롯 | blue=8017 / green=8018, 평상시 한 슬롯만 가동 |
 | 전환 | `scripts/deploy.sh` Step 7이 `/etc/nginx/conf.d/stackhealth-upstream.conf` 직접 갱신 후 reload |
-| 워커 | systemd `stackhealth-worker.service`, `worker/deploy.sh` 별도 배포 |
+| 워커 | 앱과 **같은 서버**에서 systemd `--user` 템플릿 유닛 `stack-health-worker@{1..N}`. 인스턴스 수는 `worker/.env`의 `WORKER_INSTANCES`이고 `scripts/deploy.sh`가 읽어 함께 재시작한다 (별도 배포 스크립트 없음) |
 | DB | PostgreSQL (양 슬롯 공유) |
 
 > **주의**: repo의 `nginx/upstream.conf`는 참조용. 실제 nginx는 `/etc/nginx/conf.d/stackhealth-upstream.conf`만 읽는다. 장애 이력 포함 상세는 `CLAUDE.md`.

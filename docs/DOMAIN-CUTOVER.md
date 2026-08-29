@@ -1,22 +1,22 @@
-# 도메인 전환 런북 — stackhealth.life → bitcoiners.life
+# 도메인 전환 런북 — stackhealth.life → story.onebitebitcoin.com
 
-> Bitcoiners 리브랜딩의 코드 작업은 끝났다. `frontend/index.html`(canonical, OG, JSON-LD), `frontend/public/sitemap.xml`, `frontend/public/robots.txt`는 이미 `bitcoiners.life` 기준으로 갱신돼 있다. 남은 건 서버에서 직접 실행해야 하는 인프라 전환뿐이고, 이 문서가 그 절차다.
+> Orange Story 리브랜딩의 코드 작업은 끝났다. `frontend/index.html`(canonical, OG, JSON-LD), `frontend/public/sitemap.xml`, `frontend/public/robots.txt`는 이미 `story.onebitebitcoin.com` 기준으로 갱신돼 있다. 남은 건 서버에서 직접 실행해야 하는 인프라 전환뿐이고, 이 문서가 그 절차다.
 >
 > 이 문서는 서버 SSH 접속 후 사용자가 직접 실행하는 절차서다. Claude는 이 문서 작성 과정에서 서버에 접속하지 않았고 실제 인프라도 건드리지 않았다 — 아래 명령은 전부 리포지토리 파일(`CLAUDE.md`, `scripts/deploy.sh`, `backend/app/config.py` 등)을 근거로 작성했고, 리포지토리에 없어 서버에서만 확인 가능한 부분은 **확인 필요**로 표시했다.
 
 ## 0. 전제 — 왜 순서가 중요한가
 
-인증서 없이 DNS부터 돌리면 그 사이 `https://bitcoiners.life`는 브라우저 경고를 띄운다. nginx가 새 도메인을 받기 전에 301을 걸면 기존 `stackhealth.life` 트래픽이 그대로 끊긴다. 환경변수를 코드 배포보다 먼저 바꾸면 서버가 재시작되기 전까지 예전 도메인 기준으로 리다이렉트가 나간다. 그래서 아래 순서를 지킨다: `DNS 추가` → `인증서 발급` → `nginx 양쪽 허용` → `검증` → `301 전환` → `환경변수 갱신 및 재배포`.
+인증서 없이 DNS부터 돌리면 그 사이 `https://story.onebitebitcoin.com`은 브라우저 경고를 띄운다. nginx가 새 도메인을 받기 전에 301을 걸면 기존 `stackhealth.life` 트래픽이 그대로 끊긴다. 환경변수를 코드 배포보다 먼저 바꾸면 서버가 재시작되기 전까지 예전 도메인 기준으로 리다이렉트가 나간다. 그래서 아래 순서를 지킨다: `DNS 추가` → `인증서 발급` → `nginx 양쪽 허용` → `검증` → `301 전환` → `환경변수 갱신 및 재배포`.
 
 ## 1. 사전 확인
 
 ### 1-1. 기존 영상(R2 CDN)은 이 작업과 무관하다
 
-`backend/app/services/r2.py`의 `get_cdn_url()`은 `settings.r2_public_url`(`R2_PUBLIC_URL`, 예: `https://<bucket>.r2.dev`)을 그대로 붙여 URL을 만든다. 이 값은 Cloudflare R2 버킷의 퍼블릭 도메인이지, 웹 서비스 도메인(`stackhealth.life`/`bitcoiners.life`)과는 완전히 별개다. 웹 도메인을 바꿔도 이미 올라간 영상·썸네일 링크(`R2_PUBLIC_URL` 기준)는 그대로 살아있다 — 영상이 끊길까 걱정할 필요는 없다. R2 버킷명·CDN URL은 이번 작업에서 손댈 항목이 아니다(5장 참조).
+`backend/app/services/r2.py`의 `get_cdn_url()`은 `settings.r2_public_url`(`R2_PUBLIC_URL`, 예: `https://<bucket>.r2.dev`)을 그대로 붙여 URL을 만든다. 이 값은 Cloudflare R2 버킷의 퍼블릭 도메인이지, 웹 서비스 도메인(`stackhealth.life`/`story.onebitebitcoin.com`)과는 완전히 별개다. 웹 도메인을 바꿔도 이미 올라간 영상·썸네일 링크(`R2_PUBLIC_URL` 기준)는 그대로 살아있다 — 영상이 끊길까 걱정할 필요는 없다. R2 버킷명·CDN URL은 이번 작업에서 손댈 항목이 아니다(5장 참조).
 
 ### 1-2. Cloudflare가 앞단에 있다 — DNS 추가 시 프록시 상태를 맞춰라
 
-git 히스토리(`04690e2`, `0c8e267` 커밋 — "Cloudflare 521 개선")에 따르면 `stackhealth.life`는 Cloudflare를 경유한다(521은 Cloudflare 고유 에러 코드로, 프록시가 아니면 발생하지 않는다). `bitcoiners.life` A 레코드를 추가할 때 기존 `stackhealth.life` 레코드와 같은 프록시 상태(오렌지 클라우드 on/off)로 맞춰야 한다. **확인 필요**: 정확한 SSL/TLS 모드(Flexible/Full/Full strict)는 Cloudflare 대시보드에서 `stackhealth.life` 존 설정을 직접 확인해야 한다.
+git 히스토리(`04690e2`, `0c8e267` 커밋 — "Cloudflare 521 개선")에 따르면 `stackhealth.life`는 Cloudflare를 경유한다(521은 Cloudflare 고유 에러 코드로, 프록시가 아니면 발생하지 않는다). `story.onebitebitcoin.com` A 레코드를 추가할 때 기존 `stackhealth.life` 레코드와 같은 프록시 상태(오렌지 클라우드 on/off)로 맞춰야 한다. **확인 필요**: 정확한 SSL/TLS 모드(Flexible/Full/Full strict)는 Cloudflare 대시보드에서 `stackhealth.life` 존 설정을 직접 확인해야 한다.
 
 ### 1-3. 실제 서버 설정 파일 위치를 먼저 특정한다
 
@@ -110,8 +110,8 @@ B안을 택했을 때 실제로 문제가 없는지는 직접 실행해서 확�
 **도메인 전환과 겹치는 지점**
 
 - `.env.dev`는 리포지토리에 없다(서버 전용). 그 안에 `APP_URL`/`APP_BASE_URL`에 해당하는 dev용 키가 있는지, 있다면 지금 값이 무엇인지는 이 문서만으로 확인할 수 없다. **확인 필요**: 서버에서 `cat .env.dev`로 직접 본다.
-- **결정 필요**: `dev.stackhealth.life`를 이번 전환에서 `dev.bitcoiners.life`로 함께 옮길지는 아직 정해지지 않았다. 옮기기로 하면 최소한 아래가 추가로 필요하다 — 2장의 절차를 dev 도메인에 맞춰 한 번 더 반복하는 셈이다.
-  - `dev.bitcoiners.life` DNS A레코드·인증서·nginx server_name 추가 (Step 1~3과 동일한 절차)
+- **결정 필요**: `dev.stackhealth.life`를 이번 전환에서 `dev.story.onebitebitcoin.com`으로 함께 옮길지는 아직 정해지지 않았다. 옮기기로 하면 최소한 아래가 추가로 필요하다 — 2장의 절차를 dev 도메인에 맞춰 한 번 더 반복하는 셈이다.
+  - `dev.story.onebitebitcoin.com` DNS A레코드·인증서·nginx server_name 추가 (Step 1~3과 동일한 절차)
   - `.env.dev`의 도메인 관련 키 갱신
   - dev가 별도 Google OAuth 클라이언트를 쓰는지, 쓴다면 그 redirect_uri도 3장과 같은 방식으로 재등록해야 하는지 확인 — 이것도 `.env.dev`를 봐야 알 수 있다
   - 옮기지 않기로 하면 dev는 계속 `dev.stackhealth.life`로 남는다. 5장의 301은 프로덕션 서버 블록에 거는 것이므로, dev 서버 블록에 같은 301을 걸지 않는 한 dev 접속은 그대로 이어진다 — 다만 그 경우 dev만 옛 브랜드 도메인에 남는 비대칭 상태가 굳어진다는 점은 인지해둔다.
@@ -124,41 +124,41 @@ B안을 택했을 때 실제로 문제가 없는지는 직접 실행해서 확�
 dig stackhealth.life A +short   # 기존 IP 확인
 ```
 
-확인한 IP로 `bitcoiners.life` A레코드를 새로 추가한다. 기존 `stackhealth.life` 레코드는 건드리지 않는다 — 두 도메인이 같은 서버를 가리키는 상태로 만드는 게 목적이다.
+확인한 IP로 `story.onebitebitcoin.com` A레코드를 새로 추가한다. 기존 `stackhealth.life` 레코드는 건드리지 않는다 — 두 도메인이 같은 서버를 가리키는 상태로 만드는 게 목적이다.
 
 **성공 확인**:
 ```bash
-dig bitcoiners.life A +short   # 위에서 확인한 IP와 일치해야 함
+dig story.onebitebitcoin.com A +short   # 위에서 확인한 IP와 일치해야 함
 ```
 DNS 전파는 TTL에 따라 수 분~수 시간 걸릴 수 있다. 전파 전에 다음 단계로 넘어가면 인증서 발급(HTTP-01 challenge)이 실패한다.
 
-### Step 2 — bitcoiners.life 인증서 발급
+### Step 2 — story.onebitebitcoin.com 인증서 발급
 
 1-3에서 `sudo certbot certificates`로 certbot 관리 대상임을 확인했다면:
 
 ```bash
-sudo certbot certonly --nginx -d bitcoiners.life
+sudo certbot certonly --nginx -d story.onebitebitcoin.com
 ```
 
 기존 `stackhealth.life` 인증서 발급 시 `--nginx` 대신 `--webroot`를 썼을 수도 있으니, `sudo certbot certificates` 출력의 `stackhealth.life` 항목에 적힌 발급 방식을 그대로 따른다.
 
 **성공 확인**:
 ```bash
-sudo certbot certificates | grep -A3 "bitcoiners.life"
-openssl s_client -connect bitcoiners.life:443 -servername bitcoiners.life </dev/null 2>/dev/null | openssl x509 -noout -dates
+sudo certbot certificates | grep -A3 "story.onebitebitcoin.com"
+openssl s_client -connect story.onebitebitcoin.com:443 -servername story.onebitebitcoin.com </dev/null 2>/dev/null | openssl x509 -noout -dates
 ```
 
-### Step 3 — nginx server_name에 bitcoiners.life 추가 (양쪽 다 받는 상태)
+### Step 3 — nginx server_name에 story.onebitebitcoin.com 추가 (양쪽 다 받는 상태)
 
 1-3에서 찾은 서버 블록 파일에 `server_name`을 두 도메인 모두 포함하도록 수정한다. 기존 블록이 대략 이런 구조일 것이다(실제 파일 내용에 맞춰 조정한다):
 
 ```nginx
 server {
     listen 443 ssl;
-    server_name stackhealth.life bitcoiners.life;
+    server_name stackhealth.life story.onebitebitcoin.com;
 
-    ssl_certificate     /etc/letsencrypt/live/bitcoiners.life/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/bitcoiners.life/privkey.pem;
+    ssl_certificate     /etc/letsencrypt/live/story.onebitebitcoin.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/story.onebitebitcoin.com/privkey.pem;
 
     location / {
         proxy_pass http://stackhealth_app;   # 업스트림 이름은 stackhealth-upstream.conf 기준, 바꾸지 않는다
@@ -176,19 +176,19 @@ server {
 sudo nginx -t                 # 문법 검증, 반드시 reload 전에 실행
 sudo systemctl reload nginx   # 또는 sudo nginx -s reload
 curl -Ik https://stackhealth.life/health   # 기존 도메인 정상 응답 유지
-curl -Ik https://bitcoiners.life/health    # 새 도메인도 정상 응답
+curl -Ik https://story.onebitebitcoin.com/health    # 새 도메인도 정상 응답
 ```
 두 요청 다 `HTTP/2 200`과 `{"status":"ok"}` 계열 응답이 나와야 다음 단계로 넘어갈 수 있다.
 
 ### Step 4 — 검증 (전환 전 마지막 확인)
 
-301을 걸기 전에 `bitcoiners.life`가 완전히 정상 동작하는지 브라우저로 직접 확인한다. 이 시점에는 백엔드 환경변수가 아직 옛 도메인 기준이라 로그인 리다이렉트나 공유 링크는 `stackhealth.life`로 나갈 수 있다 — 이건 정상이다. 여기서 보는 건 TLS와 정적 자산·API 응답이 정상인지다.
+301을 걸기 전에 `story.onebitebitcoin.com`이 완전히 정상 동작하는지 브라우저로 직접 확인한다. 이 시점에는 백엔드 환경변수가 아직 옛 도메인 기준이라 로그인 리다이렉트나 공유 링크는 `stackhealth.life`로 나갈 수 있다 — 이건 정상이다. 여기서 보는 건 TLS와 정적 자산·API 응답이 정상인지다.
 
-- `https://bitcoiners.life/` 접속 → 인증서 경고 없이 로딩되는지
-- `curl -sI https://bitcoiners.life/assets/` 로 정적 자산 서빙 확인
-- API 응답 확인: `curl -s https://bitcoiners.life/health`
+- `https://story.onebitebitcoin.com/` 접속 → 인증서 경고 없이 로딩되는지
+- `curl -sI https://story.onebitebitcoin.com/assets/` 로 정적 자산 서빙 확인
+- API 응답 확인: `curl -s https://story.onebitebitcoin.com/health`
 
-### Step 5 — stackhealth.life → bitcoiners.life 301 전환
+### Step 5 — stackhealth.life → story.onebitebitcoin.com 301 전환
 
 검증이 끝났으면 옛 도메인 블록을 리다이렉트 전용으로 바꾼다. Step 3에서 합쳐뒀던 `server_name`을 분리한다:
 
@@ -200,12 +200,12 @@ server {
     ssl_certificate     /etc/letsencrypt/live/stackhealth.life/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/stackhealth.life/privkey.pem;
 
-    return 301 https://bitcoiners.life$request_uri;
+    return 301 https://story.onebitebitcoin.com$request_uri;
 }
 
 server {
     listen 443 ssl;
-    server_name bitcoiners.life;
+    server_name story.onebitebitcoin.com;
     # ... Step 3의 proxy_pass 블록 전체
 }
 ```
@@ -213,13 +213,13 @@ server {
 **성공 확인**:
 ```bash
 sudo nginx -t && sudo systemctl reload nginx
-curl -IL https://stackhealth.life/   # 301 → https://bitcoiners.life/ 로 이어지는지
+curl -IL https://stackhealth.life/   # 301 → https://story.onebitebitcoin.com/ 로 이어지는지
 curl -sI https://stackhealth.life/some/path | grep -i location   # 경로가 보존되는지 ($request_uri)
 ```
 
 ### Step 6 — 환경변수 갱신 후 재배포
 
-서버 `.env` 파일에서 아래 키를 `bitcoiners.life` 기준으로 바꾼다.
+서버 `.env` 파일에서 아래 키를 `story.onebitebitcoin.com` 기준으로 바꾼다.
 
 | 키 | 용도 | 근거 |
 |---|---|---|
@@ -253,8 +253,8 @@ CI(`.github/workflows/deploy.yml`)는 `main` 브랜치 push에 물려 있으니,
 
 **성공 확인**:
 ```bash
-curl -s https://bitcoiners.life/api/v1/auth/google | grep -o "redirect_uri=[^&]*"
-# https://bitcoiners.life/api/v1/auth/google/callback 이 URL-encode된 형태로 나와야 함
+curl -s https://story.onebitebitcoin.com/api/v1/auth/google | grep -o "redirect_uri=[^&]*"
+# https://story.onebitebitcoin.com/api/v1/auth/google/callback 이 URL-encode된 형태로 나와야 함
 ```
 
 ## 3. Google OAuth 재등록 — 반드시 이 단계를 빠뜨리지 말 것
@@ -267,10 +267,10 @@ curl -s https://bitcoiners.life/api/v1/auth/google | grep -o "redirect_uri=[^&]*
 return f"{settings.app_url}/api/v1/auth/google/callback"
 ```
 
-즉 Step 6에서 `APP_URL`을 `https://bitcoiners.life`로 바꿨다면, 등록해야 할 정확한 URI는:
+즉 Step 6에서 `APP_URL`을 `https://story.onebitebitcoin.com`으로 바꿨다면, 등록해야 할 정확한 URI는:
 
 ```
-https://bitcoiners.life/api/v1/auth/google/callback
+https://story.onebitebitcoin.com/api/v1/auth/google/callback
 ```
 
 **등록 절차**:
@@ -278,7 +278,7 @@ https://bitcoiners.life/api/v1/auth/google/callback
 2. Authorized redirect URIs에 위 URI를 추가한다 (기존 `https://stackhealth.life/api/v1/auth/google/callback`은 Step 5의 301 리다이렉트가 안정화될 때까지 남겨둔다 — 캐시된 옛 링크로 들어오는 로그인 시도를 위한 안전망이다)
 3. 저장 후 몇 분 내 반영된다 (Google 쪽은 즉시 반영되는 편이지만 캐시 지연 가능)
 
-**성공 확인**: 실제 브라우저에서 `https://bitcoiners.life/api/v1/auth/google`로 로그인을 끝까지 시도해 콜백이 `redirect_uri_mismatch` 없이 성공하는지 확인한다. 이건 curl로 대체 검증이 안 되는 단계다 — 브라우저로 직접 확인한다.
+**성공 확인**: 실제 브라우저에서 `https://story.onebitebitcoin.com/api/v1/auth/google`로 로그인을 끝까지 시도해 콜백이 `redirect_uri_mismatch` 없이 성공하는지 확인한다. 이건 curl로 대체 검증이 안 되는 단계다 — 브라우저로 직접 확인한다.
 
 ## 4. 롤백
 
@@ -314,25 +314,25 @@ sudo cp /etc/nginx/<실제 서버 블록 파일 경로> /etc/nginx/<실제 서�
 | `/etc/nginx/conf.d/stackhealth-upstream.conf` | 실제 nginx가 읽는 blue/green 포트 정의 파일. 파일명이 아니라 내용(포트 번호)만 바뀌어야 하는 대상 |
 | `/tmp/stackhealth-deploy.lock` | 동시 배포 방지용 flock 대상 파일. 다른 이름으로 바꾸면 락이 무력화돼 배포 두 개가 겹칠 수 있다 |
 | `stack-health-worker@{1,2}` | systemd `--user` 템플릿 유닛. `scripts/deploy.sh`가 이 유닛명으로 재시작을 호출한다 |
-| `server.stackhealth.life` | Redis 서버 호스트명(`worker/DEPLOY.md`). DNS 레코드가 이 이름으로 걸려 있어 바꾸면 워커가 Redis에 연결 못 한다 |
+| `server.stackhealth.life` | Redis 서버 호스트명. 실제 값은 서버 `worker/.env`의 `REDIS_URL`에 있다(저장소에 없음). 바꾸면 워커가 Redis에 연결 못 하므로 이번 웹 도메인 전환에서는 건드리지 않는다 — 별도 작업이다 (`archive-meta/worker-opt/DEPLOY.md`는 미사용 경로 문서라 여기의 근거가 아니다) |
 | R2 버킷명 / `R2_PUBLIC_URL` | 이미 업로드된 모든 영상·썸네일 링크가 이 값을 기준으로 생성돼 있다(1-1 참조). 바꾸면 기존 콘텐츠가 전부 404 |
 | `com.stackhealth.app` | 안드로이드 패키지 ID. Google Play 스토어에 이 ID로 등록돼 있어 바꾸면 별개 앱 취급된다 |
 
 ## 6. SEO 체크리스트 (301 전환 이후)
 
-코드 쪽 SEO 자산은 이미 `bitcoiners.life` 기준으로 맞춰져 있다 — `frontend/public/sitemap.xml`, `frontend/public/robots.txt`, `frontend/index.html`의 canonical·OG·JSON-LD 태그 전부 확인 완료. 남은 건 검색엔진에 새 도메인을 알리는 절차다.
+코드 쪽 SEO 자산은 이미 `story.onebitebitcoin.com` 기준으로 맞춰져 있다 — `frontend/public/sitemap.xml`, `frontend/public/robots.txt`, `frontend/index.html`의 canonical·OG·JSON-LD 태그 전부 확인 완료. 남은 건 검색엔진에 새 도메인을 알리는 절차다.
 
-- [ ] Google Search Console에 `bitcoiners.life` 속성 새로 등록 (도메인 속성 또는 URL 접두어 속성)
-- [ ] Search Console의 "주소 변경 도구"(Change of Address tool)로 `stackhealth.life` → `bitcoiners.life` 이전 신고 (301이 안정화된 뒤 실행 — Step 5 완료 후)
-- [ ] `https://bitcoiners.life/sitemap.xml` 제출 (내용은 이미 새 도메인 기준)
+- [ ] Google Search Console에 `story.onebitebitcoin.com` 속성 새로 등록 (도메인 속성 또는 URL 접두어 속성)
+- [ ] Search Console의 "주소 변경 도구"(Change of Address tool)로 `stackhealth.life` → `story.onebitebitcoin.com` 이전 신고 (301이 안정화된 뒤 실행 — Step 5 완료 후)
+- [ ] `https://story.onebitebitcoin.com/sitemap.xml` 제출 (내용은 이미 새 도메인 기준)
 - [ ] Bing Webmaster Tools에도 동일하게 새 사이트 등록 + sitemap 제출
 - [ ] 임의 페이지 여러 개를 골라 `curl -sI`로 canonical 태그와 실제 서빙 도메인이 일치하는지 재확인
 - [ ] 기존 `stackhealth.life`로 걸린 외부 백링크·소셜 공유 링크 목록이 있다면 301로 정상 흡수되는지 샘플 확인
-- [ ] 2~4주 후 Search Console에서 `stackhealth.life` 색인이 줄고 `bitcoiners.life` 색인이 느는지 추적
+- [ ] 2~4주 후 Search Console에서 `stackhealth.life` 색인이 줄고 `story.onebitebitcoin.com` 색인이 느는지 추적
 
 ## 부록 — 모바일 앱 참고사항 (이번 서버 인프라 전환 범위 밖)
 
-`mobile/lib/main.dart:10-13`의 `kAppUrl`은 웹뷰가 로드할 URL을 `--dart-define=APP_URL`로 받고, 기본값은 이미 `https://bitcoiners.life`였다. 다만 이 문서 초안 작성 시점에는 `.github/workflows/flutter-build.yml:65`의 실제 빌드 명령이 `--dart-define=APP_URL=https://stackhealth.life`로 옛 도메인을 덮어쓰고 있었다 — 이 값도 지금은 `bitcoiners.life`로 고쳐졌다.
+`mobile/lib/main.dart:10-13`의 `kAppUrl`은 웹뷰가 로드할 URL을 `--dart-define=APP_URL`로 받고, 기본값은 이미 `https://story.onebitebitcoin.com`였다. 다만 이 문서 초안 작성 시점에는 `.github/workflows/flutter-build.yml:65`의 실제 빌드 명령이 `--dart-define=APP_URL=https://stackhealth.life`로 옛 도메인을 덮어쓰고 있었다 — 이 값도 지금은 `story.onebitebitcoin.com`으로 고쳐졌다.
 
 남은 건 재빌드뿐이다. 이미 스토어에 배포된 APK는 빌드 시점 값이 그대로 굳어 있어서, 이번 수정을 반영하려면 새 APK를 빌드해 다시 배포해야 한다. 이 워크플로는 `mobile/**` 변경이나 자체 파일 변경을 포함한 `main` push에 물려 있고(`on.push.paths`), 코드 변경 없이 강제로 새로 돌리려면 `workflow_dispatch`로 수동 실행한다:
 ```bash
