@@ -80,6 +80,37 @@ sudo nginx -s reload
 
 배포 시에는 `deploy.sh`가 두 파일을 모두 갱신한다 (`scripts/deploy.sh` Step 7). 다만 실제 nginx 설정은 **직접 쓰지 않고** `sudo /usr/local/bin/stackhealth-nginx-switch <포트>`(NOPASSWD 등록된 호스트 전용 래퍼)를 호출하고, repo의 `nginx/upstream.conf`는 그 뒤에 참조용으로 덮어쓴다.
 
+### 파괴적 마이그레이션 — expand/contract (MANDATORY)
+
+> **구 코드가 쓰던 것을 없애는 마이그레이션(DROP TABLE/COLUMN, NOT NULL 추가, 컬럼 rename)은 배포 창에서 장애를 만든다.**
+
+두 슬롯은 같은 DB를 본다. `deploy.sh`가 마이그레이션을 올린 뒤 구 슬롯이 죽기까지
+수십 초~1분 동안, **nginx는 아직 구 슬롯으로 트래픽을 보낸다.** 그 사이 구 코드가
+사라진 테이블을 조회하면 500이 난다. 업로드는 ffmpeg 처리를 다 끝낸 뒤 마지막
+저장에서 깨져 사용자가 결과물을 잃는다.
+
+그래서 마이그레이션을 성격으로 가른다.
+
+| | 무엇 | 언제 |
+|---|---|---|
+| **expand** | 구 코드가 봐도 안전 — ADD COLUMN(nullable), 데이터 이동, 인덱스 추가 | 슬롯 기동 **전** (Step 4) |
+| **contract** | 구 코드가 쓰던 것 제거 — DROP, rename, NOT NULL 추가 | 구 슬롯 종료 **후** (Step 7) |
+
+**하는 법**
+
+1. 마이그레이션 체인에서 **contract를 맨 뒤로** 둔다. 중간에 있으면 expand까지
+   올리려다 contract를 거치게 된다.
+2. `backend/alembic/EXPAND_TARGET`에 **expand의 마지막 리비전**을 적는다.
+   `deploy.sh`가 Step 4에서 거기까지만 올리고, 나머지는 Step 7에서 올린다.
+3. **배포가 끝나면 그 파일을 지운다.** 남겨두면 다음 배포가 그 리비전에서 멈춰
+   새 마이그레이션이 조용히 적용되지 않는다.
+
+파일이 없으면 지금까지처럼 head까지 한 번에 올린다 — 파괴적 변경이 없는 평소
+배포는 아무것도 달라지지 않는다.
+
+> **전부 뒤로 미루면 안 된다.** 새 코드가 필요로 하는 컬럼(ADD COLUMN)까지 미루면
+> 새 슬롯이 그 컬럼 없이 떠서 더 크게 깨진다. 확장은 앞, 수축은 뒤다.
+
 ### 워커(worker) 멀티 인스턴스 — 핵심 주의사항
 
 **실제 운영 워커**: `measly` 유저 systemd `--user` 템플릿 유닛 `stack-health-worker@1`, `stack-health-worker@2` (`~/.config/systemd/user/stack-health-worker@.service`, repo에는 없음 — 다른 `stack-health-app-*` 유닛들과 동일하게 호스트 전용 파일). `WorkingDirectory=/home/measly/stack-health/worker`에서 repo 코드를 직접 실행한다.

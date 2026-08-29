@@ -81,9 +81,27 @@ set -a; source "$APP_DIR/.env"; set +a
 cd frontend && npm ci --silent && npm run build
 cd "$APP_DIR"
 
-# ── Step 4: DB 마이그레이션 (idempotent) ─────────────────────────────
-echo "[4/8] DB 마이그레이션..."
-cd backend && .venv/bin/alembic upgrade head
+# ── Step 4: DB 마이그레이션 — expand 단계 ────────────────────────────
+# 이 시점에는 구 슬롯이 아직 nginx 트래픽을 받고 있고 두 슬롯이 같은 DB 를 본다.
+# 그래서 여기서는 "구 코드가 봐도 안전한" 변경만 올린다 (ADD COLUMN, 데이터 이동).
+# 구 코드가 쓰던 것을 없애는 변경(DROP TABLE/COLUMN)은 구 슬롯이 죽은 뒤(Step 7-2)로
+# 미룬다 — expand/contract 패턴.
+#
+# EXPAND_TARGET 파일이 있으면 그 리비전까지만 올리고, 없으면 지금까지처럼 head 까지
+# 한 번에 올린다(대부분의 배포는 파괴적 변경이 없으므로 파일이 없다).
+EXPAND_FILE="$APP_DIR/backend/alembic/EXPAND_TARGET"
+if [ -f "$EXPAND_FILE" ]; then
+    EXPAND_TARGET=$(grep -v '^[[:space:]]*#' "$EXPAND_FILE" | tr -d '[:space:]' | head -1)
+fi
+EXPAND_TARGET="${EXPAND_TARGET:-head}"
+
+if [ "$EXPAND_TARGET" = "head" ]; then
+    echo "[4/8] DB 마이그레이션..."
+else
+    echo "[4/8] DB 마이그레이션 — expand ($EXPAND_TARGET 까지)..."
+    echo "      나머지는 이전 슬롯 종료 후 적용된다 (EXPAND_TARGET 파일 참고)"
+fi
+cd backend && .venv/bin/alembic upgrade "$EXPAND_TARGET"
 cd "$APP_DIR"
 
 # ── Step 5: 다음 슬롯 기동 ───────────────────────────────────────────
@@ -141,6 +159,28 @@ systemctl --user stop "stack-health-app-$CURRENT_SLOT" || true
 
 # 슬롯 파일 업데이트
 echo "$NEXT_SLOT" > "$SLOT_FILE"
+
+# ── DB 마이그레이션 — contract 단계 ──────────────────────────────────
+# 구 슬롯이 죽었으므로 이제 구 코드가 쓰던 것을 없애도 안전하다.
+# expand 에서 head 까지 이미 올렸으면(EXPAND_TARGET 파일 없음) 할 일이 없다.
+if [ "$EXPAND_TARGET" != "head" ]; then
+    echo "    DB 마이그레이션 — contract (head 까지)..."
+    if (cd backend && .venv/bin/alembic upgrade head); then
+        cd "$APP_DIR"
+        echo "    ✓ contract 마이그레이션 완료"
+    else
+        cd "$APP_DIR"
+        echo ""
+        echo "⚠️  contract 마이그레이션 실패"
+        echo "    서비스는 새 슬롯($NEXT_SLOT)으로 이미 전환됐고 정상 동작한다 —"
+        echo "    새 코드는 contract 대상(예: 삭제될 테이블)을 참조하지 않기 때문이다."
+        echo "    수동으로 확인 후 실행한다: cd backend && .venv/bin/alembic upgrade head"
+        bash "$TELEGRAM_SCRIPT" "⚠️ <b>Orange Story contract 마이그레이션 실패</b>
+🕐 $(TZ="Asia/Seoul" date "+%Y-%m-%d %H:%M") (KST)
+• 서비스는 정상 (새 슬롯 ${NEXT_SLOT} 전환 완료)
+• 수동 실행 필요: cd backend && .venv/bin/alembic upgrade head" 2>/dev/null || true
+    fi
+fi
 
 # 워커 재시작 (WORKER_INSTANCES개 인스턴스 — worker/.env 기준, systemd 템플릿 유닛 stack-health-worker@N)
 WORKER_INSTANCES=$(grep "^WORKER_INSTANCES=" "$APP_DIR/worker/.env" 2>/dev/null | cut -d= -f2)

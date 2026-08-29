@@ -15,7 +15,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = 'cbb7d21fb47c'
-down_revision: Union[str, None] = '004aa221ea8d'
+down_revision: Union[str, None] = '004aa221ea8d'  # expand 단계: ADD COLUMN 은 구 코드가 모르므로 안전하다
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

@@ -3,6 +3,9 @@
 > 서버에서 `bash scripts/deploy.sh`를 돌리기 **전에** 읽는다.
 > 이 배포는 운영보다 커밋 15개 앞서 있고 미적용 마이그레이션이 3개다. 그중 하나가
 > 파괴적(`reward_points` DROP)이라 평소 배포와 위험도가 다르다.
+>
+> 그 위험은 **expand/contract 방식으로 제거했다**(1장). 남은 준비는 도메인 순서와
+> Google OAuth 재등록이다.
 
 ## 이번 배포에 실리는 것
 
@@ -15,38 +18,76 @@
 | 기능 | 오렌지 나무(`GET /users/me/tree`), 게시물 시세 박제, CoinGecko 연동 |
 | 정리 | 땀방울 점수 체계 제거, 카테고리 리맵, 타임존 배관 제거 |
 
-미적용 마이그레이션 3개 (`alembic upgrade head`가 한 번에 실행한다):
+미적용 마이그레이션 3개:
 
-| 리비전 | 내용 | 위험 |
-|---|---|---|
-| `c7d8e9f0a1b2` | `reward_points` **DROP** | **높음** — 아래 1장 |
-| `004aa221ea8d` | 업로드 카테고리 리맵 | 낮음 (행 단위 UPDATE, 시간만 걸림) |
-| `cbb7d21fb47c` | `posts.btc_price_krw` ADD COLUMN (nullable) | 없음 |
+실행 순서는 아래와 같이 재배열했다(1장 참고). `expand`는 구 슬롯이 살아있는 채로
+올려도 안전한 것, `contract`는 구 슬롯이 죽은 뒤에만 안전한 것이다.
+
+| 순서 | 리비전 | 내용 | 단계 |
+|---|---|---|---|
+| 1 | `004aa221ea8d` | 업로드 카테고리 리맵 | expand — 데이터만 바꾼다 |
+| 2 | `cbb7d21fb47c` | `posts.btc_price_krw` ADD COLUMN | expand — 구 코드는 이 컬럼을 모른다 |
+| 3 | `c7d8e9f0a1b2` | `reward_points` **DROP** | **contract** — 구 코드가 8개 파일에서 쓴다 |
 
 ---
 
-## 1. 가장 큰 위험 — `reward_points` DROP과 blue-green 창
+## 1. `reward_points` DROP — expand/contract 로 창을 없앴다
 
-`deploy.sh`는 4단계에서 마이그레이션을 돌리고 7단계에서야 구 슬롯을 죽인다. 그
-사이 **구 슬롯은 여전히 nginx가 트래픽을 보내는 대상**이고, 두 슬롯은 같은 DB를
-본다. 운영 코드(`dfb2fdd`)는 `reward_points`를 8개 파일에서 참조한다.
+### 원래 무엇이 문제였나
 
-즉 테이블이 사라진 순간부터 구 슬롯이 죽을 때까지, 업로드·댓글·관리자 기능이
-500으로 떨어진다. 특히 업로드는 ffmpeg 처리를 다 끝낸 뒤 마지막 저장에서 깨져
-**사용자가 3분을 기다리고 결과물을 잃는다.**
+`deploy.sh`는 4단계에서 마이그레이션을 돌리고 7단계에서야 구 슬롯을 죽였다. 그
+사이 **구 슬롯은 여전히 nginx 트래픽을 받는 대상**이고 두 슬롯은 같은 DB 를 본다.
+운영 코드(`dfb2fdd`)는 `reward_points`를 8개 파일에서 참조한다.
 
-깨지는 경로 전체 목록과 증상, 완화 방안 4가지(A~D)는
-**`docs/DOMAIN-CUTOVER.md` 1-4장**에 이미 정리돼 있다. 배포 전에 그 장을 읽고
-방안을 하나 정한다. 요약만 옮기면:
+즉 테이블이 사라진 순간부터 구 슬롯이 죽을 때까지 업로드·댓글·관리자 기능이 500 이
+됐다. 업로드는 ffmpeg 처리를 다 끝낸 뒤 마지막 저장에서 깨져 **사용자가 3분을
+기다리고 결과물을 잃는다.** 깨지는 경로 전체 목록은 `docs/DOMAIN-CUTOVER.md` 1-4장.
 
-- **A. 저트래픽 시간대(새벽)에 감수** — 지금 바로 가능. 창은 남고 확률만 낮춘다
-- **B. 코드 먼저, DROP은 다음 배포** — 커밋을 쪼개야 하고, 유저 삭제 FK 문제를
-  같이 풀어야 한다(실측 확인됨)
-- **C. DROP 대신 rename** — 되돌릴 여지는 생기지만 창 자체는 그대로
-- **D. `deploy.sh`에서 마이그레이션을 7단계 뒤로** — 창을 구조적으로 없앤다.
-  스크립트 수정 필요
+### 어떻게 없앴나
 
-> 창의 길이는 최선이어도 수십 초, 리맵 대상이 많으면 1분을 넘길 수 있다.
+마이그레이션을 성격에 따라 둘로 갈랐다.
+
+| | 무엇 | 언제 |
+|---|---|---|
+| **expand** | 구 코드가 봐도 안전한 것 (ADD COLUMN, 데이터 이동) | 슬롯 기동 **전** (Step 4) |
+| **contract** | 구 코드가 쓰던 것을 없애는 것 (DROP) | 구 슬롯 종료 **후** (Step 7) |
+
+두 가지를 바꿨다.
+
+1. **마이그레이션 체인 재배열** — DROP 을 맨 뒤로 옮겼다. 원래는 DROP 이 중간에
+   있어서 `btc_price_krw`(새 코드에 필수)까지 올리려면 DROP 을 반드시 거쳐야 했다.
+
+   ```
+   전: d953acd3a18d → c7d8e9f0a1b2(DROP) → 004aa221ea8d → cbb7d21fb47c
+   후: d953acd3a18d → 004aa221ea8d → cbb7d21fb47c → c7d8e9f0a1b2(DROP)
+   ```
+
+2. **`scripts/deploy.sh` 2단계 마이그레이션** — `backend/alembic/EXPAND_TARGET`
+   파일이 있으면 Step 4 에서 그 리비전까지만 올리고, 나머지는 구 슬롯이 죽은 뒤
+   Step 7 에서 올린다. 파일이 없으면 지금까지처럼 head 까지 한 번에 올린다
+   (파괴적 변경이 없는 평소 배포는 동작이 그대로다).
+
+> **주의**: 마이그레이션을 그냥 전부 뒤로 미루면 안 된다. 새 코드는
+> `posts.btc_price_krw` 를 SELECT·INSERT 하므로, 그 컬럼 없이 새 슬롯이 뜨면
+> 피드·프로필이 전부 깨진다. 확장은 앞, 수축은 뒤 — 이 구분이 핵심이다.
+
+### 실측으로 확인한 것
+
+SQLite 임시 DB 로 운영과 같은 시작점(`d953acd3a18d`)을 만들고 단계별로 돌렸다.
+
+| 시점 | `reward_points` | `btc_price_krw` | 구 코드(v0.19.1) | 새 코드 |
+|---|---|---|---|---|
+| expand 후 | 있음 | 있음 | `/feed` 200, `/rewards/summary` 도달 | `/feed` 200 |
+| contract 후 | 없음 | 있음 | — (이미 종료됨) | 정상 |
+
+대조군으로 **contract 까지 올린 DB 에 구 코드를 붙여봤더니** 실제로
+`sqlite3.OperationalError: no such table: reward_points` 가 났다 — 기존 방식이
+만들던 바로 그 장애다. expand 시점 스키마에서는 양쪽 코드가 모두 정상이었다.
+
+### 배포 후 할 일
+
+`backend/alembic/EXPAND_TARGET` 을 **지운다.** 다음 배포부터는 다시 head 까지 한 번에
+올린다. 파일을 남겨두면 그 리비전에서 멈춰 새 마이그레이션이 적용되지 않는다.
 
 ## 2. 두 번째 창 — 새 프론트 + 구 백엔드
 
@@ -205,7 +246,7 @@ journalctl --user -u stack-health-app-blue -n 50 | grep btc_price
 | 문제 | 되돌리기 |
 |---|---|
 | 배포 자체가 실패 | `deploy.sh`가 헬스체크 실패 시 새 슬롯을 정리하고 구 슬롯을 유지한다. nginx는 전환되지 않는다 |
-| 전환 후 이상 | `sudo /usr/local/bin/stackhealth-nginx-switch <구 슬롯 포트>` 로 되돌린다 (blue=8017 / green=8018). **단 마이그레이션은 되돌아가지 않는다** — 구 코드는 `reward_points`가 없어 1장의 증상을 그대로 겪는다 |
+| 전환 후 이상 | `sudo /usr/local/bin/stackhealth-nginx-switch <구 슬롯 포트>` 로 되돌린다 (blue=8017 / green=8018). **단 contract 가 이미 실행됐다면** 구 코드는 `reward_points`가 없어 1장의 증상을 그대로 겪는다. 롤백 가능성을 남기려면 contract 전에 판단해야 한다 |
 | Google 로그인 실패 | `.env`의 `APP_URL`을 이전 도메인으로 되돌리고 재배포 |
 | 시세가 계속 안 나옴 | 기능 문제 아님. 나무는 정상 동작한다. `journalctl`에서 429/타임아웃 확인 |
 
@@ -214,14 +255,14 @@ journalctl --user -u stack-health-app-blue -n 50 | grep btc_price
 
 ## 9. 체크리스트
 
-- [ ] `docs/DOMAIN-CUTOVER.md` 1-4장을 읽고 완화 방안(A~D) 하나를 정했다
-- [ ] `reward_points` 백업 여부를 정했다
+- [ ] `backend/alembic/EXPAND_TARGET` 파일이 있다 (없으면 head 까지 한 번에 올라가 1장의 창이 생긴다)
+- [ ] `reward_points` 백업 여부를 정했다 (contract 로 미뤄도 결국 지워진다)
 - [ ] `story.onebitebitcoin.com` DNS A레코드 + 인증서 (Step 1~2)
 - [ ] nginx `server_name`에 두 도메인, `nginx -t` 통과 (Step 3)
 - [ ] 새 도메인 단독 접속 검증 (Step 4)
 - [ ] `.env`의 `APP_URL`/`APP_BASE_URL` 갱신
 - [ ] Google Cloud Console에 새 `redirect_uri` 추가
 - [ ] `REDIS_URL` 설정 확인, `api.coingecko.com` 아웃바운드 확인
-- [ ] 저트래픽 시간대인지 확인 (A안을 골랐다면)
 - [ ] `bash scripts/deploy.sh`
 - [ ] 7장의 확인 항목 + 브라우저로 Google 로그인·나무 카드
+- [ ] 배포 후 `backend/alembic/EXPAND_TARGET` 삭제 + 커밋 (남기면 다음 배포가 그 리비전에서 멈춘다)

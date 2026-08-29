@@ -14,7 +14,7 @@ import sqlalchemy as sa
 
 
 revision: str = 'c7d8e9f0a1b2'
-down_revision: Union[str, None] = 'd953acd3a18d'
+down_revision: Union[str, None] = 'cbb7d21fb47c'  # contract 단계: 구 슬롯이 종료된 뒤에만 안전하다
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
