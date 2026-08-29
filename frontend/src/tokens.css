@@ -19,24 +19,34 @@
    CSS 로 아예 생성되지 않는다 — 에러 없이 배경만 사라진다. */
 :root {
   --danger-rgb: 245 96 79;
-  --success-rgb: 63 191 113;
+  /* 초록은 하나다. 브랜드의 잎(자라남)과 화면의 성공·완료 표시는 같은 뜻이라
+     색을 나누지 않는다. tailwind 에서 leaf 와 success 두 이름으로 부르지만
+     둘 다 이 변수를 보므로 한쪽만 어긋날 방법이 없다. */
+  --leaf-rgb: 61 190 115;
+  --leaf: rgb(var(--leaf-rgb));
+  /* 잎맥·줄기처럼 잎보다 한 단 어두워야 하는 곳. 단독으로 쓰지 않는다. */
+  --leaf-deep: #1F7A47;
   --warning-rgb: 232 163 60;
   --lightning-rgb: 247 201 72;
 }
 
-/* --- Default: Bitcoin Dark (dark, bitcoin orange) --- */
+/* --- Default: Bitcoin Dark (dark, bitcoin orange) ---
+   "Pure Signal" 팔레트: 중성 배경(채도 없음)에 플랫 오렌지 하나만 세운다.
+   이전 팔레트는 배경 회색이 오렌지 쪽으로 살짝 기울어 있었는데, 그만큼
+   액센트와 배경이 서로 묻혀 대비가 흐려졌다. 여기서는 배경을 완전 중성으로
+   깎고 액센트 채도만 올려 하나의 신호처럼 튀게 한다. */
 :root,
 [data-theme="bitcoin"] {
-  --bg-page: #0C0B0A;
-  --bg-surface: #151311;
-  --bg-surface-2: #201C18;
-  --accent-rgb: 247 147 26;
+  --bg-page: #0A0A0A;
+  --bg-surface: #141414;
+  --bg-surface-2: #1E1E1E;
+  --accent-rgb: 255 140 0;
   --accent: rgb(var(--accent-rgb));
-  --accent-fg: #14100B;
-  --accent-text: #F7931A;       /* on --bg-page: 8.7:1 */
-  --text-primary: #F7F4F1;
-  --text-muted: #A29A92;        /* on --bg-page: 7.1:1 */
-  --border: #2B2622;
+  --accent-fg: #101010;
+  --accent-text: #FF9800;       /* on --bg-page: 9.2:1 */
+  --text-primary: #F5F5F5;
+  --text-muted: #949494;        /* on --bg-page: 6.5:1 */
+  --border: #262626;
   --overlay: rgba(0, 0, 0, 0.7);
 }
 

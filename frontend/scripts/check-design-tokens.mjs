@@ -44,6 +44,15 @@ const RULES = [
     re: /\btheme-subtle\b/g,
     msg: '--text-subtle 은 삭제됐다. theme-muted 를 쓰고, 위계는 크기와 굵기로 만든다.',
   },
+  {
+    id: 'legacy-shadow',
+    // shadow-sm/md/lg/xl/2xl/inner, 임의값 shadow-[...], bare shadow 를 잡는다.
+    // 앞뒤로 [\w-]가 아닌지 직접 확인해야 한다: 단순 \b 는 하이픈 앞에서도 성립해서
+    // drop-shadow(별개의 filter 유틸리티)의 "shadow" 부분까지 잘못 잡거나,
+    // shadow-float/shadow-pop(새 토큰)의 "shadow" 부분만 떼어 잘못 잡을 수 있다.
+    re: /(?<![\w-])shadow(?:-(?:sm|md|lg|xl|2xl|inner)|-\[[^\]]*\])?(?![\w-])/g,
+    msg: '구 그림자 스케일. shadow-float(큰 면: 모달·시트·FAB) 또는 shadow-pop(작은 면: 드롭다운·토스트·배지)으로 바꾼다.',
+  },
 ]
 
 const EXEMPT = /design-token-exempt/

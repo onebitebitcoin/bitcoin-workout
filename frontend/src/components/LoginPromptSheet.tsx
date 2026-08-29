@@ -16,7 +16,7 @@ export default function LoginPromptSheet({ onClose }: LoginPromptSheetProps) {
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg rounded-card bg-theme-surface p-6 shadow-2xl"
+        className="w-full max-w-lg rounded-card bg-theme-surface p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-1 h-1 w-10 rounded-pill bg-theme-border mx-auto" />

@@ -40,7 +40,7 @@ export default function UpdateBanner({ serverVersion }: Props) {
 
   return (
     <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+4rem)] inset-x-0 z-[90] flex justify-center px-4 pointer-events-none">
-      <div className="flex items-center gap-3 rounded-card bg-accent px-4 py-3 shadow-xl pointer-events-auto">
+      <div className="flex items-center gap-3 rounded-card bg-accent px-4 py-3 shadow-pop pointer-events-auto">
         <span className="text-body font-semibold text-accent-fg">
           v{__APP_VERSION__} → v{serverVersion ?? '?'}
         </span>

@@ -1,16 +1,16 @@
 <svg width="180" height="180" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <mask id="coin-play-hole">
-    <rect x="0" y="0" width="48" height="48" fill="white"/>
-    <path d="M21.6 19.6L21.6 28.4L29.4 24Z" fill="black" stroke="black" stroke-width="5" stroke-linejoin="round"/>
+  <mask id="bolt">
+    <rect width="48" height="48" fill="white"/>
+    <path d="M27.6 17.6L18.9 28.8H23.6L20.6 38.6L29.6 26.6H24.7Z" fill="black"/>
   </mask>
   <!-- Tile background -->
-  <rect width="48" height="48" rx="10.5" fill="#F7931A"/>
-  <!-- Top ticks -->
-  <rect x="18.2" y="2.8" width="3.6" height="9.4" rx="1.4" fill="#FFFFFF"/>
-  <rect x="26.2" y="2.8" width="3.6" height="9.4" rx="1.4" fill="#FFFFFF"/>
-  <!-- Bottom ticks -->
-  <rect x="18.2" y="35.8" width="3.6" height="9.4" rx="1.4" fill="#FFFFFF"/>
-  <rect x="26.2" y="35.8" width="3.6" height="9.4" rx="1.4" fill="#FFFFFF"/>
-  <!-- Coin with play-triangle cutout revealing tile background -->
-  <circle cx="24" cy="24" r="15.2" fill="#FFFFFF" mask="url(#coin-play-hole)"/>
+  <rect width="48" height="48" rx="10.5" fill="#FF8C00"/>
+  <!-- Fruit reversed to white; the bolt cutout reveals the orange tile.
+       No shading here: on a flat white fruit the overlay reads as a smudge, not form. -->
+  <g mask="url(#bolt)">
+    <circle cx="24" cy="28" r="14" fill="#FFFFFF"/>
+  </g>
+  <!-- Stem and leaf stay deep green: a brown stem sinks into the orange tile -->
+  <path d="M24 15C24 12 24.5 10.5 25.5 9.5" stroke="#1F7A47" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M25.8 10.6C28.2 4.6 34.4 2.4 38.6 4.2C38.4 9.8 32.8 13.2 25.8 10.6Z" fill="#1F7A47"/>
 </svg>

@@ -12,6 +12,10 @@ export default {
         body: ['IBM Plex Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', 'sans-serif'],
         sans: ['IBM Plex Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', 'sans-serif'],
         mono: ['IBM Plex Mono', 'SFMono-Regular', 'ui-monospace', 'monospace'],
+        // 헤드라인·숫자 전용. Space Grotesk엔 한글 글리프가 없어서 한글은
+        // 폴백 체인을 타고 자동으로 IBM Plex Sans KR로 떨어진다 — 영문/숫자만
+        // 지오메트릭 서체로 바뀌고 섞여 있는 한글은 깨지지 않는다.
+        display: ['Space Grotesk', 'IBM Plex Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', 'sans-serif'],
       },
       // 타입 스케일 6단. 읽는 글자의 바닥은 13px(label)이고,
       // 11px(eyebrow)은 대문자 섹션 머리표 전용이다.
@@ -28,6 +32,18 @@ export default {
       borderRadius: {
         card: '14px',
         pill: '9999px',
+      },
+      // 그림자는 두 단만 쓴다. 이 앱은 배경이 어두워서(--bg-page: #0A0A0A)
+      // 그림자는 두 단뿐이다. 흰 배경 기준의 tailwind 기본값은 이 어두운 배경에서
+      // 거의 안 보이므로 알파를 높게 잡는다.
+      // float: 페이지 위에 그대로 뜨는 큰 면 (시트·FAB).
+      //   값은 BottomNav FAB에서 눈으로 맞춘 rgba(0,0,0,0.5)를 그대로 기준으로 삼았다.
+      // pop:   잠깐 튀어나오는 작은 면 (드롭다운·토스트·배지). float보다 낮고 옅게.
+      // 딤(--overlay, bg-black/50) 위에 뜨는 모달에는 그림자를 걸지 않는다. 딤이 이미
+      // 뒤를 덮어 그림자가 보이지 않아서, 걸어도 CSS만 늘고 화면은 그대로다.
+      boxShadow: {
+        float: '0 8px 24px rgba(0, 0, 0, 0.5)',
+        pop: '0 4px 12px rgba(0, 0, 0, 0.4)',
       },
       keyframes: {
         'ping-once': {
@@ -80,7 +96,10 @@ export default {
         // 상태색. 지금까지 토큰이 없어서 red-300/400/500, green-400/500이
         // 화면마다 섞여 있었다 (팔레트 직접 호출 142곳).
         danger: 'rgb(var(--danger-rgb) / <alpha-value>)',
-        success: 'rgb(var(--success-rgb) / <alpha-value>)',
+        // leaf 와 success 는 같은 변수를 본다 (tokens.css 참고). 브랜드의 잎과
+        // 완료 표시가 같은 초록이라, 이름만 둘이고 색은 하나다.
+        leaf: 'rgb(var(--leaf-rgb) / <alpha-value>)',
+        success: 'rgb(var(--leaf-rgb) / <alpha-value>)',
         warning: 'rgb(var(--warning-rgb) / <alpha-value>)',
         lightning: 'rgb(var(--lightning-rgb) / <alpha-value>)',
       },

@@ -65,7 +65,7 @@ function UserDetailPanel({ userId, onClose }: { userId: number; onClose: () => v
   return (
     <div className="fixed inset-0 z-[70] bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
       <div
-        className="w-full max-w-lg max-h-[80dvh] overflow-y-auto rounded-card bg-theme-page p-4 space-y-4 shadow-2xl"
+        className="w-full max-w-lg max-h-[80dvh] overflow-y-auto rounded-card bg-theme-page p-4 space-y-4"
         onClick={(e) => e.stopPropagation()}
       >
         {isLoading && <p className="text-center text-theme-muted py-8">{t('loading')}</p>}
@@ -289,7 +289,7 @@ export default function AdminPage() {
                   </button>
                 )}
                 {showSuggestions && users.length > 0 && userSearchInput && (
-                  <div className="absolute left-0 right-0 top-full mt-1 z-20 rounded-card border border-theme-border bg-theme-surface shadow-lg overflow-hidden">
+                  <div className="absolute left-0 right-0 top-full mt-1 z-20 rounded-card border border-theme-border bg-theme-surface shadow-pop overflow-hidden">
                     {users.slice(0, 5).map((u) => (
                       <button
                         key={u.id}
@@ -541,7 +541,7 @@ export default function AdminPage() {
 
       {deleteVideoConfirmId !== null && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4" onClick={() => setDeleteVideoConfirmId(null)}>
-          <div className="w-full max-w-lg rounded-card bg-theme-surface px-6 pt-5 pb-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-lg rounded-card bg-theme-surface px-6 pt-5 pb-6" onClick={(e) => e.stopPropagation()}>
             <p className="text-title text-theme-primary mb-1">{t('deleteVideoTitle')}</p>
             <p className="text-body text-theme-muted mb-5">{t('deleteVideoBody')}</p>
             <div className="flex gap-3">
@@ -560,7 +560,7 @@ export default function AdminPage() {
 
       {closeChallengeConfirm !== null && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4" onClick={() => setCloseChallengeConfirm(null)}>
-          <div className="w-full max-w-lg rounded-card bg-theme-surface px-6 pt-5 pb-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-lg rounded-card bg-theme-surface px-6 pt-5 pb-6" onClick={(e) => e.stopPropagation()}>
             <p className="text-title text-theme-primary mb-1">{t('closeChallengeTitle')}</p>
             <p className="text-body text-theme-muted mb-1">"{closeChallengeConfirm.title}"</p>
             <p className="text-body text-theme-muted mb-5">{t('closeChallengeBody')}</p>
@@ -580,7 +580,7 @@ export default function AdminPage() {
 
       {deleteAdminChallengeConfirm !== null && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4" onClick={() => setDeleteAdminChallengeConfirm(null)}>
-          <div className="w-full max-w-lg rounded-card bg-theme-surface px-6 pt-5 pb-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-lg rounded-card bg-theme-surface px-6 pt-5 pb-6" onClick={(e) => e.stopPropagation()}>
             <p className="text-title text-theme-primary mb-1">{t('deleteChallengeTitle')}</p>
             <p className="text-body text-theme-muted mb-1">"{deleteAdminChallengeConfirm.title}"</p>
             <p className="text-body text-theme-muted mb-5">{t('deleteChallengeBody')}</p>
@@ -600,7 +600,7 @@ export default function AdminPage() {
 
       {deleteUserConfirm !== null && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4" onClick={() => setDeleteUserConfirm(null)}>
-          <div className="w-full max-w-lg rounded-card bg-theme-surface px-6 pt-5 pb-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-lg rounded-card bg-theme-surface px-6 pt-5 pb-6" onClick={(e) => e.stopPropagation()}>
             <p className="text-title text-theme-primary mb-1">{t('deleteUserTitle', { username: deleteUserConfirm.username })}</p>
             <p className="text-body text-theme-muted mb-5">{t('deleteUserBody')}</p>
             <div className="flex gap-3">

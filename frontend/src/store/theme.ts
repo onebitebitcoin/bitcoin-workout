@@ -32,7 +32,8 @@ export const useThemeStore = create<ThemeState>()(
 export function initTheme(override?: string | null) {
   const stored = useThemeStore.getState().theme
   const candidate = override && THEMES.includes(override as Theme) ? (override as Theme) : stored
-  // 저장된 테마가 구 라이트 테마이면 기본 다크로 마이그레이션
+  // 삭제된 구 테마(volt-light/arctic/forest)가 localStorage에 남아 있거나
+  // 아예 없던 이름이 들어와도 여기서 기본 테마로 떨어진다.
   const t: Theme = THEMES.includes(candidate as Theme) ? (candidate as Theme) : 'bitcoin'
   document.documentElement.setAttribute('data-theme', t)
   if (t !== useThemeStore.getState().theme) {

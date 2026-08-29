@@ -182,7 +182,7 @@ export default function AdminSurveysListPage() {
           onClick={() => setCloseConfirmId(null)}
         >
           <div
-            className="w-full max-w-sm rounded-card bg-theme-surface px-6 pt-5 pb-6 shadow-2xl"
+            className="w-full max-w-sm rounded-card bg-theme-surface px-6 pt-5 pb-6"
             onClick={(e) => e.stopPropagation()}
           >
             <p className="mb-1 text-title text-theme-primary">{t('admin.closeConfirmTitle')}</p>
@@ -212,7 +212,7 @@ export default function AdminSurveysListPage() {
           onClick={() => setDeleteConfirmId(null)}
         >
           <div
-            className="w-full max-w-sm rounded-card bg-theme-surface px-6 pt-5 pb-6 shadow-2xl"
+            className="w-full max-w-sm rounded-card bg-theme-surface px-6 pt-5 pb-6"
             onClick={(e) => e.stopPropagation()}
           >
             <p className="mb-1 text-title text-theme-primary">{t('admin.deleteConfirmTitle')}</p>

@@ -44,7 +44,7 @@ export default function BottomNav() {
         <div className="relative flex flex-col items-center">
           <button
             onClick={handleUpload}
-            className="absolute -top-7 flex h-14 w-14 items-center justify-center rounded-pill bg-accent shadow-[0_8px_24px_rgba(0,0,0,0.5)] transition-transform active:scale-90"
+            className="absolute -top-7 flex h-14 w-14 items-center justify-center rounded-pill bg-accent shadow-float transition-transform active:scale-90"
             aria-label={t('nav.uploadAria')}
           >
             <Plus size={24} strokeWidth={2} color="var(--accent-fg)" />

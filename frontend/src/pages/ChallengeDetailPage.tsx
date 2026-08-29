@@ -521,7 +521,7 @@ export default function ChallengeDetailPage() {
           onClick={() => setShowCloseConfirm(false)}
         >
           <div
-            className="w-full max-w-sm rounded-card bg-theme-surface p-5 flex flex-col gap-4 shadow-2xl"
+            className="w-full max-w-sm rounded-card bg-theme-surface p-5 flex flex-col gap-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div>
@@ -551,7 +551,7 @@ export default function ChallengeDetailPage() {
           onClick={() => setShowDeleteConfirm(false)}
         >
           <div
-            className="w-full max-w-sm rounded-card bg-theme-surface p-5 flex flex-col gap-4 shadow-2xl"
+            className="w-full max-w-sm rounded-card bg-theme-surface p-5 flex flex-col gap-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div>
@@ -581,7 +581,7 @@ export default function ChallengeDetailPage() {
           onClick={() => setShowLeaveConfirm(false)}
         >
           <div
-            className="w-full max-w-sm rounded-card bg-theme-surface p-5 flex flex-col gap-4 shadow-2xl"
+            className="w-full max-w-sm rounded-card bg-theme-surface p-5 flex flex-col gap-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div>

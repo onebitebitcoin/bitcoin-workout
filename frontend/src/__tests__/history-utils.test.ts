@@ -1,18 +1,9 @@
 import { describe, it, expect } from 'vitest'
 
-// HistoryPage의 순수 유틸 함수들을 추출하여 테스트
-function getDaysInMonth(year: number, month: number): number {
-  return new Date(year, month, 0).getDate()
-}
-
-function getFirstDayIndex(year: number, month: number): number {
-  const day = new Date(year, month - 1, 1).getDay()
-  return day === 0 ? 6 : day - 1
-}
-
-function pad2(n: number): string {
-  return n.toString().padStart(2, '0')
-}
+// 프로필 화면 달력이 쓰는 실제 모듈을 그대로 검증한다.
+// 예전에는 같은 함수를 이 파일에 복사해두고 그 복사본을 테스트해서,
+// utils/calendar.ts 가 깨져도 이 테스트는 통과했다.
+import { getDaysInMonth, getFirstDayIndex, pad2 } from '../utils/calendar'
 
 describe('getDaysInMonth', () => {
   it('1월은 31일', () => expect(getDaysInMonth(2025, 1)).toBe(31))
