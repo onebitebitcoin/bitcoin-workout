@@ -1,16 +1,22 @@
 <svg width="512" height="512" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <clipPath id="fruit">
+    <circle cx="24" cy="28" r="14"/>
+  </clipPath>
   <mask id="bolt">
     <rect width="48" height="48" fill="white"/>
     <path d="M27.6 17.6L18.9 28.8H23.6L20.6 38.6L29.6 26.6H24.7Z" fill="black"/>
   </mask>
-  <!-- Tile background -->
-  <rect width="48" height="48" rx="10.5" fill="#FF8C00"/>
-  <!-- Fruit reversed to white; the bolt cutout reveals the orange tile.
-       No shading here: on a flat white fruit the overlay reads as a smudge, not form. -->
+  <!-- Tile background — 앱의 표면색. 번개 구멍이 이 어둠을 드러낸다 -->
+  <rect width="48" height="48" rx="10.5" fill="#141414"/>
+  <!-- 열매는 화면 안 마크(favicon.svg)와 같은 오렌지·같은 명암.
+       예전 타일은 흰 열매라 앱 안팎의 마크가 서로 다른 물건처럼 보였다. -->
   <g mask="url(#bolt)">
-    <circle cx="24" cy="28" r="14" fill="#FFFFFF"/>
+    <g clip-path="url(#fruit)">
+      <circle cx="24" cy="28" r="14" fill="#FF8C00"/>
+      <ellipse cx="34" cy="40" rx="15" ry="13" fill="#000000" opacity="0.16"/>
+      <ellipse cx="18" cy="22" rx="6.5" ry="4.5" fill="#FFFFFF" opacity="0.22" transform="rotate(-35 18 22)"/>
+    </g>
   </g>
-  <!-- Stem and leaf stay deep green: a brown stem sinks into the orange tile -->
-  <path d="M24 15C24 12 24.5 10.5 25.5 9.5" stroke="#1F7A47" stroke-width="2.4" stroke-linecap="round"/>
-  <path d="M25.8 10.6C28.2 4.6 34.4 2.4 38.6 4.2C38.4 9.8 32.8 13.2 25.8 10.6Z" fill="#1F7A47"/>
+  <path d="M24 15C24 12 24.5 10.5 25.5 9.5" stroke="#7A4A22" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M25.8 10.6C28.2 4.6 34.4 2.4 38.6 4.2C38.4 9.8 32.8 13.2 25.8 10.6Z" fill="#3DBE73"/>
 </svg>
