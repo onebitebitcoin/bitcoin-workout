@@ -1,0 +1,25 @@
+<svg width="512" height="512" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <clipPath id="fruit">
+    <circle cx="24" cy="28" r="14"/>
+  </clipPath>
+  <mask id="bolt">
+    <rect width="48" height="48" fill="white"/>
+    <path d="M27.6 17.6L18.9 28.8H23.6L20.6 38.6L29.6 26.6H24.7Z" fill="black"/>
+  </mask>
+  <!-- maskable 은 OS 가 원형·스퀴클 등 제 모양대로 잘라낸다.
+       그래서 배경은 모서리 없이 꽉 채우고(둥근 모서리를 넣으면 두 번 깎인다),
+       마크는 안전영역(중앙 지름 80%) 안으로 0.7 배 줄여 넣는다.
+       원본 크기 그대로면 잎 끝(38.6, 2.4)이 안전영역 밖이라 원형 마스크에서 잘린다. -->
+  <rect width="48" height="48" fill="#141414"/>
+  <g transform="translate(24 24) scale(0.7) translate(-24 -24)">
+    <g mask="url(#bolt)">
+      <g clip-path="url(#fruit)">
+        <circle cx="24" cy="28" r="14" fill="#FF8C00"/>
+        <ellipse cx="34" cy="40" rx="15" ry="13" fill="#000000" opacity="0.16"/>
+        <ellipse cx="18" cy="22" rx="6.5" ry="4.5" fill="#FFFFFF" opacity="0.22" transform="rotate(-35 18 22)"/>
+      </g>
+    </g>
+    <path d="M24 15C24 12 24.5 10.5 25.5 9.5" stroke="#7A4A22" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M25.8 10.6C28.2 4.6 34.4 2.4 38.6 4.2C38.4 9.8 32.8 13.2 25.8 10.6Z" fill="#3DBE73"/>
+  </g>
+</svg>

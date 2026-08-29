@@ -27,6 +27,16 @@ test.describe('브랜드 공유 패키지', () => {
     expect(ogResponse.ok()).toBeTruthy()
   })
 
+  // 매니페스트가 가리키는 설치 아이콘이 실제로 있어야 한다. 파일이 사라지거나
+  // 이름이 바뀌면 런처는 조용히 기본 아이콘(사이트 첫 글자)으로 떨어진다 — 에러가 없다.
+  test('설치 아이콘 세 벌을 모두 제공한다', async ({ page }) => {
+    for (const path of ['/icon-192.png', '/icon-512.png', '/maskable-512.png']) {
+      const res = await page.request.get(path)
+      expect(res.ok(), `${path} 없음`).toBeTruthy()
+      expect(res.headers()['content-type']).toContain('image/png')
+    }
+  })
+
   test('로그인 첫 화면에 로고를 노출한다', async ({ page }) => {
     await page.goto('/login')
 

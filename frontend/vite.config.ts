@@ -35,7 +35,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'favicon-192.png', 'apple-touch-icon.png'],
+      includeAssets: ['favicon.svg', 'favicon-192.png', 'apple-touch-icon.png', 'icon-192.png', 'maskable-512.png'],
       manifest: {
         id: '/',
         name: 'Orange Story',
@@ -48,19 +48,26 @@ export default defineConfig({
         orientation: 'portrait',
         scope: '/',
         start_url: '/',
+        // 설치 아이콘은 어두운 타일(icon-*.png)을 쓴다. favicon-192.png 는 배경이
+        // 투명한 마크라 런처가 흰 판을 깔아 밝게 보였다 — 탭 아이콘 자리에만 둔다.
         icons: [
           {
-            src: '/favicon-192.png',
+            src: '/icon-192.png',
             sizes: '192x192',
             type: 'image/png',
+            purpose: 'any',
           },
           {
             src: '/icon-512.png',
             sizes: '512x512',
             type: 'image/png',
+            purpose: 'any',
           },
+          // maskable 은 별도 파일이어야 한다. OS 가 제 모양대로 잘라내므로
+          // 안전영역(중앙 지름 80%) 안에 마크를 줄여 넣은 판을 따로 쓴다.
+          // any 용 타일을 그대로 주면 잎 끝이 원형 마스크 밖으로 나가 잘린다.
           {
-            src: '/icon-512.png',
+            src: '/maskable-512.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable',
