@@ -1,4 +1,4 @@
-import { ChevronLeft, Check, X, Smartphone, Download, ChevronRight, ChevronDown, LogOut, Pencil, Camera, Loader2, RefreshCw, Globe, UserPlus } from 'lucide-react'
+import { ChevronLeft, Check, X, ChevronRight, LogOut, Pencil, Camera, Loader2, RefreshCw, Globe, UserPlus } from 'lucide-react'
 import { useState, useRef, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -6,7 +6,6 @@ import client from '../api/client'
 import { useAuthStore } from '../store/auth'
 import UserAvatar from '../components/UserAvatar'
 
-const ANDROID_APK_URL = 'https://github.com/onebitebitcoin/stack-health/releases/download/v0.11.1-android/app-release.apk'
 
 const ROW = 'flex items-center justify-between gap-3 px-5 py-3 min-h-16'
 const LABEL = 'text-body text-theme-primary'
@@ -33,9 +32,6 @@ export default function SettingsPage() {
   const [savingUsername, setSavingUsername] = useState(false)
   const [usernameSaved, setUsernameSaved] = useState(false)
 
-  const [showIosGuide, setShowIosGuide] = useState(false)
-  const [devMode, setDevMode] = useState(() => !!(user?.app_settings?.developer_mode))
-  const [devModeLoading, setDevModeLoading] = useState(false)
 
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [avatarError, setAvatarError] = useState('')
@@ -99,19 +95,6 @@ export default function SettingsPage() {
   }
 
 
-  async function toggleDevMode() {
-    const next = !devMode
-    setDevModeLoading(true)
-    try {
-      const res = await client.patch<{ data: typeof user }>('/auth/me', {
-        app_settings: { ...(user?.app_settings ?? {}), developer_mode: next },
-      })
-      if (res.data.data) setUser(res.data.data)
-      setDevMode(next)
-    } finally {
-      setDevModeLoading(false)
-    }
-  }
 
   async function saveUsername(e: FormEvent) {
     e.preventDefault()
@@ -339,51 +322,6 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* 앱 다운로드 */}
-        <div>
-          <p className={SECTION}>{t('profile:appDownload')}</p>
-          <div className={GROUP}>
-            {/* Android */}
-            <a
-              href={ANDROID_APK_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={ROW}
-            >
-              <div className="flex items-center gap-2">
-                <Smartphone size={18} strokeWidth={1.75} className="text-[#3DDC84]" />
-                <span className={LABEL}>{t('profile:androidApk')}</span>
-              </div>
-              <Download size={18} strokeWidth={1.75} className="text-theme-muted" />
-            </a>
-
-            {/* iOS PWA */}
-            <button
-              onClick={() => setShowIosGuide((v) => !v)}
-              className={`w-full ${ROW}`}
-            >
-              <div className="flex items-center gap-2">
-                {/* design-token-exempt: iOS 플랫폼 마크 색이다. 제품 팔레트가 아니라 플랫폼을 가리키는 색이라 테마를 따르지 않는다. */}
-                <Smartphone size={18} strokeWidth={1.75} className="text-blue-400" />
-                <span className={LABEL}>{t('profile:iosPwa')}</span>
-              </div>
-              <ChevronDown size={18} strokeWidth={1.75} className={`text-theme-muted transition-transform ${showIosGuide ? 'rotate-180' : ''}`} />
-            </button>
-
-            {showIosGuide && (
-              <div className="px-5 pb-4 space-y-2">
-                {([
-                  t('profile:iosGuideStep1'),
-                  t('profile:iosGuideStep2'),
-                  t('profile:iosGuideStep3'),
-                  t('profile:iosGuideStep4'),
-                ] as string[]).map((step) => (
-                  <p key={step} className="text-label text-theme-muted">{step}</p>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
 
         {/* 정보 */}
         <div>
@@ -419,25 +357,6 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* 개발자 */}
-        <div>
-          <p className={SECTION}>{t('profile:developer')}</p>
-          <div className={GROUP}>
-            <div className={ROW}>
-              <div>
-                <span className={LABEL}>{t('profile:developerMode')}</span>
-                <p className="text-label text-theme-muted mt-1">{t('profile:developerModeDesc')}</p>
-              </div>
-              <button
-                onClick={toggleDevMode}
-                disabled={devModeLoading}
-                className={`relative inline-flex h-6 w-11 items-center rounded-pill transition-colors duration-200 ${devMode ? 'bg-accent' : 'bg-theme-surface2'} disabled:opacity-50`}
-              >
-                <span className={`inline-block h-4 w-4 transform rounded-pill bg-white shadow transition-transform duration-200 ${devMode ? 'translate-x-6' : 'translate-x-1'}`} />
-              </button>
-            </div>
-          </div>
-        </div>
 
         {/* 로그아웃 */}
         <button
