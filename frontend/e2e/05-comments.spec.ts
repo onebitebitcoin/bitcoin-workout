@@ -86,6 +86,40 @@ test.describe('댓글 기능', () => {
     await expect(page.locator('text=저도 따라해볼게요')).toBeVisible()
   })
 
+  // 좁은 화면에서 input이 min-width:auto(기본 size=20자) 때문에 줄어들지 않으면
+  // 전송 버튼이 입력줄 밖으로 밀려나 화면 오른쪽으로 잘린다.
+  test('좁은 화면에서도 전송 버튼이 입력줄 안에 있다', async ({ page }) => {
+    const commentBtn = page.locator('[data-testid="comment-btn"]').first()
+    await expect(commentBtn).toBeVisible({ timeout: 5000 })
+    await commentBtn.click()
+
+    const sheet = page.locator('[data-testid="comment-sheet"]').first()
+    await expect(sheet).toHaveClass(/translate-y-0/, { timeout: 2000 })
+
+    await page.setViewportSize({ width: 320, height: 700 })
+
+    const box = await page.evaluate(() => {
+      const form = document.querySelector('[data-testid="comment-sheet"] form') as HTMLElement
+      const row = form.querySelector('div.flex.gap-2') as HTMLElement
+      const submit = form.querySelector('button[type="submit"]') as HTMLElement
+      return {
+        rowRight: row.getBoundingClientRect().right,
+        rowScrollWidth: row.scrollWidth,
+        rowClientWidth: row.clientWidth,
+        submitRight: submit.getBoundingClientRect().right,
+        viewportWidth: window.innerWidth,
+      }
+    })
+
+    await page.screenshot({ path: 'e2e/screenshots/05-comment-input-narrow.png' })
+
+    // 입력줄이 가로로 넘치지 않는다
+    expect(box.rowScrollWidth).toBeLessThanOrEqual(box.rowClientWidth)
+    // 전송 버튼이 입력줄(=화면) 오른쪽 밖으로 나가지 않는다
+    expect(box.submitRight).toBeLessThanOrEqual(box.rowRight + 1)
+    expect(box.submitRight).toBeLessThanOrEqual(box.viewportWidth)
+  })
+
   test('CommentSheet 닫기 버튼이 동작한다', async ({ page }) => {
     const commentBtn = page.locator('[data-testid="comment-btn"]').first()
     await expect(commentBtn).toBeVisible({ timeout: 5000 })

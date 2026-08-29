@@ -309,13 +309,13 @@ export default function CommentSheet({ postId, open, onClose, onLoginRequired }:
                   ? t('replyPlaceholder')
                   : t('commentPlaceholder')
             }
-            className="flex-1 rounded-pill bg-theme-surface2 px-4 py-2 text-body text-theme-primary placeholder-theme-muted outline-none"
+            className="min-w-0 flex-1 rounded-pill bg-theme-surface2 px-4 py-2 text-body text-theme-primary placeholder-theme-muted outline-none"
             maxLength={500}
           />
           <button
             type="submit"
             disabled={!hasContent || addComment.isPending}
-            className="rounded-pill bg-accent p-2 text-accent-fg disabled:opacity-40"
+            className="shrink-0 rounded-pill bg-accent p-2 text-accent-fg disabled:opacity-40"
           >
             <Send size={16} />
           </button>
