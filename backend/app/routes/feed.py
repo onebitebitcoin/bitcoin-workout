@@ -14,7 +14,7 @@ from app.models.video import Video
 from app.models.user import User
 from app.routes.auth import get_current_user, get_optional_user
 from app.schemas.video import PostSchema
-from app.services.timeframe import utc_today_start
+from app.services.timeframe import today_start
 from app.services.notification import create_notification
 from app.services.error_codes import (
     api_error,
@@ -161,13 +161,13 @@ def view_post(
     if post is None:
         raise api_error(404, E_POST_NOT_FOUND, "게시물을 찾을 수 없습니다")
 
-    today_start = utc_today_start()
+    today_start_utc = today_start()
     already_viewed = (
         db.query(PostView)
         .filter(
             PostView.user_id == current_user.id,
             PostView.post_id == post_id,
-            PostView.created_at >= today_start,
+            PostView.created_at >= today_start_utc,
         )
         .first()
     )

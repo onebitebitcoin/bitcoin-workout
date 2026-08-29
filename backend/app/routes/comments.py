@@ -1,7 +1,6 @@
 from datetime import timedelta
-from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -11,7 +10,7 @@ from app.models.notification import Notification
 from app.models.post import Post
 from app.models.user import User
 from app.routes.auth import get_current_user
-from app.services.timeframe import parse_tz
+from app.services.timeframe import today_start as service_today_start
 from app.services.notification import create_notification
 from app.services.error_codes import (
     api_error,
@@ -30,13 +29,10 @@ DAILY_COMMENT_LIMIT = 10
 MIN_COMMENT_LENGTH = 5
 
 
-def _get_daily_comment_count(db: Session, user_id: int, tz: ZoneInfo = ZoneInfo("UTC")) -> int:
-    from datetime import datetime, timezone
-    now_client = datetime.now(tz)
-    today_start_client = now_client.replace(hour=0, minute=0, second=0, microsecond=0)
-    today_end_client = today_start_client + timedelta(days=1)
-    today_start = today_start_client.astimezone(timezone.utc)
-    today_end = today_end_client.astimezone(timezone.utc)
+def _get_daily_comment_count(db: Session, user_id: int) -> int:
+    """서비스 기준(한국 시간) 오늘 이 사용자가 쓴 댓글 수."""
+    today_start = service_today_start()
+    today_end = today_start + timedelta(days=1)
     return (
         db.query(Comment)
         .filter(
@@ -99,7 +95,6 @@ def create_comment(
     body: CreateCommentRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    x_client_timezone: str = Header(default="UTC"),
 ) -> dict:
     if current_user.is_banned:
         raise api_error(403, E_BANNED, "계정이 정지된 상태입니다")
@@ -111,7 +106,7 @@ def create_comment(
         raise api_error(422, E_COMMENT_TOO_SHORT, f"댓글은 {MIN_COMMENT_LENGTH}자 이상 입력해주세요")
     if len(content) > 500:
         raise api_error(422, E_COMMENT_TOO_LONG, "댓글은 500자 이하로 입력해주세요")
-    if _get_daily_comment_count(db, current_user.id, parse_tz(x_client_timezone)) >= DAILY_COMMENT_LIMIT:
+    if _get_daily_comment_count(db, current_user.id) >= DAILY_COMMENT_LIMIT:
         raise api_error(429, E_COMMENT_DAILY_LIMIT, f"하루에 댓글은 {DAILY_COMMENT_LIMIT}개까지 작성할 수 있습니다")
     # 대댓글 처리: parent_id가 있으면 부모 댓글을 검증하고 1-depth로 평면화한다.
     resolved_parent_id: int | None = None

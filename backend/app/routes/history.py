@@ -2,9 +2,8 @@ from calendar import monthrange
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -12,15 +11,9 @@ from app.models.post import Post
 from app.models.video import Video
 from app.models.user import User
 from app.routes.auth import get_current_user as get_required_user
+from app.services.timeframe import SERVICE_TZ, now_local, to_local_date
 
 router = APIRouter(prefix="/api/v1/history", tags=["history"])
-
-
-def _to_local_date(dt: datetime, tz: ZoneInfo) -> str:
-    """Convert UTC datetime to local date string YYYY-MM-DD."""
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(tz).strftime("%Y-%m-%d")
 
 
 def _compute_streak(workout_dates: set[str], today_local: str) -> int:
@@ -45,27 +38,21 @@ def _compute_streak(workout_dates: set[str], today_local: str) -> int:
 def get_history(
     year: Optional[int] = None,
     month: Optional[int] = None,
-    timezone_name: Optional[str] = Query(None, alias="timezone"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_required_user),
 ) -> dict:
-    try:
-        tz = ZoneInfo(timezone_name) if timezone_name else ZoneInfo("UTC")
-    except ZoneInfoNotFoundError:
-        tz = ZoneInfo("UTC")
-
-    now_local = datetime.now(tz)
+    today = now_local()
 
     if year is None:
-        year = now_local.year
+        year = today.year
     if month is None:
-        month = now_local.month
+        month = today.month
 
     last_day = monthrange(year, month)[1]
 
-    # Convert user's month boundaries to UTC for querying
-    month_start_local = datetime(year, month, 1, 0, 0, 0, tzinfo=tz)
-    month_end_local = datetime(year, month, last_day, 23, 59, 59, tzinfo=tz)
+    # 서비스 기준 시간대의 월 경계를 UTC로 바꿔 조회한다 (created_at 이 UTC 저장이라).
+    month_start_local = datetime(year, month, 1, 0, 0, 0, tzinfo=SERVICE_TZ)
+    month_end_local = datetime(year, month, last_day, 23, 59, 59, tzinfo=SERVICE_TZ)
     month_start_utc = month_start_local.astimezone(timezone.utc)
     month_end_utc = month_end_local.astimezone(timezone.utc)
 
@@ -84,7 +71,7 @@ def get_history(
 
     workout_days: dict[str, list[dict]] = defaultdict(list)
     for post in posts:
-        date_str = _to_local_date(post.created_at, tz)
+        date_str = to_local_date(post.created_at)
         pd = datetime.strptime(date_str, "%Y-%m-%d")
         if pd.year == year and pd.month == month:
             workout_days[date_str].append(
@@ -107,9 +94,9 @@ def get_history(
         )
         .all()
     )
-    all_workout_dates = {_to_local_date(row[0], tz) for row in all_dates}
+    all_workout_dates = {to_local_date(row[0]) for row in all_dates}
 
-    today_local_str = now_local.strftime("%Y-%m-%d")
+    today_local_str = today.strftime("%Y-%m-%d")
     streak = _compute_streak(all_workout_dates, today_local_str)
 
     return {

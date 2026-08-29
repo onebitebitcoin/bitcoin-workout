@@ -35,7 +35,7 @@ def test_history_requires_auth(client: TestClient) -> None:
 def test_history_empty_month(client: TestClient) -> None:
     token, _ = _reg(client)
     now = _now_utc()
-    res = client.get(f"/api/v1/history?year={now.year}&month={now.month}&timezone={TZ}", headers=_auth(token))
+    res = client.get(f"/api/v1/history?year={now.year}&month={now.month}", headers=_auth(token))
     assert res.status_code == 200
     data = res.json()["data"]
     assert data["streak"] == 0
@@ -48,7 +48,7 @@ def test_history_after_upload(client: TestClient) -> None:
     token, user = _reg(client, "hu2@x.com", "huser2")
     _upload(client, token, user["id"])
     now_kst = _now_utc().astimezone(ZoneInfo(TZ))
-    res = client.get(f"/api/v1/history?year={now_kst.year}&month={now_kst.month}&timezone={TZ}", headers=_auth(token))
+    res = client.get(f"/api/v1/history?year={now_kst.year}&month={now_kst.month}", headers=_auth(token))
     data = res.json()["data"]
     assert data["total_days"] == 1
     assert data["streak"] == 1
@@ -66,7 +66,7 @@ def test_history_multiple_uploads_same_day(client: TestClient) -> None:
     _upload(client, token, user["id"], "v1.mp4")
     _upload(client, token, user["id"], "v2.mp4")
     now_kst = _now_utc().astimezone(ZoneInfo(TZ))
-    res = client.get(f"/api/v1/history?year={now_kst.year}&month={now_kst.month}&timezone={TZ}", headers=_auth(token))
+    res = client.get(f"/api/v1/history?year={now_kst.year}&month={now_kst.month}", headers=_auth(token))
     data = res.json()["data"]
     assert data["total_days"] == 1
     today_str = now_kst.strftime("%Y-%m-%d")
@@ -75,7 +75,7 @@ def test_history_multiple_uploads_same_day(client: TestClient) -> None:
 
 def test_history_default_current_month(client: TestClient) -> None:
     token, _ = _reg(client, "hu4@x.com", "huser4")
-    res = client.get(f"/api/v1/history?timezone={TZ}", headers=_auth(token))
+    res = client.get(f"/api/v1/history", headers=_auth(token))
     assert res.status_code == 200
     data = res.json()["data"]
     from zoneinfo import ZoneInfo
@@ -89,6 +89,6 @@ def test_history_only_shows_own_posts(client: TestClient) -> None:
     token_b, user_b = _reg(client, "hb@x.com", "huserb")
     _upload(client, token_b, user_b["id"], "other.mp4")
     now = _now_utc()
-    res = client.get(f"/api/v1/history?year={now.year}&month={now.month}&timezone={TZ}", headers=_auth(token_a))
+    res = client.get(f"/api/v1/history?year={now.year}&month={now.month}", headers=_auth(token_a))
     data = res.json()["data"]
     assert data["total_days"] == 0
