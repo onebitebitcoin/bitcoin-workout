@@ -200,7 +200,21 @@ https://story.onebitebitcoin.com/api/v1/auth/google/callback
   가격을 못 구하면 `NULL`로 두고 정상 진행한다.
 - 방화벽에서 아웃바운드 HTTPS(`api.coingecko.com`)가 막혀 있지 않은지만 본다.
 
-## 5. 영구적으로 바뀌는 동작 — 날짜 경계
+## 5. 영구적으로 바뀌는 동작
+
+### 업로드 일일 한도가 없어진다
+
+`DAILY_MAX_UPLOADS = 20` 과 한도 검사 로직이 `backend/app/services/reward.py` 안에
+있었는데, 땀방울 점수 체계를 제거하면서 그 파일을 통째로 지웠다. 그래서 **하루에
+올릴 수 있는 영상 수에 서버 제한이 없다.**
+
+- `GET /api/v1/videos/daily-limit` 엔드포인트도 함께 사라졌다. 프론트에서 이 경로를
+  호출하는 곳은 없어 화면에 깨지는 부분은 없다(확인함).
+- 댓글 한도(`E_COMMENT_DAILY_LIMIT`, 하루 10개)는 별개 로직이라 그대로 살아있다.
+- 어뷰징이 문제가 되면 리워드와 무관한 자리(`routes/videos.py` 또는 별도 모듈)에
+  다시 넣어야 한다. 예전처럼 리워드 서비스 안에 두면 같은 일이 반복된다.
+
+### 날짜 경계
 
 날짜 경계가 **Asia/Seoul 고정**으로 바뀐다(전에는 클라이언트가 보낸 타임존).
 
