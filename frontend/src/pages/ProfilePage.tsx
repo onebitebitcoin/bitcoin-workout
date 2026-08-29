@@ -9,11 +9,12 @@ import { useTranslation } from 'react-i18next'
 import { useAuthStore } from '../store/auth'
 import { shareProfileLink } from '../lib/share'
 import { useUnreadNotifications } from '../hooks/useUnreadNotifications'
-import type { MyStats, HistoryResponse, HistoryWorkoutPost } from '../api/types'
+import type { MyStats, HistoryResponse, HistoryWorkoutPost, TreeStatus, TreeStage, FruitSize } from '../api/types'
 import client from '../api/client'
 import LoadingScreen from '../components/LoadingScreen'
 import UserAvatar from '../components/UserAvatar'
 import { SkeletonCalendarGrid } from '../components/Skeleton'
+import OrangeTree from '../components/OrangeTree'
 
 import { getDaysInMonth, getFirstDayIndex, pad2 } from '../utils/calendar'
 
@@ -89,7 +90,32 @@ export default function ProfilePage() {
     enabled: !!user,
   })
 
+  const {
+    data: treeStatus,
+    isLoading: treeLoading,
+    isError: treeIsError,
+  } = useQuery<TreeStatus>({
+    queryKey: ['tree-status'],
+    queryFn: async () => {
+      const res = await client.get<{ data: TreeStatus }>('/users/me/tree')
+      return res.data.data
+    },
+    enabled: !!user,
+  })
 
+  const treeStageLabelKey: Record<TreeStage, string> = {
+    seed: 'treeStageSeed',
+    sprout: 'treeStageSprout',
+    sapling: 'treeStageSapling',
+    tree: 'treeStageTree',
+    grand: 'treeStageGrand',
+  }
+
+  const fruitSizeLabelKey: Record<FruitSize, string> = {
+    small: 'treeFruitSizeSmall',
+    medium: 'treeFruitSizeMedium',
+    large: 'treeFruitSizeLarge',
+  }
 
   type MyPost = { id: number; cdn_url: string; thumbnail_url?: string | null; caption: string | null; created_at: string; like_count: number; view_count: number; comment_count: number }
   type MyPostsPage = { posts: MyPost[]; has_more: boolean; week_offset: number }
@@ -124,12 +150,10 @@ export default function ProfilePage() {
     },
   })
 
-  const clientTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
-
   const { data: historyData, isLoading: historyLoading } = useQuery<HistoryResponse>({
-    queryKey: ['history', year, month, clientTimezone],
+    queryKey: ['history', year, month],
     queryFn: async () => {
-      const res = await client.get('/history', { params: { year, month, timezone: clientTimezone } })
+      const res = await client.get('/history', { params: { year, month } })
       return res.data.data
     },
     enabled: !!user,
@@ -238,11 +262,66 @@ export default function ProfilePage() {
         </div>
       )}
 
-      <div className="mx-4 mb-4 rounded-card bg-theme-surface px-4 py-3">
+      {treeLoading && (
+        <div
+          className="mx-4 mb-4 h-44 rounded-card animate-shimmer"
+          style={{
+            background: 'linear-gradient(90deg, var(--bg-surface-2) 25%, var(--bg-surface) 50%, var(--bg-surface-2) 75%)',
+            backgroundSize: '200% 100%',
+          }}
+        />
+      )}
+
+      {!treeLoading && !treeIsError && treeStatus && (
+        <div className="mx-4 mb-4 flex flex-col items-center rounded-card bg-theme-surface px-4 py-5 text-center">
+          <OrangeTree
+            stage={treeStatus.stage}
+            fruitCount={treeStatus.fruit.available ? treeStatus.fruit.count ?? 0 : 0}
+            fruitSize={treeStatus.fruit.available && treeStatus.fruit.size ? treeStatus.fruit.size : 'small'}
+            size={120}
+          />
+          <p className="mt-3 text-title font-semibold text-theme-primary">
+            {t(treeStageLabelKey[treeStatus.stage])}
+          </p>
+          <p className="text-body text-theme-muted">
+            {t('treeDaysGrowing', { count: treeStatus.total_days })}
+          </p>
+
+          <div className="mt-3 w-full max-w-[220px]">
+            {treeStatus.next_stage_at !== null ? (
+              <>
+                <div className="flex items-center justify-between text-label text-theme-muted mb-1">
+                  <span>{t('treeNextStageLabel')}</span>
+                  <span>{t('treeProgressDays', { current: treeStatus.total_days, target: treeStatus.next_stage_at })}</span>
+                </div>
+                <div className="h-1.5 w-full rounded-pill bg-leaf/25">
+                  <div
+                    className="h-1.5 rounded-pill bg-leaf transition-all"
+                    style={{ width: `${Math.min(100, (treeStatus.total_days / treeStatus.next_stage_at) * 100)}%` }}
+                  />
+                </div>
+              </>
+            ) : (
+              <p className="text-label font-medium text-leaf">{t('treeMaxStageReached')}</p>
+            )}
+          </div>
+
+          {treeStatus.fruit.available && treeStatus.fruit.count !== null && treeStatus.fruit.size && (
+            <p className="mt-2 text-label text-theme-muted">
+              {t('treeFruitDescription', {
+                count: treeStatus.fruit.count,
+                size: t(fruitSizeLabelKey[treeStatus.fruit.size]),
+              })}
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className="bracket-card mx-4 mb-4 rounded-card bg-theme-surface px-4 py-3">
         <div className="flex items-center gap-4 py-1">
           <div className="flex items-center gap-2 text-accent-text">
             <Flame size={20} strokeWidth={2} />
-            <span className="text-display leading-none">{streak}</span>
+            <span className="text-display font-display leading-none">{streak}</span>
             <span className="text-body font-medium text-theme-primary">{t('streakDays')}</span>
           </div>
           <div className="h-4 w-px bg-theme-border" />
@@ -431,7 +510,7 @@ export default function ProfilePage() {
           onClick={() => setDeleteConfirmId(null)}
         >
           <div
-            className="w-full max-w-lg rounded-card bg-theme-surface px-6 pt-5 pb-6 shadow-2xl"
+            className="w-full max-w-lg rounded-card bg-theme-surface px-6 pt-5 pb-6"
             onClick={(e) => e.stopPropagation()}
           >
             <p className="text-title text-theme-primary mb-1">{t('deleteConfirmTitle')}</p>

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Header, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from pydantic import BaseModel
 from sqlalchemy import func as sqlfunc
 from sqlalchemy.orm import Session, selectinload, joinedload
@@ -14,6 +14,8 @@ from app.models.user import User
 from app.models.video import Video
 from app.routes.auth import get_active_user, get_optional_user
 from app.routes.auth import get_current_user as get_required_user
+from app.services.timeframe import to_local_date
+from app.services.btc_price import get_btc_price_krw
 from app.services.notification import create_notification
 from app.services.referral import generate_referral_code
 from app.services.error_codes import api_error, E_USER_NOT_FOUND, E_FORBIDDEN
@@ -81,9 +83,7 @@ def get_my_stats(
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_required_user),
     db: Session = Depends(get_db),
-    x_client_timezone: str = Header(default="UTC"),
 ) -> dict:
-    _ = x_client_timezone  # Accepted for API compatibility.
 
     total_posts = (
         db.query(Post)
@@ -98,6 +98,115 @@ def get_my_stats(
     return {
         "data": {
             "total_posts": total_posts,
+        }
+    }
+
+
+# ---------------------------------------------------------------------------
+# 나의 오렌지 나무
+# ---------------------------------------------------------------------------
+# 나무 = 내 기록(사용자가 통제하는 축, 하락장에도 절대 작아지거나 죽지 않는다).
+# 열매 = 비트코인 가격(사용자가 통제 못 하는 축, 하락장에도 최소 1개 — "나무는 버틴다").
+
+def _compute_total_days(db: Session, user_id: int) -> int:
+    """누적 기록일 수. 활성 영상이 달린 게시물만 세고, 날짜 경계는 서비스 기준(한국 시간)이다.
+
+    캘린더·스트릭(`/history`)과 같은 `to_local_date()` 를 쓴다. 여기만 다른 기준을 쓰면
+    한 화면에서 나무의 "N일째"와 캘린더의 기록일이 어긋난다.
+    """
+    rows = (
+        db.query(Post.created_at)
+        .join(Post.video)
+        .filter(Post.user_id == user_id, Video.status == "active")
+        .all()
+    )
+    return len({to_local_date(row[0]) for row in rows})
+
+
+def _resolve_tree_stage(total_days: int) -> tuple[str, int | None]:
+    if total_days < 1:
+        return "seed", 1
+    if total_days < 7:
+        return "sprout", 7
+    if total_days < 30:
+        return "sapling", 30
+    if total_days < 100:
+        return "tree", 100
+    return "grand", None
+
+
+def _empty_fruit() -> dict:
+    return {
+        "available": False,
+        "count": 0,
+        "size": "small",
+        "price_krw": None,
+        "baseline_krw": None,
+        "change_pct": None,
+    }
+
+
+def _resolve_fruit_count(change_pct: float) -> int:
+    if change_pct < -20:
+        return 1
+    if change_pct < 0:
+        return 2
+    if change_pct < 20:
+        return 3
+    if change_pct < 50:
+        return 5
+    return 7
+
+
+def _resolve_fruit_size(change_pct: float) -> str:
+    if change_pct < 0:
+        return "small"
+    if change_pct < 30:
+        return "medium"
+    return "large"
+
+
+def _compute_fruit(db: Session, user_id: int) -> dict:
+    baseline = (
+        db.query(sqlfunc.avg(Post.btc_price_krw))
+        .filter(Post.user_id == user_id, Post.btc_price_krw.isnot(None))
+        .scalar()
+    )
+    if baseline is None:
+        return _empty_fruit()
+
+    current_price = get_btc_price_krw()
+    if current_price is None:
+        return _empty_fruit()
+
+    baseline_krw = round(float(baseline))
+    change_pct = round((current_price - baseline_krw) / baseline_krw * 100, 1)
+
+    return {
+        "available": True,
+        "count": _resolve_fruit_count(change_pct),
+        "size": _resolve_fruit_size(change_pct),
+        "price_krw": current_price,
+        "baseline_krw": baseline_krw,
+        "change_pct": change_pct,
+    }
+
+
+@router.get("/me/tree")
+def get_my_tree(
+    current_user: User = Depends(get_required_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    total_days = _compute_total_days(db, current_user.id)
+    stage, next_stage_at = _resolve_tree_stage(total_days)
+    fruit = _compute_fruit(db, current_user.id)
+
+    return {
+        "data": {
+            "stage": stage,
+            "total_days": total_days,
+            "next_stage_at": next_stage_at,
+            "fruit": fruit,
         }
     }
 

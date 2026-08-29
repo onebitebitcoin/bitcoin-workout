@@ -46,6 +46,25 @@ def _generate_share_token(user_id: int) -> str:
         n //= 62
     return "".join(reversed(chars))
 
+
+def _current_btc_price_krw() -> int | None:
+    """게시물에 박제할 현재 BTC 가격(KRW). 실패는 전부 None으로 삼킨다.
+
+    `get_btc_price_krw()` 자체가 예외를 던지지 않기로 돼 있지만 여기서 한 번 더 막는다.
+    시세는 부가 정보이고 이 경로는 업로드 파이프라인이라, 가격을 못 구한 것 때문에
+    다 처리한 영상이 유실되는 것보다 가격 칸이 비는 편이 낫다.
+
+    backend 모듈은 worker/config.py 가 sys.path 에 backend 를 넣어줘서 import 된다.
+    """
+    try:
+        from app.services.btc_price import get_btc_price_krw
+
+        return get_btc_price_krw()
+    except Exception as e:  # noqa: BLE001 - 업로드를 막지 않는 것이 이 함수의 목적이다
+        logger.warning("BTC price lookup failed, storing NULL: %s", e)
+        return None
+
+
 _connect_args = {"check_same_thread": False} if "sqlite" in DATABASE_URL else {}
 _engine = create_engine(DATABASE_URL, connect_args=_connect_args)
 SessionLocal = sessionmaker(bind=_engine)
@@ -516,6 +535,9 @@ def run_full_pipeline(job: dict, status_callback=None) -> dict:
             thumbnail_url=thumbnail_cdn_url,
             share_token=_generate_share_token(user_id),
             challenge_id=int(challenge_id) if challenge_id is not None else None,
+            # 기록한 그 시점의 시세를 박제한다. 나중에 조회하면 "지금" 가격이라
+            # 의미가 달라지므로 여기서만 넣을 수 있다. 실패하면 None.
+            btc_price_krw=_current_btc_price_krw(),
         )
         db.add(post)
         db.flush()

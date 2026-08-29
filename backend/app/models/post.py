@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import BigInteger, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -24,6 +24,8 @@ class Post(Base):
     thumbnail_url: Mapped[str | None] = mapped_column(String, nullable=True)
     challenge_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("challenges.id"), nullable=True, index=True)
     share_token: Mapped[str] = mapped_column(String(20), unique=True, nullable=False, index=True)
+    # 게시물 생성 시점의 BTC/KRW 가격(원 단위, 소수점 불필요). 조회 실패 시 NULL — 백필하지 않는다.
+    btc_price_krw: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     like_count: Mapped[int] = mapped_column(Integer, default=0)
     view_count: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(

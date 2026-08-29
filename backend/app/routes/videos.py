@@ -6,7 +6,7 @@ import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Header, Query, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, Query, UploadFile
 from sqlalchemy.orm import Session, selectinload
 
 from app.config import settings as app_settings
@@ -31,6 +31,7 @@ from app.schemas.video import (
     SubtitleLanguage,
 )
 from app.services import r2 as r2_service
+from app.services.btc_price import get_btc_price_krw
 from app.services.subtitles import sanitize_srt
 from app.services.share_token import generate_share_token
 from app.services.job_queue import enqueue_full_upload_pipeline, enqueue_image_merge_job, enqueue_merge_job, enqueue_multi_pipeline, enqueue_subtitle_extract_job, fail_job, get_job_status, reserve_job_id
@@ -134,7 +135,6 @@ async def upload_video(
     file: UploadFile = File(...),
     current_user: User = Depends(get_active_user),
     db: Session = Depends(get_db),
-    x_client_timezone: str = Header(default="UTC"),
 ) -> dict:
     """Server-side upload: receives file from browser, streams to R2.
 
@@ -154,7 +154,6 @@ def confirm_upload(
     req: ConfirmUploadRequest,
     current_user: User = Depends(get_active_user),
     db: Session = Depends(get_db),
-    x_client_timezone: str = Header(default="UTC"),
 ) -> dict:
     if req.duration_sec < 10 or req.duration_sec > 60:
         raise api_error(400, E_VIDEO_DURATION_INVALID, "영상은 10~60초여야 합니다")
@@ -188,6 +187,7 @@ def confirm_upload(
         proof_image_url=req.proof_image_url,
         share_token=generate_share_token(current_user.id),
         challenge_id=req.challenge_id,
+        btc_price_krw=get_btc_price_krw(),  # 조회 실패 시 None — 업로드는 계속 진행
     )
     db.add(post)
     db.flush()
@@ -901,7 +901,6 @@ async def upload_pipeline(
     current_user: User = Depends(get_active_user),
     db: Session = Depends(get_db),
     background_tasks: BackgroundTasks = ...,
-    x_client_timezone: str = Header(default="UTC"),
 ) -> dict:
     """파일 수신 즉시 job_id 반환. R2 업로드 + 처리는 백그라운드에서 실행."""
     if duration_sec < 10 or duration_sec > 60:
@@ -1194,7 +1193,6 @@ async def upload_multi(
     current_user: User = Depends(get_active_user),
     db: Session = Depends(get_db),
     background_tasks: BackgroundTasks = ...,
-    x_client_timezone: str = Header(default="UTC"),
 ) -> dict:
     """다중 미디어(영상 ≤1 + 이미지 ≤5)를 순서대로 받아 합성 파이프라인에 등록한다.
 
