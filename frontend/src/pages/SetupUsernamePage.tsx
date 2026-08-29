@@ -144,7 +144,7 @@ export default function SetupUsernamePage() {
       <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-card bg-theme-surface text-accent">
         <LogoMark aria-label={t('logoAlt')} role="img" size={40} />
       </div>
-      <p className="mb-1 text-label font-bold tracking-[0.28em] text-accent uppercase">Bitcoiners</p>
+      <p className="mb-1 text-label font-bold tracking-[0.28em] text-accent uppercase">Orange Story</p>
       <p className="mb-8 text-body text-theme-muted">{t('setupProfileTitle')}</p>
 
       <div className="w-full max-w-sm">
@@ -164,7 +164,7 @@ export default function SetupUsernamePage() {
             </label>
             <label
               htmlFor="setup-avatar-input"
-              className={`absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-pill bg-accent text-accent-fg shadow-md ${uploading ? 'pointer-events-none opacity-60' : 'cursor-pointer'}`}
+              className={`absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-pill bg-accent text-accent-fg shadow-pop ${uploading ? 'pointer-events-none opacity-60' : 'cursor-pointer'}`}
             >
               {uploading ? (
                 <div className="h-3.5 w-3.5 animate-spin rounded-pill border-2 border-accent-fg border-t-transparent" />

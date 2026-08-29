@@ -66,7 +66,7 @@ export default function RegisterPage() {
       <div className="mb-2 flex h-16 w-16 items-center justify-center rounded-card bg-theme-surface text-accent">
         <LogoMark aria-label={t('logoAlt')} role="img" size={40} />
       </div>
-      <p className="mb-1 text-display text-accent">Bitcoiners</p>
+      <p className="mb-1 text-display font-display text-accent">Orange Story</p>
       <p className="mb-8 text-body text-theme-muted">{t('registerTitle')}</p>
 
       <div className="w-full max-w-sm">

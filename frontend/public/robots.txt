@@ -1,4 +1,4 @@
-# Bitcoiners — https://bitcoiners.life
+# Orange Story — https://story.onebitebitcoin.com
 # robots.txt
 
 # ── 일반 크롤러 ──────────────────────────────────────────────
@@ -86,4 +86,4 @@ User-agent: DotBot
 Disallow: /
 
 # ── Sitemap ──────────────────────────────────────────────────
-Sitemap: https://bitcoiners.life/sitemap.xml
+Sitemap: https://story.onebitebitcoin.com/sitemap.xml

@@ -38,7 +38,7 @@ export default function LoginPage() {
         <div className="absolute inset-0 rounded-card bg-accent opacity-15 blur-2xl scale-[2] pointer-events-none" />
         <LogoMark aria-label={t('logoAlt')} role="img" size={44} />
       </div>
-      <p className="mb-1 text-display text-accent">Bitcoiners</p>
+      <p className="mb-1 text-display font-display text-accent">Orange Story</p>
       <p className="mb-8 text-body text-theme-muted">{t('tagline')}</p>
 
       {errorParam && (

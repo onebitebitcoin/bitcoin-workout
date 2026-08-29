@@ -12,7 +12,7 @@ export function shareProfileLink(userId: number, username: string, t: TFunction)
 
   if (typeof navigator !== 'undefined' && 'share' in navigator) {
     navigator
-      .share({ title: 'Bitcoiners', text, url })
+      .share({ title: 'Orange Story', text, url })
       .catch((err) => {
         if (!(err instanceof DOMException && err.name === 'AbortError')) copyToClipboard()
       })

@@ -123,7 +123,7 @@
     "title": "Record complete",
     "share": "Share",
     "viewFeed": "View feed",
-    "shareText": "See how bitcoiners live"
+    "shareText": "My Bitcoin Record"
   },
   "error": {
     "tooShort": "This video is {{secs}}s. Only videos 10 seconds or longer can be uploaded.",

@@ -345,7 +345,7 @@ export default function VideoCard({ post, onLoginRequired, onCommentClick, isMut
                 .then(() => toast.success(t('shareCopied')))
                 .catch(() => toast(t('shareLinkFallback') + shareUrl))
             if (typeof navigator !== 'undefined' && 'share' in navigator) {
-              navigator.share({ title: 'Bitcoiners', text: shareMessage })
+              navigator.share({ title: 'Orange Story', text: shareMessage })
                 .catch((err) => { if (!(err instanceof DOMException && err.name === 'AbortError')) copyToClipboard() })
             } else {
               copyToClipboard()

@@ -1,25 +1,33 @@
 <svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="1200" height="630" fill="#0D0D0D"/>
+  <rect width="1200" height="630" fill="#0A0A0A"/>
   <radialGradient id="glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(280 315) rotate(90) scale(320 320)">
-    <stop stop-color="#F7931A" stop-opacity="0.18"/>
-    <stop offset="1" stop-color="#F7931A" stop-opacity="0"/>
+    <stop stop-color="#FF8C00" stop-opacity="0.18"/>
+    <stop offset="1" stop-color="#FF8C00" stop-opacity="0"/>
   </radialGradient>
   <rect width="1200" height="630" fill="url(#glow)"/>
 
-  <!-- 로고: LogoMark.tsx와 동일한 Coin Play 마크, 왼쪽 배치 -->
+  <!-- 로고: LogoMark.tsx와 동일한 오렌지 마크, 왼쪽 배치 -->
   <g transform="translate(130 205) scale(4.5833)">
-    <mask id="coin-play-hole">
-      <rect x="0" y="0" width="48" height="48" fill="white"/>
-      <path d="M21.6 19.6L21.6 28.4L29.4 24Z" fill="black" stroke="black" stroke-width="5" stroke-linejoin="round"/>
+    <clipPath id="fruit">
+      <circle cx="24" cy="28" r="14"/>
+    </clipPath>
+    <mask id="bolt">
+      <rect width="48" height="48" fill="white"/>
+      <path d="M27.6 17.6L18.9 28.8H23.6L20.6 38.6L29.6 26.6H24.7Z" fill="black"/>
     </mask>
-    <rect x="18.2" y="2.8" width="3.6" height="9.4" rx="1.4" fill="#F7931A"/>
-    <rect x="26.2" y="2.8" width="3.6" height="9.4" rx="1.4" fill="#F7931A"/>
-    <rect x="18.2" y="35.8" width="3.6" height="9.4" rx="1.4" fill="#F7931A"/>
-    <rect x="26.2" y="35.8" width="3.6" height="9.4" rx="1.4" fill="#F7931A"/>
-    <circle cx="24" cy="24" r="15.2" fill="#F7931A" mask="url(#coin-play-hole)"/>
+    <g mask="url(#bolt)">
+      <g clip-path="url(#fruit)">
+        <circle cx="24" cy="28" r="14" fill="#FF8C00"/>
+        <ellipse cx="34" cy="40" rx="15" ry="13" fill="#000000" opacity="0.16"/>
+        <ellipse cx="18" cy="22" rx="6.5" ry="4.5" fill="#FFFFFF" opacity="0.22" transform="rotate(-35 18 22)"/>
+      </g>
+    </g>
+    <path d="M24 15C24 12 24.5 10.5 25.5 9.5" stroke="#7A4A22" stroke-width="2.4" stroke-linecap="round"/>
+    <path d="M25.8 10.6C28.2 4.6 34.4 2.4 38.6 4.2C38.4 9.8 32.8 13.2 25.8 10.6Z" fill="#3DBE73"/>
+    <path d="M27.2 10.2C30.6 7.4 34.6 5.4 37.6 4.6" stroke="#1F7A47" stroke-width="1.1" stroke-linecap="round"/>
   </g>
 
-  <!-- Bitcoiners 워드마크 -->
+  <!-- Orange Story 워드마크 -->
   <text
     x="420" y="300"
     fill="#F5F5F5"
@@ -27,7 +35,7 @@
     font-size="96"
     font-weight="800"
     letter-spacing="-2"
-  >Bitcoiners</text>
+  >Orange Story</text>
 
   <!-- 태그라인 -->
   <text
@@ -36,7 +44,7 @@
     font-family="Inter, Pretendard, Apple SD Gothic Neo, sans-serif"
     font-size="32"
     font-weight="500"
-  >비트코이너는 뭐하고 사나</text>
+  >나의 비트코인 기록</text>
 
   <!-- 도메인 -->
   <text
@@ -46,5 +54,5 @@
     font-size="22"
     font-weight="500"
     letter-spacing="0.5"
-  >bitcoiners.life</text>
+  >story.onebitebitcoin.com</text>
 </svg>

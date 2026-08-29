@@ -1,4 +1,4 @@
-# Bitcoiners Mobile (Flutter WebView Wrapper)
+# Orange Story Mobile (Flutter WebView Wrapper)
 
 배포된 웹앱을 감싸는 Android/iOS 앱입니다.
 

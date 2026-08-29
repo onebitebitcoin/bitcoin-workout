@@ -7,7 +7,7 @@ test.describe('인증 플로우', () => {
     await page.screenshot({ path: 'e2e/screenshots/03-login.png', fullPage: true })
 
     await expect(page.locator('input[type="email"]')).not.toBeVisible()  // email form hidden by default
-    await expect(page.getByLabel('Bitcoiners 로고')).toBeVisible()
+    await expect(page.getByLabel('Orange Story 로고')).toBeVisible()
     await expect(page.locator('text=이메일로 로그인')).toBeVisible()
   })
 

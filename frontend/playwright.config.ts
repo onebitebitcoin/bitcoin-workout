@@ -6,7 +6,7 @@ const BACKEND_PORT = Number(process.env.E2E_BACKEND_PORT ?? 8173)
 
 export default defineConfig({
   testDir: './e2e',
-  // prod-*.spec.ts 는 https://bitcoiners.life 운영 사이트에 직접 붙어 계정을 만들고
+  // prod-*.spec.ts 는 https://story.onebitebitcoin.com 운영 사이트에 직접 붙어 계정을 만들고
   // 영상을 업로드한다. 반드시 playwright.production.config.ts 로만 실행한다.
   testIgnore: ['**/media-recorder-merge.spec.ts', '**/prod-*.spec.ts'],
   fullyParallel: false,

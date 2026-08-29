@@ -46,7 +46,7 @@ export default function SharedVideoPage() {
   useEffect(() => {
     if (!post) return
 
-    const title = `@${post.username} - Bitcoiners`
+    const title = `@${post.username} - Orange Story`
     const description = post.caption ?? t('appTagline')
     const image = post.thumbnail_url ?? `${window.location.origin}/og-image.png`
 
@@ -63,7 +63,7 @@ export default function SharedVideoPage() {
     setMetaName('twitter:card', 'player')
 
     return () => {
-      document.title = `Bitcoiners | ${t('appTagline')}`
+      document.title = `Orange Story | ${t('appTagline')}`
     }
   }, [post, t])
 
@@ -83,7 +83,7 @@ export default function SharedVideoPage() {
         </button>
         <div className="flex items-center gap-2">
           <Target size={16} color="white" />
-          <span className="text-body font-semibold text-white">Bitcoiners</span>
+          <span className="text-body font-semibold text-white">Orange Story</span>
         </div>
         <div className="w-9" />
       </div>

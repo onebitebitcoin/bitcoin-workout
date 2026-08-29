@@ -9,22 +9,22 @@ import 'package:file_picker/file_picker.dart';
 
 const String kAppUrl = String.fromEnvironment(
   'APP_URL',
-  defaultValue: 'https://bitcoiners.life',
+  defaultValue: 'https://story.onebitebitcoin.com',
 );
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  runApp(const BitcoinersApp());
+  runApp(const OrangeStoryApp());
 }
 
-class BitcoinersApp extends StatelessWidget {
-  const BitcoinersApp({super.key});
+class OrangeStoryApp extends StatelessWidget {
+  const OrangeStoryApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Bitcoiners',
+      title: 'Orange Story',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
@@ -52,7 +52,7 @@ class _WebViewPageState extends State<WebViewPage> {
   Timer? _loadTimeout;
   late final StreamSubscription<List<ConnectivityResult>> _connectivitySub;
 
-  void _log(String msg) => debugPrint('[Bitcoiners] $msg');
+  void _log(String msg) => debugPrint('[Orange Story] $msg');
 
   @override
   void initState() {

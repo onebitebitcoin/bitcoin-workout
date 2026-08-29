@@ -1,5 +1,5 @@
 /**
- * Production E2E tests against https://bitcoiners.life
+ * Production E2E tests against https://story.onebitebitcoin.com
  * Run: npx playwright test --config=playwright.production.config.ts
  *
  * Uses email signup so Google OAuth is not needed.
@@ -11,7 +11,7 @@ import path from 'path'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-const PROD_URL = 'https://bitcoiners.life'
+const PROD_URL = 'https://story.onebitebitcoin.com'
 const SCREENSHOT_DIR = 'e2e/screenshots/prod'
 const TEST_VIDEO = path.resolve(__dirname, 'fixtures/test-workout.mp4')
 

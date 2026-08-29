@@ -27,7 +27,7 @@ export default function SideNav() {
       {/* 로고 */}
       <div className="flex items-center gap-2 px-6 py-5">
         <LogoMark size={28} className="text-accent" />
-        <span className="text-title text-theme-primary">Bitcoiners</span>
+        <span className="text-title text-theme-primary">Orange Story</span>
       </div>
 
       {/* 네비게이션 항목 */}

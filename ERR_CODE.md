@@ -1,4 +1,4 @@
-# Bitcoiners 에러 코드 정의
+# Orange Story 에러 코드 정의
 
 > 에러 코드 관련 문의 시 이 파일을 먼저 참고한다.
 > 코드 소스: `backend/app/services/error_codes.py`

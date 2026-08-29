@@ -12,7 +12,7 @@ export default defineConfig({
     ['list'],
   ],
   use: {
-    baseURL: 'https://bitcoiners.life',
+    baseURL: 'https://story.onebitebitcoin.com',
     screenshot: 'on',
     video: 'retain-on-failure',
     trace: 'retain-on-failure',

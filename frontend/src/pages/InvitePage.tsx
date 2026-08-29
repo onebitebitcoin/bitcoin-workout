@@ -34,7 +34,7 @@ export default function InvitePage() {
   function shareLink() {
     if (!inviteUrl) return
     if (typeof navigator !== 'undefined' && 'share' in navigator) {
-      navigator.share({ title: 'Bitcoiners', text: t('inviteShareText'), url: inviteUrl })
+      navigator.share({ title: 'Orange Story', text: t('inviteShareText'), url: inviteUrl })
         .catch((err) => { if (!(err instanceof DOMException && err.name === 'AbortError')) copyLink() })
     } else {
       copyLink()

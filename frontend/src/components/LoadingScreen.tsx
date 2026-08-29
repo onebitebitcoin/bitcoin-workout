@@ -10,7 +10,7 @@ export default function LoadingScreen() {
       </div>
       <div className="text-center">
         <p className="text-body font-semibold tracking-widest text-theme-primary uppercase">
-          Bitcoiners
+          Orange Story
         </p>
         <p className="mt-1 text-label text-theme-muted">{t('loadingStack')}</p>
       </div>

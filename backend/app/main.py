@@ -71,7 +71,7 @@ async def lifespan(app: FastAPI):  # type: ignore[type-arg]
     yield
 
 
-app = FastAPI(title="Bitcoiners", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Orange Story", version="0.1.0", lifespan=lifespan)
 app.router.redirect_slashes = False
 
 app.add_middleware(
@@ -186,7 +186,7 @@ def _build_og_meta(post: "Post") -> tuple[str, str]:  # type: ignore[name-define
         except ValueError:
             pass
 
-    parts.append("Bitcoiners")
+    parts.append("Orange Story")
     description = " · ".join(parts)
     return title, description
 
@@ -208,7 +208,7 @@ def _og_html(title: str, description: str, image: str, url: str, video_url: str 
 <meta charset="UTF-8" />
 <title>{t}</title>
 <meta property="og:type" content="video.other" />
-<meta property="og:site_name" content="Bitcoiners" />
+<meta property="og:site_name" content="Orange Story" />
 <meta property="og:title" content="{t}" />
 <meta property="og:description" content="{d}" />
 <meta property="og:image" content="{i}" />
