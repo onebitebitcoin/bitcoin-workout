@@ -75,7 +75,7 @@ def test_history_multiple_uploads_same_day(client: TestClient) -> None:
 
 def test_history_default_current_month(client: TestClient) -> None:
     token, _ = _reg(client, "hu4@x.com", "huser4")
-    res = client.get(f"/api/v1/history", headers=_auth(token))
+    res = client.get("/api/v1/history", headers=_auth(token))
     assert res.status_code == 200
     data = res.json()["data"]
     from zoneinfo import ZoneInfo
