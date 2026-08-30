@@ -1,63 +1,60 @@
-# 구현 진행 상황 — Bitcoiners 리브랜딩
+# 구현 진행 상황 — LNURL-auth 도메인 고정 마이그레이션
 
-> 되돌림 지점: `stackhealth-v0.19.1` (tag, origin push 완료)
-> 선행 커밋: `851b043` 땀방울 점수 체계 제거
+> 되돌림 지점: `d1eda03` (v0.22.0)
+> 배경: 커밋 `5663836` 에서 도메인을 story.onebitebitcoin.com 으로 바꾸면서
+> LNURL-auth 신원(linkingKey)이 통째로 갈렸다. 기존 라이트닝 사용자가
+> 로그인하면 원래 계정 대신 빈 새 계정이 조용히 생긴다.
 
-## 확정 브랜드
+## 원인
 
-| 항목 | 값 |
-|------|-----|
-| 앱 이름 | Bitcoiners / 비트코이너스 |
-| 도메인 | bitcoiners.life (stackhealth.life는 301 예정) |
-| 태그라인 | 비트코이너는 뭐하고 사나 |
-| 마크 | Coin Play — 오렌지 원 + 재생 삼각형 + 비트코인 틱 |
-| 액센트 | #F7931A (테마 `bitcoin`, 기본값) |
-| 카테고리 | 비트코인 · 일상 (2종) |
+LUD-04 는 linkingKey 를 `HMAC-SHA256(hashingKey, FQDN)` 으로 파생한다. FQDN 이
+바뀌면 같은 지갑이 다른 공개키를 만들고, `auth.py:395` 의
+`User.oauth_sub == key` 조회가 빗나가 397행 신규 가입 분기로 떨어진다.
+구 pubkey ↔ 신 pubkey 매핑은 지갑 시드 안에서만 만들 수 있어 서버 단독
+변환은 불가능하다. 따라서 LNURL 이 담는 도메인을 최초 도메인으로 되돌리는
+것만이 기존 사용자를 자동 복구하는 경로다.
 
-## 완료 — 코드
+## 영향 (2026-08-30 조사 시점)
 
-- [x] 마크 교체 + 웹/모바일 아이콘 자산 + PWA 매니페스트
-- [x] 프론트 문자열 — index.html, i18n ko/en 10네임스페이스, llms/robots/sitemap
-- [x] 백엔드 — FastAPI title, 공유 카드 OG 생성부, worker 스크립트 문구
-- [x] `bitcoin` 테마 추가 + 기본값 (기존 6종 보존)
-- [x] 카테고리 2종 전환 + 마이그레이션 `004aa221ea8d`
-- [x] "기록 시간대" 입력 제거 — 영상 저장 시간 기준. DB 컬럼은 보존
-- [x] 모바일 앱 표시명·도메인 (패키지 ID 보존)
-- [x] 이용약관 재작성 — 존재하지 않는 기능 조항 제거
-- [x] i18n ko/en 정합성 회귀 테스트 추가
+- 전환 이전 lnauth 계정 24개, 그 중 게시물 보유 10개
+- 전환 이후 생긴 중복 계정 4개 — `133`, `135`, `136`(빈 계정), `134 데이이`(게시물 1)
+- `134 데이이` 는 `70 데이`(2026-05-31) 와 동일인으로 추정 — 병합 대상
 
-## 완료 — 문서
+## Phase
 
-- [x] SPEC.md, CLAUDE.md, AGENTS.md, docs/INDEX.md, ARCHITECTURE.md, vision.md, team-vision.md
-- [x] `docs/DOMAIN-CUTOVER.md` 신규 — 도메인 전환 절차, 배포 위험, dev 환경
+- [x] Phase 1 — 백엔드: `LNURL_BASE_URL` 분리, LNURL 도메인 고정 (TDD)
+      `config.py` `lnurl_origin` / `services/lnauth.py` / `routes/auth.py` / `.env` / `.env.example`
+      회귀 테스트 `backend/tests/test_lnauth_domain.py` 6건. pytest 364/364, ruff OK
+- [x] Phase 2 — nginx: stackhealth.life 의 `/api/v1/auth/lnauth` 를 301 예외 처리
+      `nginx -t` 통과 후 reload. 검증: lnauth 경로 400(백엔드 도달) / `/feed` 는 301 유지
+      백업 `/etc/nginx/sites-available/stackhealth.life.bak-202608301100`
+- [ ] Phase 3 — 배포 (green 슬롯 재시작 또는 push 배포) + 실지갑 검증 ← **사용자 결정 필요**
+- [ ] Phase 4 — `134 → 70` 계정 병합 ← **사용자 승인 필요**
+      `backend/scripts/merge_duplicate_user.py` 작성, dry-run 확인 (이관 7건 / 중복삭제 1건)
 
-## 남은 결정 — 사용자
+## Phase 4 근거 — `134 데이이` = `70 데이` 추정
 
-### 1. 배포 전략 (커밋보다 우선)
+암호학적 증명은 불가능하다. 아래는 정황이고, 최종 확인은 본인에게 받는 편이 안전하다.
 
-`reward_points` DROP이 blue-green 창에 걸린다. 구 슬롯이 없어진 테이블을
-조회하는 30~60초 동안 업로드·댓글·모더레이션이 실패한다. 업로드는 최대 3분
-처리를 끝내고 마지막 저장에서 깨져 체감 손실이 가장 크다.
+- 닉네임: `데이` 가 이미 점유돼 있어 글자를 덧붙인 `데이이`
+- 게시 습관: 70 은 8월 내내 거의 매일 아침 `["일상"]` 태그로 한 줄 기록
+  (`걷기1시간.`, `어싱30분.`, `계단오르내리기 40분.`) — 마침표로 끝나는 짧은 문장
+- 끊긴 지점: 70 의 마지막 글 8/29 09:08 `숲계단오르내리기.` → 134 의 첫 글
+  8/30 09:13 `숲산책, 걷기1시간.` 로 **다음 날 아침 같은 시간대에 이어진다**
+- 134 는 프로필 사진·라이트닝 주소가 비어 있는 초기 상태 (70 은 둘 다 설정돼 있다)
 
-| 안 | 창 영향 | 남는 비용 |
-|----|---------|-----------|
-| A 감수 | 있음 | 없음 |
-| B DROP 연기 | 없음 | 유저 삭제 FK 위반 (관리자 전용, 후속 배포까지) |
+## 결정 사항
 
-상세는 `docs/DOMAIN-CUTOVER.md` 1-4.
+- 빈 중복 계정 `133`/`135`/`136` 은 **삭제하지 않고 그대로 둔다.** Phase 1 적용 후
+  해당 사용자는 원래 계정으로 로그인되고, 이 계정들은 접근 경로가 사라져 무해하게
+  남는다. 되돌릴 수 없는 DELETE 보다 위험이 낮다.
+- 다중 키 테이블(`user_lnauth_keys`)과 지갑 연결 플로우는 이번 범위 밖. 구 도메인을
+  은퇴시키려면 필요하지만 별도 작업으로 분리한다.
 
-### 2. `frontend/src/pages/upload/StepCaption.tsx`
+## 이월 — 이전 작업에서 아직 안 닫힌 항목
 
-죽은 코드. 어디서도 import되지 않는다. 삭제 여부 미정.
-
-### 3. 서버 작업 (사용자 직접)
-
-DNS · certbot · nginx server_name + 301 · Google OAuth redirect URI 재등록.
-절차는 `docs/DOMAIN-CUTOVER.md`.
-
-## 별도 — 이번 범위 밖
-
-- **파일 중복 차단 미작동**: `videos.py:174,854`가 해시 자리에 R2 키를 넣고
-  조회 쿼리가 없다. 같은 영상을 반복 업로드할 수 있다. 리브랜딩 이전부터.
-- **e2e가 CI에서 안 돈다**: `RUN_E2E=1` 게이팅 때문에 `og:image` 단언이
-  오래 깨진 채 방치됐다. 실행은 1분 남짓.
+- **파일 중복 차단 미작동**: `videos.py:174,854` 가 해시 자리에 R2 키를 넣고
+  조회 쿼리가 없다. 같은 영상을 반복 업로드할 수 있다.
+- **e2e 가 CI 에서 안 돈다**: `RUN_E2E=1` 게이팅 때문에 `og:image` 단언이 오래
+  깨진 채 방치됐다.
+- `frontend/src/pages/upload/StepCaption.tsx` 죽은 코드 삭제 여부 미정.

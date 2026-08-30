@@ -16,7 +16,7 @@ def generate_k1() -> str:
 
 
 def encode_lnurl(k1: str) -> str:
-    url = f"{settings.app_base_url}/api/v1/auth/lnauth?tag=login&k1={k1}"
+    url = f"{settings.lnurl_origin}/api/v1/auth/lnauth?tag=login&k1={k1}"
     url_bytes = url.encode("utf-8")
     converted = bech32.convertbits(list(url_bytes), 8, 5)
     lnurl = bech32.bech32_encode("lnurl", converted)

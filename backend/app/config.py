@@ -36,9 +36,20 @@ class Settings(BaseSettings):
     #   → APIs & Services → Credentials → OAuth 2.0 Client → Authorized redirect URIs
     app_url: str = "http://localhost:5173"
     app_base_url: str = "http://localhost:8000"
+    # LNURL_BASE_URL: LNURL-auth 전용 공개 URL. 비워두면 app_base_url 을 따른다.
+    # LUD-04 는 linkingKey 를 HMAC-SHA256(hashingKey, FQDN) 으로 파생한다. 이 URL 의
+    # 도메인이 바뀌면 같은 지갑이 다른 공개키를 만들어 기존 계정에 못 들어오고,
+    # 로그인 실패가 아니라 빈 새 계정이 조용히 생긴다. 그래서 서비스 도메인을
+    # 옮기더라도 이 값은 라이트닝 사용자가 처음 가입한 도메인으로 고정한다.
+    lnurl_base_url: str = ""
     frontend_url: str = "http://localhost:5173"
     environment: str = "development"
     port: int = 8000
+
+    @property
+    def lnurl_origin(self) -> str:
+        """LNURL 에 박히는 base URL. 지갑 신원이 걸려 있어 서비스 도메인과 분리한다."""
+        return self.lnurl_base_url or self.app_base_url
 
 
 settings = Settings()

@@ -44,6 +44,7 @@ bitcoiners/
 | 설문 기능 | `backend/app/{models,schemas,routes}/survey.py` + `frontend/src/pages/SurveyPage.tsx` + `AdminSurveys*.tsx` |
 | 배포/인프라 | `scripts/deploy.sh` + `Dockerfile` + `CLAUDE.md`(blue-green 주의사항) |
 | 도메인 전환 (서버 도메인 변경) | `docs/DOMAIN-CUTOVER.md` — DNS·인증서·nginx server_name·Google OAuth redirect_uri 재등록 순서와 각 단계 롤백 절차 |
+| **라이트닝 로그인이 안 된다 / 계정이 새로 생긴다** | `docs/LNURL-DOMAIN-MIGRATION.md` — LNURL-auth 신원은 도메인에서 파생된다(LUD-04). `LNURL_BASE_URL` 은 서비스 도메인과 분리해 고정한다. `backend/app/{config.py,services/lnauth.py}` |
 | **운영 배포 (v0.20.0 Orange Story)** | `docs/DEPLOY-NOTES-orange-story.md` — 배포 전 필독. 파괴적 마이그레이션(`reward_points` DROP)의 blue-green 창, 도메인 순서, 병행 운영 구성, 배포 후 확인 |
 | 워커 배포 | `stack-health-worker@{1,2}.service`(systemd --user, host 전용 파일) + `scripts/deploy.sh` — 인스턴스 수는 `worker/.env`의 `WORKER_INSTANCES`. 워커 전용 배포 스크립트는 없다. 상세: `CLAUDE.md`(워커 멀티 인스턴스 주의사항) |
 | 에러 코드 | `ERR_CODE.md` + `backend/app/services/error_codes.py` |
@@ -111,6 +112,7 @@ bitcoiners/
 | `ERR_CODE.md` | 에러 코드 정의 |
 | `docs/DOMAIN-CUTOVER.md` | 서버 도메인을 stackhealth.life → story.onebitebitcoin.com 으로 바꿀 때 실행하는 인프라 전환 절차서. DNS·인증서·nginx·Google OAuth 재등록 순서와 각 단계 롤백 방법을 다룬다 |
 | `docs/DEPLOY-NOTES-orange-story.md` | v0.19.1 → v0.20.0 배포 노트. 이 배포는 미적용 마이그레이션 3개(하나는 파괴적)를 한 번에 실어 나르므로 평소 배포와 위험도가 다르다 |
+| `docs/LNURL-DOMAIN-MIGRATION.md` | 도메인 전환이 라이트닝 사용자 신원을 갈라놓은 사고의 원인·피해 범위·적용한 구조. `stackhealth.life` 를 왜 계속 살려둬야 하는지와, 구 도메인을 은퇴시키려면 무엇이 더 필요한지 |
 | `docs/orange-tree.md` | 나의 오렌지 나무(성장 시각화). 나무=내 기록 / 열매=비트코인 가격으로 축을 가른 이유, 단계·열매 판정 규칙, 시세 조회 실패 시 동작 |
 | `meetings/INDEX.md` | 회의록 인덱스 |
 

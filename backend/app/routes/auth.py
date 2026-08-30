@@ -386,7 +386,7 @@ def lnauth_callback(
             "tag": "login",
             "k1": k1,
             "action": "login",
-            "callback": f"{settings.app_base_url}/api/v1/auth/lnauth",
+            "callback": f"{settings.lnurl_origin}/api/v1/auth/lnauth",
         }
 
     if not verify_signature(k1, sig, key):
