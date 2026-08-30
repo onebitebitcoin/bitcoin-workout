@@ -3,6 +3,7 @@ import io
 import random
 import uuid
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from fastapi.responses import RedirectResponse
@@ -351,14 +352,45 @@ async def google_callback(code: str | None = None, error: str | None = None, sta
 
 # ── LNAuth ────────────────────────────────────────────────────────────
 
+# 로그인 화면에서 사용자가 고른 값. LNURL 에 박히는 도메인을 가른다.
+LNAUTH_DOMAIN_LEGACY = "legacy"     # stackhealth.life — 기존 라이트닝 사용자의 신원
+LNAUTH_DOMAIN_CURRENT = "current"   # story.onebitebitcoin.com — 처음 오는 사용자
+
+
+def _lnauth_base_url(domain: str) -> str:
+    """처음 오는 사용자만 현재 서비스 도메인으로 신원을 만든다.
+
+    기본값이 legacy 인 이유: 이 파라미터를 모르는 호출자(이미 설치된 모바일 앱 포함)는
+    기존 사용자일 수 있고, 그 경우 도메인을 잘못 고르면 로그인 실패가 아니라 빈 새
+    계정이 조용히 생긴다. 모를 때는 잃을 게 없는 쪽으로 떨어뜨린다.
+    """
+    if domain == LNAUTH_DOMAIN_CURRENT:
+        return settings.app_base_url
+    return settings.lnurl_origin
+
+
+def _callback_origin(request: Request) -> str:
+    """지갑이 들어온 도메인을 그대로 돌려준다 — 신원이 그 도메인으로 파생됐으니까.
+
+    Host 는 클라이언트가 조작할 수 있으므로 우리가 실제로 서비스하는 두 도메인만
+    허용하고, 그 밖의 값은 고정 도메인으로 떨어뜨린다.
+    """
+    allowed = {
+        urlparse(settings.lnurl_origin).hostname: settings.lnurl_origin,
+        urlparse(settings.app_base_url).hostname: settings.app_base_url,
+    }
+    return allowed.get(request.url.hostname or "", settings.lnurl_origin)
+
 @router.get("/lnauth/challenge")
-def lnauth_challenge(db: Session = Depends(get_db)) -> dict:
+def lnauth_challenge(
+    domain: str = LNAUTH_DOMAIN_LEGACY, db: Session = Depends(get_db)
+) -> dict:
     # Cleanup stale challenges (older than 30 minutes)
     cutoff = datetime.now(timezone.utc) - timedelta(minutes=30)
     db.query(LNAuthChallenge).filter(LNAuthChallenge.created_at < cutoff).delete()
 
     k1 = generate_k1()
-    lnurl = encode_lnurl(k1)
+    lnurl = encode_lnurl(k1, base_url=_lnauth_base_url(domain))
     challenge = LNAuthChallenge(k1=k1)
     db.add(challenge)
     db.commit()
@@ -367,6 +399,7 @@ def lnauth_challenge(db: Session = Depends(get_db)) -> dict:
 
 @router.get("/lnauth")
 def lnauth_callback(
+    request: Request,
     tag: str,
     k1: str,
     sig: str | None = None,
@@ -386,7 +419,7 @@ def lnauth_callback(
             "tag": "login",
             "k1": k1,
             "action": "login",
-            "callback": f"{settings.lnurl_origin}/api/v1/auth/lnauth",
+            "callback": f"{_callback_origin(request)}/api/v1/auth/lnauth",
         }
 
     if not verify_signature(k1, sig, key):

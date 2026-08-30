@@ -69,3 +69,32 @@ def test_callback_metadata_points_at_pinned_domain(
 def test_google_redirect_is_not_pinned(pinned_lnurl_origin: str) -> None:
     """구글 OAuth 는 서비스 도메인을 계속 따라가야 한다 — 고정 대상이 아니다."""
     assert settings.app_base_url == "https://new.example.com"
+
+
+# ── 로그인 화면의 도메인 선택 (신규 사용자용) ──────────────────────────────
+
+def test_challenge_with_current_domain_uses_service_domain(
+    client: TestClient, pinned_lnurl_origin: str
+) -> None:
+    """처음 오는 사용자는 현재 서비스 도메인으로 신원을 만든다."""
+    res = client.get("/api/v1/auth/lnauth/challenge?domain=current")
+    url = decode_lnurl(res.json()["data"]["lnurl"])
+    assert urlparse(url).hostname == "new.example.com"
+
+
+def test_challenge_with_unknown_domain_falls_back_to_pinned(
+    client: TestClient, pinned_lnurl_origin: str
+) -> None:
+    """모르는 값이 오면 기존 사용자 쪽으로 떨어뜨린다 — 빈 계정이 생기는 쪽이 더 나쁘다."""
+    res = client.get("/api/v1/auth/lnauth/challenge?domain=거짓말")
+    url = decode_lnurl(res.json()["data"]["lnurl"])
+    assert urlparse(url).hostname == pinned_lnurl_origin
+
+
+def test_challenge_without_domain_param_is_legacy(
+    client: TestClient, pinned_lnurl_origin: str
+) -> None:
+    """파라미터를 모르는 호출자(설치된 모바일 앱)는 기존 동작을 유지해야 한다."""
+    res = client.get("/api/v1/auth/lnauth/challenge")
+    url = decode_lnurl(res.json()["data"]["lnurl"])
+    assert urlparse(url).hostname == pinned_lnurl_origin

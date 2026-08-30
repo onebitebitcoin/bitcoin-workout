@@ -15,8 +15,13 @@ def generate_k1() -> str:
     return secrets.token_hex(32)
 
 
-def encode_lnurl(k1: str) -> str:
-    url = f"{settings.lnurl_origin}/api/v1/auth/lnauth?tag=login&k1={k1}"
+def encode_lnurl(k1: str, base_url: str | None = None) -> str:
+    """LNURL 을 만든다. base_url 을 주지 않으면 고정 도메인(lnurl_origin)을 쓴다.
+
+    LUD-04 는 이 URL 의 FQDN 으로 지갑의 linkingKey 를 파생하므로, 어떤 도메인을
+    넣느냐가 곧 "어느 계정으로 로그인되느냐"다.
+    """
+    url = f"{base_url or settings.lnurl_origin}/api/v1/auth/lnauth?tag=login&k1={k1}"
     url_bytes = url.encode("utf-8")
     converted = bech32.convertbits(list(url_bytes), 8, 5)
     lnurl = bech32.bech32_encode("lnurl", converted)
