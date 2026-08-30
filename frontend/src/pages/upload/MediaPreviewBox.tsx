@@ -2,17 +2,8 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { MediaItem } from './StepMedia'
 import type { VideoFilterValue } from '../../utils/videoFilter'
+import { SIZE_TEXT_CLASS, POSITION_FLEX_CLASS, type SubtitleSize, type SubtitlePosition } from './subtitlePreview'
 
-type SubtitleSize = 'small' | 'large'
-type SubtitlePosition = 'top' | 'center' | 'bottom'
-
-// StepSubtitle의 자막 미리보기와 동일한 매핑(크기·위치)을 재사용해 실제 burn 결과에 근접시킨다.
-const SIZE_TEXT_CLASS: Record<SubtitleSize, string> = {
-  small: 'text-[9px]', large: 'text-sm', // design-token-exempt: 영상에 구워질 자막 크기의 미리보기다. UI 스케일이 아니라 burn 결과에 맞춘 값이라 바꾸면 미리보기가 실제와 달라진다.
-}
-const POSITION_FLEX_CLASS: Record<SubtitlePosition, string> = {
-  top: 'justify-start pt-3', center: 'justify-center', bottom: 'justify-end pb-3',
-}
 
 interface Props {
   items: MediaItem[]

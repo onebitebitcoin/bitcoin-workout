@@ -3,11 +3,10 @@ import { Mic, MicOff, X, ChevronRight, ChevronDown, Loader2, VolumeX, Volume2, A
 import { useTranslation } from 'react-i18next'
 import { srtToTextLines, applyTextLinesToSrt } from '../../utils/subtitles'
 import type { SubtitleLanguage } from '../../api/types'
+import { SIZE_TEXT_CLASS, POSITION_FLEX_CLASS, type SubtitleSize, type SubtitlePosition } from './subtitlePreview'
 
 export type SubtitleSource = 'none' | 'video' | 'record' | 'text'
 type VideoAudioStatus = 'idle' | 'analyzing' | 'has_audio' | 'no_audio' | 'error'
-type SubtitleSize = 'small' | 'large'
-type SubtitlePosition = 'top' | 'center' | 'bottom'
 
 interface Props {
   hasVideo: boolean
@@ -40,13 +39,6 @@ interface Props {
   setMuteOriginalAudio: (v: boolean) => void
   error: string
   onNext: () => void
-}
-
-const SIZE_TEXT_CLASS: Record<SubtitleSize, string> = {
-  small: 'text-[9px]', large: 'text-sm', // design-token-exempt: 영상에 구워질 자막 크기의 미리보기다. UI 스케일이 아니라 burn 결과에 맞춘 값이라 바꾸면 미리보기가 실제와 달라진다.
-}
-const POSITION_FLEX_CLASS: Record<SubtitlePosition, string> = {
-  top: 'justify-start pt-3', center: 'justify-center', bottom: 'justify-end pb-3',
 }
 
 export default function StepSubtitle(props: Props) {
@@ -216,7 +208,7 @@ export default function StepSubtitle(props: Props) {
             <span>{muteOriginalAudio ? t('record.muteOriginal') : t('record.keepOriginal')}</span>
           </div>
           <div className={`relative inline-flex h-5 w-9 items-center rounded-pill transition-colors duration-200 ${muteOriginalAudio ? 'bg-theme-surface2' : 'bg-accent'}`}>
-            <span className={`inline-block h-3.5 w-3.5 transform rounded-pill bg-white shadow transition-transform duration-200 ${muteOriginalAudio ? 'translate-x-1' : 'translate-x-[18px]'}`} />
+            <span className={`inline-block h-3.5 w-3.5 transform rounded-pill bg-white shadow-pop transition-transform duration-200 ${muteOriginalAudio ? 'translate-x-1' : 'translate-x-[18px]'}`} />
           </div>
         </button>
       )}
