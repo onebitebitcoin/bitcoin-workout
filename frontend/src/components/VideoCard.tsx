@@ -8,6 +8,7 @@ import { useQueryClient, type InfiniteData } from '@tanstack/react-query'
 import type { Post, FeedResponse } from '../api/types'
 import client from '../api/client'
 import { useAuthStore } from '../store/auth'
+import ExpandableCaption from './ExpandableCaption'
 
 // 더블탭 시크: 왼쪽 -3초 / 오른쪽 +3초 (쇼츠 표준)
 const SEEK_SECONDS = 3
@@ -405,9 +406,7 @@ export default function VideoCard({ post, onLoginRequired, onCommentClick, isMut
           )}
           <p className="text-lead text-white">@{post.username}</p>
         </button>
-        {post.caption && (
-          <p className="text-body text-white/80 line-clamp-2">{post.caption}</p>
-        )}
+        {post.caption && <ExpandableCaption text={post.caption} />}
         {post.tags.length > 0 && (
           <p className="text-eyebrow text-white/60">{post.tags.join(' · ')}</p>
         )}

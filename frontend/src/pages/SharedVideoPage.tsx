@@ -7,6 +7,7 @@ import client from '../api/client'
 import type { Post } from '../api/types'
 import LoadingScreen from '../components/LoadingScreen'
 import { useAuthStore } from '../store/auth'
+import { OG_DESCRIPTION_MAX_LEN } from '../constants/caption'
 
 function setMetaProperty(property: string, content: string) {
   let el = document.querySelector<HTMLMetaElement>(`meta[property="${property}"]`)
@@ -47,7 +48,12 @@ export default function SharedVideoPage() {
     if (!post) return
 
     const title = `@${post.username} - Orange Story`
-    const description = post.caption ?? t('appTagline')
+    // 설명은 최대 2200자까지 가능하다 — og:description 에 전문을 넣지 않고 잘라서 보낸다.
+    const rawDescription = post.caption ?? t('appTagline')
+    const description =
+      rawDescription.length > OG_DESCRIPTION_MAX_LEN
+        ? `${rawDescription.slice(0, OG_DESCRIPTION_MAX_LEN - 1).trimEnd()}…`
+        : rawDescription
     const image = post.thumbnail_url ?? `${window.location.origin}/og-image.png`
 
     document.title = title

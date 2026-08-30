@@ -8,6 +8,7 @@ import client from '../api/client'
 import { getApiErrorMessage } from '../api/errors'
 import type { Post } from '../api/types'
 import { MAIN_CATEGORIES, MAIN_CATEGORY_LABEL_KEYS, type MainCategory } from '../constants/category'
+import { CAPTION_MAX_LEN } from '../constants/caption'
 
 export default function PostEditPage() {
   const { postId } = useParams<{ postId: string }>()
@@ -98,8 +99,8 @@ export default function PostEditPage() {
         {/* 설명 */}
         <div className="flex flex-col gap-1">
           <p className="text-body font-semibold text-theme-primary mb-1">{t('caption.captionLabel')} <span className="text-label font-normal text-theme-muted">{t('caption.captionOptional')}</span></p>
-          <textarea value={caption} onChange={(e) => setCaption(e.target.value.slice(0, 140))} maxLength={140} placeholder={t('caption.captionPlaceholder')} rows={3} className="resize-none rounded-card bg-theme-surface px-4 py-3 text-theme-primary placeholder-theme-muted outline-none focus:ring-2 focus:ring-accent" />
-          <p className="text-right text-label text-theme-muted">{caption.length}/140</p>
+          <textarea value={caption} onChange={(e) => setCaption(e.target.value.slice(0, CAPTION_MAX_LEN))} maxLength={CAPTION_MAX_LEN} placeholder={t('caption.captionPlaceholder')} rows={5} className="resize-none rounded-card bg-theme-surface px-4 py-3 text-theme-primary placeholder-theme-muted outline-none focus:ring-2 focus:ring-accent" />
+          <p className="text-right text-label text-theme-muted">{caption.length}/{CAPTION_MAX_LEN}</p>
         </div>
 
         {error && <p className="text-body text-danger">{error}</p>}

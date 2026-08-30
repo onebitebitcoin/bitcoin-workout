@@ -19,5 +19,7 @@
   "replyingTo": "Replying to @{{username}}",
   "replyPlaceholder": "Add a reply...",
   "shareLinkFallback": "Share link: ",
-  "subtitleTrackLabel": "Subtitles"
+  "subtitleTrackLabel": "Subtitles",
+  "captionMore": "more",
+  "captionLess": "less"
 }

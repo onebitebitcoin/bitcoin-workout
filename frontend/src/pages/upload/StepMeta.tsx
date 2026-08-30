@@ -5,6 +5,7 @@ import type { MediaItem } from './StepMedia'
 import type { VideoFilterValue } from '../../utils/videoFilter'
 import MediaPreviewBox from './MediaPreviewBox'
 import { MAIN_CATEGORIES, MAIN_CATEGORY_LABEL_KEYS, type MainCategory } from '../../constants/category'
+import { CAPTION_MAX_LEN } from '../../constants/caption'
 
 interface Props {
   mainCategory: MainCategory | null
@@ -113,13 +114,13 @@ export default function StepMeta({
           <p className="text-body font-semibold text-theme-primary mb-1">{t('caption.captionLabel')} <span className="text-label font-normal text-theme-muted">{t('caption.captionOptional')}</span></p>
           <textarea
             value={caption}
-            onChange={(e) => setCaption(e.target.value.slice(0, 140))}
-            maxLength={140}
+            onChange={(e) => setCaption(e.target.value.slice(0, CAPTION_MAX_LEN))}
+            maxLength={CAPTION_MAX_LEN}
             placeholder={t('caption.captionPlaceholder')}
-            rows={3}
+            rows={5}
             className="resize-none rounded-card bg-theme-surface px-4 py-3 text-theme-primary placeholder-theme-muted outline-none focus:ring-2 focus:ring-accent"
           />
-          <p className="text-right text-label text-theme-muted">{caption.length}/140</p>
+          <p className="text-right text-label text-theme-muted">{caption.length}/{CAPTION_MAX_LEN}</p>
         </div>
 
         {/* 업로드 전 미리보기 */}

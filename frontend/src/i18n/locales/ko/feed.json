@@ -19,5 +19,7 @@
   "replyingTo": "@{{username}}에게 답글",
   "replyPlaceholder": "답글 입력...",
   "shareLinkFallback": "공유 링크: ",
-  "subtitleTrackLabel": "자막"
+  "subtitleTrackLabel": "자막",
+  "captionMore": "더보기",
+  "captionLess": "접기"
 }
