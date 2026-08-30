@@ -79,6 +79,10 @@ _HALLUCINATION_SIGNATURES_KO: tuple[tuple[str, ...], ...] = (
     ("시청", "감사"),
     ("채널", "구독"),
     ("다음", "영상", "만나"),
+    # 유튜브 유료광고 고지 문구. Whisper 환각으로도, 사용자가 붙여넣는 텍스트로도
+    # 들어온다 (실제 사례: video 149·702). "이 영상은 유료광고를 포함하고 있습니다"
+    ("유료", "광고"),
+    ("광고", "포함"),
 )
 # English hallucination signatures (YouTube-outro patterns)
 _HALLUCINATION_SIGNATURES_EN: tuple[tuple[str, ...], ...] = (
@@ -88,6 +92,8 @@ _HALLUCINATION_SIGNATURES_EN: tuple[tuple[str, ...], ...] = (
     ("see", "next", "video"),
     ("turn", "notification"),
     ("hit", "bell"),
+    ("paid", "promotion"),
+    ("includes", "paid"),
 )
 
 # Collapse every non-word char (punctuation, whitespace) so that token membership
@@ -712,6 +718,34 @@ def build_srt_from_text(text: str, total_sec: float, *, max_chars: int = TEXT_SU
     return "\n".join(out).strip() + "\n"
 
 
+def strip_hallucination_cues(srt_text: str) -> tuple[str, int]:
+    """사용자가 넣은 SRT 에서 유튜브 상용구 큐를 걷어낸다.
+
+    Whisper 경로에만 필터가 있어서, 사용자 직접입력(user_srt)으로 들어온 같은 문구가
+    그대로 영상에 태워졌다. 사용자 텍스트는 언어가 선언되지 않으므로 한국어·영어
+    시그니처를 모두 본다.
+
+    남은 큐는 번호를 다시 매긴다 — 중간이 빠진 채로 두면 플레이어가 큐를 건너뛴다.
+    """
+    kept: list[str] = []
+    removed = 0
+    for block in srt_text.strip().split("\n\n"):
+        lines = block.strip().split("\n")
+        # 0: 번호, 1: 타임스탬프, 2~: 자막 본문
+        body = " ".join(lines[2:]) if len(lines) > 2 else ""
+        norm = _normalize_for_match(body)
+        signatures = _HALLUCINATION_SIGNATURES_KO + _HALLUCINATION_SIGNATURES_EN
+        if body and any(all(tok in norm for tok in sig) for sig in signatures):
+            removed += 1
+            continue
+        kept.append(lines)
+
+    out: list[str] = []
+    for i, lines in enumerate(kept, start=1):
+        out.append("\n".join([str(i)] + lines[1:]))
+    return ("\n\n".join(out) + "\n" if out else ""), removed
+
+
 def burn_user_srt(
     r2,
     video_key: str,
@@ -740,6 +774,20 @@ def burn_user_srt(
         duration = _probe_duration(tmp_video)
         if duration > 0:
             srt_text, _ = _clamp_srt_to_duration(srt_text, duration)
+
+        srt_text, dropped = strip_hallucination_cues(srt_text)
+        if dropped:
+            metrics["hallucination_cues_dropped"] = dropped
+            logger.info("User SRT: dropped %d hallucination cue(s) for %s", dropped, video_key)
+        if not srt_text.strip():
+            # 전부 상용구였다. 태울 것이 없으니 원본을 그대로 둔다 — 빈 자막을
+            # 태우려고 재인코딩하면 화질만 떨어진다.
+            metrics["burn_in_seconds"] = 0
+            return SubtitleResult(
+                status="skipped",
+                error="user SRT contained only boilerplate",
+                metrics=metrics,
+            )
 
         subtitle_text = _plain_text_from_srt(srt_text)
         vtt_text = _srt_to_vtt(srt_text)
