@@ -6,6 +6,8 @@ import tempfile
 
 from fastapi.testclient import TestClient
 
+from app.schemas.video import CAPTION_MAX_LEN
+
 
 def _register_and_token(client: TestClient, email: str = "u@x.com", username: str = "user") -> str:
     res = client.post("/api/v1/auth/register", json={"email": email, "username": username, "password": "password123"})
@@ -67,6 +69,18 @@ def test_confirm_duration_too_long(mock_cdn, client: TestClient) -> None:
     token = _register_and_token(client)
     res = client.post("/api/v1/videos/confirm", json={
         "r2_key": "videos/x.mp4", "duration_sec": 61,
+    }, headers=_auth(token))
+    assert res.status_code == 400
+
+
+@patch("app.routes.videos.r2_service.get_cdn_url", return_value="https://cdn.example.com/v.mp4")
+def test_confirm_caption_too_long(mock_cdn, client: TestClient) -> None:
+    """confirm: 상한 초과 설명은 400."""
+    token, uid = _register(client, "confcap@x.com", "confcapuser")
+    res = client.post("/api/v1/videos/confirm", json={
+        "r2_key": f"videos/{uid}/cap.mp4",
+        "duration_sec": 30,
+        "caption": "x" * (CAPTION_MAX_LEN + 1),
     }, headers=_auth(token))
     assert res.status_code == 400
 
@@ -264,6 +278,18 @@ def test_upload_pipeline_success(mock_bg, mock_reserve, client: TestClient) -> N
     data = res.json()["data"]
     assert data["job_id"] == "job-abc-123"
     assert data["status"] == "processing"
+
+
+def test_upload_pipeline_caption_too_long(client: TestClient) -> None:
+    """upload-pipeline: 상한 초과 설명은 400."""
+    token = _register_and_token(client, "pipecap@x.com", "pipecapuser")
+    res = client.post(
+        "/api/v1/videos/upload-pipeline",
+        data={"duration_sec": "20", "caption": "x" * (CAPTION_MAX_LEN + 1)},
+        files={"file": ("workout.mp4", b"fake-video-data", "video/mp4")},
+        headers=_auth(token),
+    )
+    assert res.status_code == 400
 
 
 def test_upload_pipeline_invalid_content_type(client: TestClient) -> None:

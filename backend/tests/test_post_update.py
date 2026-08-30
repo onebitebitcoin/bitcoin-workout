@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.models.post import Post
 from app.models.video import Video
+from app.schemas.video import CAPTION_MAX_LEN
 from tests.test_videos import _auth, _register
 
 
@@ -40,8 +41,24 @@ def test_update_caption_success(client: TestClient, db: Session) -> None:
 def test_update_caption_too_long(client: TestClient, db: Session) -> None:
     token, uid = _register(client, "edit2@x.com", "edit2")
     post_id = _seed_post(db, uid, tags=["가벼운 활동"])
-    res = client.patch(f"/api/v1/videos/posts/{post_id}", json={"caption": "x" * 141}, headers=_auth(token))
+    res = client.patch(
+        f"/api/v1/videos/posts/{post_id}",
+        json={"caption": "x" * (CAPTION_MAX_LEN + 1)},
+        headers=_auth(token),
+    )
     assert res.status_code == 400
+
+
+def test_update_caption_at_max_length_ok(client: TestClient, db: Session) -> None:
+    """상한(2200자) 정확히 채운 설명은 통과하고 잘리지 않고 저장된다."""
+    token, uid = _register(client, "edit2max@x.com", "edit2max")
+    post_id = _seed_post(db, uid, tags=["가벼운 활동"])
+    caption = "가" * CAPTION_MAX_LEN
+    res = client.patch(
+        f"/api/v1/videos/posts/{post_id}", json={"caption": caption}, headers=_auth(token)
+    )
+    assert res.status_code == 200, res.text
+    assert res.json()["data"]["post"]["caption"] == caption
 
 
 def test_update_workout_time(client: TestClient, db: Session) -> None:

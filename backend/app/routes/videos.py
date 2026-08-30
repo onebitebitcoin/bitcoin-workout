@@ -23,6 +23,7 @@ from sqlalchemy import func as sqlfunc
 from app.routes.auth import get_active_user, get_current_user, get_optional_user
 from app.routes.challenges import increment_challenge_upload
 from app.schemas.video import (
+    CAPTION_MAX_LEN,
     ConfirmUploadRequest,
     PostSchema,
     PostUpdateRequest,
@@ -101,6 +102,13 @@ async def _spool_upload_to_temp(upload: UploadFile, max_bytes: int, label: str) 
             pass
         raise
 
+def _validate_caption(caption: str | None) -> str | None:
+    """게시물 설명 길이 검증. DB 컬럼이 text 라 상한은 여기서만 강제된다."""
+    if caption is not None and len(caption) > CAPTION_MAX_LEN:
+        raise api_error(400, E_VIDEO_FORMAT_INVALID, f"설명은 {CAPTION_MAX_LEN}자 이하여야 합니다")
+    return caption
+
+
 def _parse_tags(raw: str | None) -> list[str]:
     try:
         return json.loads(raw or "[]")
@@ -162,6 +170,7 @@ def confirm_upload(
     if not req.r2_key.startswith(expected_prefix):
         raise api_error(403, E_FORBIDDEN, "접근 권한이 없습니다")
 
+    caption = _validate_caption(req.caption)
     tags = req.tags or []
 
     cdn_url = r2_service.get_cdn_url(req.r2_key)
@@ -180,7 +189,7 @@ def confirm_upload(
     post = Post(
         video_id=video.id,
         user_id=current_user.id,
-        caption=req.caption,
+        caption=caption,
         tags=json.dumps(tags, ensure_ascii=False),
         workout_start=req.workout_start,
         workout_end=req.workout_end,
@@ -418,10 +427,7 @@ def update_post(
     fields = req.model_dump(exclude_unset=True)
 
     if "caption" in fields:
-        caption = fields["caption"]
-        if caption is not None and len(caption) > 140:
-            raise api_error(400, E_VIDEO_FORMAT_INVALID, "설명은 140자 이하여야 합니다")
-        post.caption = caption
+        post.caption = _validate_caption(fields["caption"])
 
     for time_field in ("workout_start", "workout_end"):
         if time_field in fields:
@@ -910,6 +916,7 @@ async def upload_pipeline(
     if content_type not in r2_service.ALLOWED_CONTENT_TYPES:
         raise api_error(400, E_VIDEO_FORMAT_INVALID, f"지원하지 않는 파일 형식입니다: {content_type}")
 
+    caption = _validate_caption(caption)
     tags_list = _parse_tags(tags)
 
     video_path, _video_size = await _spool_upload_to_temp(file, r2_service.MAX_FILE_SIZE, "영상")
@@ -1221,6 +1228,7 @@ async def upload_multi(
     if n_video + n_image != len(files) or (n_video + n_image) == 0:
         raise api_error(400, E_VIDEO_FORMAT_INVALID, "지원하지 않는 미디어 구성입니다")
 
+    caption = _validate_caption(caption)
     tags_list = _parse_tags(tags)
 
     spooled: list[tuple[str, str, str, str]] = []  # (kind, path, content_type, filename)

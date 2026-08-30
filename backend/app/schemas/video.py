@@ -32,6 +32,10 @@ class PresignedUrlResponse(BaseModel):
 
 SubtitleLanguage = Literal["ko", "en", "auto"]
 
+# 게시물 설명(caption) 글자수 상한 — 프론트(constants/caption.ts)와 같은 값을 유지한다.
+# DB 컬럼은 Text 라 길이 제한이 없고, 이 상수만이 유일한 상한이다.
+CAPTION_MAX_LEN = 2200
+
 
 class ConfirmUploadRequest(BaseModel):
     r2_key: str

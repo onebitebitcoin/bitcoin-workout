@@ -8,6 +8,7 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
+from app.schemas.video import CAPTION_MAX_LEN
 from tests.test_videos import _auth, _register_and_token
 
 
@@ -91,6 +92,21 @@ def test_upload_multi_invalid_image_type_rejected(client: TestClient) -> None:
         "/api/v1/videos/upload-multi",
         data={"items_meta": json.dumps([{"kind": "image"}])},
         files=[("files", ("doc.pdf", b"data", "application/pdf"))],
+        headers=_auth(token),
+    )
+    assert res.status_code == 400
+
+
+def test_upload_multi_caption_too_long_rejected(client: TestClient) -> None:
+    """upload-multi: 상한 초과 설명은 400."""
+    token = _register_and_token(client, "mcap@x.com", "mcapuser")
+    res = client.post(
+        "/api/v1/videos/upload-multi",
+        data={
+            "items_meta": json.dumps([{"kind": "image"}]),
+            "caption": "x" * (CAPTION_MAX_LEN + 1),
+        },
+        files=[("files", _img("a.png"))],
         headers=_auth(token),
     )
     assert res.status_code == 400

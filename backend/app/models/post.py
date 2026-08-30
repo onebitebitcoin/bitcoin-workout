@@ -16,7 +16,8 @@ class Post(Base):
         Integer, ForeignKey("videos.id"), unique=True, nullable=False
     )
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    caption: Mapped[str | None] = mapped_column(String(140), nullable=True)
+    # 길이 상한은 DB가 아니라 애플리케이션(schemas.video.CAPTION_MAX_LEN)에서 강제한다.
+    caption: Mapped[str | None] = mapped_column(Text, nullable=True)
     tags: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON array string
     workout_start: Mapped[str | None] = mapped_column(String(5), nullable=True)  # "HH:MM"
     workout_end: Mapped[str | None] = mapped_column(String(5), nullable=True)    # "HH:MM"
