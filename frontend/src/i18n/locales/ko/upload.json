@@ -30,10 +30,6 @@
     "sourceText": "직접 입력",
     "textPlaceholder": "후기를 적으면 영상 전체에 자막으로 나눠 담아드려요. 예) 오늘 점심은 라이트닝으로 결제했다"
   },
-  "selectVideo": {
-    "prompt": "영상을 선택하세요",
-    "hint": "10~60초, 최대 50MB"
-  },
   "tagChallenge": {
     "category": "카테고리",
     "challenge": "챌린지",
@@ -53,28 +49,19 @@
     "next": "다음"
   },
   "record": {
-    "subtitle": "자막",
-    "subtitleOptional": "(선택)",
     "analyzing": "영상 음성 분석 중...",
     "extracting": "자막 추출 중...",
     "extractedLabel": "추출된 자막 — 오타만 수정하세요",
     "removeSubtitle": "자막 제거",
-    "noSubtitle": "자막이 없습니다.",
     "noAudio": "이 영상에는 음성이 없어요.",
     "extractFailed": "자막 추출에 실패했어요.",
     "muteOriginal": "원본 음성 제거됨",
     "keepOriginal": "원본 오디오 포함",
-    "shareExperience": "오늘의 순간을 공유해보세요",
     "recordingHint": "녹음하면 자막으로 영상에 담아드려요. 최대 {{maxSeconds}}초.",
-    "recordingHintShort": "녹음하면 자막으로 영상에 담아드려요",
     "recordingDone": "{{time}} 녹음 완료",
     "retake": "다시 녹음",
-    "secondsLeft": "{{count}}초 남음",
     "extractFromAudio": "녹음 음성으로 자막 만들기",
     "recordedSubtitleLabel": "녹음에서 추출한 자막",
-    "devPanel": "Dev · 음성인식 결과",
-    "devCopy": "복사",
-    "devSegments": "세그먼트",
     "next": "다음",
     "skip": "건너뛰기"
   },
@@ -95,11 +82,6 @@
     "captionLabel": "설명",
     "captionOptional": "(선택)",
     "captionPlaceholder": "오늘의 기록을 간략하게 요약해주세요. #라이트닝결제 #비트코인공부",
-    "proofPhoto": "인증 사진",
-    "proofPhotoOptional": "(선택)",
-    "proofPhotoHint": "사진을 영상 뒷부분에 붙여서 기록 인증을 강화하세요. 업로드 후 영상 끝에 3초간 표시됩니다.",
-    "proofPhotoAdd": "사진 추가",
-    "proofPhotoPreviewAlt": "사진 미리보기",
     "uploadStart": "업로드 시작"
   },
   "edit": {
@@ -155,18 +137,6 @@
       "cartoon": {
         "title": "카툰 필터",
         "hint": "영상 전체를 만화 느낌으로. 얼굴·배경이 부드럽게 단순화돼요."
-      },
-      "heat": {
-        "title": "해시열",
-        "hint": "많이 움직인 부위가 해시레이트 오르듯 빨갛게 달아올라요. 움직일수록 진해져요."
-      },
-      "cartoonHeat": {
-        "title": "카툰 + 해시열",
-        "hint": "약한 카툰으로 프라이버시를 지키고 그 위에 해시열을 얹어요."
-      },
-      "footsteps": {
-        "title": "발자국",
-        "hint": "걸음 박자마다 발자국이 찍히고 걸음 수·층수가 표시돼요. 걷기·계단 영상에 잘 어울려요."
       }
     }
   }

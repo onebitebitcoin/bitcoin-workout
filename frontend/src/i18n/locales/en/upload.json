@@ -30,10 +30,6 @@
     "sourceText": "Type",
     "textPlaceholder": "Write a note and we'll split it into subtitles across the video. e.g. Paid for lunch with Lightning today"
   },
-  "selectVideo": {
-    "prompt": "Select a video",
-    "hint": "10–60 seconds, max 50MB"
-  },
   "tagChallenge": {
     "category": "Category",
     "challenge": "Challenge",
@@ -53,28 +49,19 @@
     "next": "Next"
   },
   "record": {
-    "subtitle": "Subtitle",
-    "subtitleOptional": "(optional)",
     "analyzing": "Analyzing audio...",
     "extracting": "Extracting subtitles...",
     "extractedLabel": "Extracted subtitles — fix typos only",
     "removeSubtitle": "Remove subtitle",
-    "noSubtitle": "No subtitle found.",
     "noAudio": "This video has no audio.",
     "extractFailed": "Subtitle extraction failed.",
     "muteOriginal": "Original audio removed",
     "keepOriginal": "Original audio included",
-    "shareExperience": "Share today's moment",
     "recordingHint": "We'll add your recording as subtitles. Max {{maxSeconds}} sec.",
-    "recordingHintShort": "We'll add your recording as subtitles",
     "recordingDone": "{{time}} recorded",
     "retake": "Re-record",
-    "secondsLeft": "{{count}}s left",
     "extractFromAudio": "Generate subtitles from recording",
     "recordedSubtitleLabel": "Subtitles from recording",
-    "devPanel": "Dev · Speech recognition",
-    "devCopy": "Copy",
-    "devSegments": "Segments",
     "next": "Next",
     "skip": "Skip"
   },
@@ -95,11 +82,6 @@
     "captionLabel": "Caption",
     "captionOptional": "(optional)",
     "captionPlaceholder": "Briefly describe today's record. #lightningpayment #bitcoinstudy",
-    "proofPhoto": "Proof photo",
-    "proofPhotoOptional": "(optional)",
-    "proofPhotoHint": "Attach a photo to the end of your video to verify your record. It will appear for 3 seconds after upload.",
-    "proofPhotoAdd": "Add photo",
-    "proofPhotoPreviewAlt": "Photo preview",
     "uploadStart": "Start upload"
   },
   "edit": {
@@ -155,18 +137,6 @@
       "cartoon": {
         "title": "Cartoon filter",
         "hint": "Turns your whole video into a cartoon look. Faces and backgrounds are softly simplified."
-      },
-      "heat": {
-        "title": "Hash heat",
-        "hint": "The parts you move most glow red, like hashrate climbing — more intense the more you move."
-      },
-      "cartoonHeat": {
-        "title": "Cartoon + hash heat",
-        "hint": "A light cartoon look for privacy, with hash heat layered on top."
-      },
-      "footsteps": {
-        "title": "Footsteps",
-        "hint": "Footprints stamp to your walking rhythm with step and floor counters. Great for walks and stairs."
       }
     }
   }

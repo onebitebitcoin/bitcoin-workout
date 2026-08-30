@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent, type ReactNode, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ImagePlus, Film, X, GripVertical, Loader2, Wand2, Flame, Ban, Layers, Footprints, ChevronDown, Check } from 'lucide-react'
+import { ImagePlus, Film, X, GripVertical, Loader2, Wand2, Ban, ChevronDown, Check } from 'lucide-react'
 import client from '../../api/client'
 import { VIDEO_FILTER_OPTIONS, type VideoFilterValue } from '../../utils/videoFilter'
 import {
@@ -117,9 +117,6 @@ function SortableCard({ item, onRemove }: { item: MediaItem; onRemove: (id: stri
 const FILTER_ICONS: Record<string, ReactNode> = {
   none: <Ban size={16} className="text-theme-muted" />,
   cartoon: <Wand2 size={16} className="text-accent" />,
-  heat: <Flame size={16} className="text-accent" />,
-  cartoonHeat: <Layers size={16} className="text-accent" />,
-  footsteps: <Footprints size={16} className="text-accent" />,
 }
 
 interface FilterDropdownOption {
@@ -184,7 +181,7 @@ function FilterDropdown({
         <div
           role="listbox"
           aria-label={label}
-          className="absolute left-0 right-0 top-[calc(100%+6px)] z-20 rounded-card border border-theme-border bg-theme-surface p-2 shadow-xl"
+          className="absolute left-0 right-0 top-[calc(100%+6px)] z-20 rounded-card border border-theme-border bg-theme-surface p-2 shadow-pop"
         >
           {options.map((o) => {
             const isSel = o.value === value

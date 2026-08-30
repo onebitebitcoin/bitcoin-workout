@@ -76,23 +76,20 @@ describe('StepMedia', () => {
 
   it('닫힌 상태에선 선택된 효과만 버튼에 보이고 옵션 목록은 감춰진다', () => {
     const items = [makeItem('image', 'a')]
-    render(<StepMedia {...buildProps({ items, estimatedSeconds: 3, videoFilter: 'heat' })} />)
+    render(<StepMedia {...buildProps({ items, estimatedSeconds: 3, videoFilter: 'cartoon' })} />)
     expect(screen.getByRole('button', { name: '영상 효과' })).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByRole('listbox')).toBeNull()
   })
 
-  it('드롭다운을 열면 효과 옵션 5개가 보인다', async () => {
+  it('드롭다운을 열면 효과 옵션 2개가 보인다', async () => {
     const items = [makeItem('image', 'a')]
     render(<StepMedia {...buildProps({ items, estimatedSeconds: 3 })} />)
     await userEvent.click(screen.getByRole('button', { name: '영상 효과' }))
-    expect(screen.getAllByRole('option')).toHaveLength(5)
+    expect(screen.getAllByRole('option')).toHaveLength(2)
   })
 
   it.each([
     ['카툰 필터', 'cartoon'],
-    ['해시열', 'heat'],
-    ['카툰 + 해시열', 'cartoon_heat'],
-    ['발자국', 'footsteps'],
   ])('%s 옵션 선택 시 setVideoFilter(%s) 호출', async (label, value) => {
     const setVideoFilter = vi.fn()
     const items = [makeItem('image', 'a')]
@@ -113,13 +110,13 @@ describe('StepMedia', () => {
 
   it('선택된 옵션은 열었을 때 aria-selected=true', async () => {
     const items = [makeItem('image', 'a')]
-    render(<StepMedia {...buildProps({ items, estimatedSeconds: 3, videoFilter: 'footsteps' })} />)
+    render(<StepMedia {...buildProps({ items, estimatedSeconds: 3, videoFilter: 'cartoon' })} />)
     await userEvent.click(screen.getByRole('button', { name: '영상 효과' }))
-    expect(screen.getByRole('option', { name: '발자국' })).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByRole('option', { name: '카툰 필터' })).toHaveAttribute('aria-selected', 'false')
+    expect(screen.getByRole('option', { name: '카툰 필터' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('option', { name: '효과 없음' })).toHaveAttribute('aria-selected', 'false')
   })
 
-  it.each(['cartoon', 'heat', 'footsteps'] as const)(
+  it.each(['cartoon'] as const)(
     '%s 선택이면 filter-preview 요청을 보낸다', async (videoFilter) => {
       const items = [makeItem('image', 'a')]
       render(<StepMedia {...buildProps({ items, estimatedSeconds: 3, videoFilter })} />)
