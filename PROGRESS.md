@@ -28,9 +28,13 @@ LUD-04 는 linkingKey 를 `HMAC-SHA256(hashingKey, FQDN)` 으로 파생한다. F
 - [x] Phase 2 — nginx: stackhealth.life 의 `/api/v1/auth/lnauth` 를 301 예외 처리
       `nginx -t` 통과 후 reload. 검증: lnauth 경로 400(백엔드 도달) / `/feed` 는 301 유지
       백업 `/etc/nginx/sites-available/stackhealth.life.bak-202608301100`
-- [ ] Phase 3 — 배포 (green 슬롯 재시작 또는 push 배포) + 실지갑 검증 ← **사용자 결정 필요**
-- [ ] Phase 4 — `134 → 70` 계정 병합 ← **사용자 승인 필요**
-      `backend/scripts/merge_duplicate_user.py` 작성, dry-run 확인 (이관 7건 / 중복삭제 1건)
+- [x] Phase 3 — push 배포 (`0cbd53f`, v0.22.1, run 33287189117 success, blue 슬롯 8017)
+      발급 LNURL 이 `https://stackhealth.life/api/v1/auth/lnauth` 로 확인됨
+      구 도메인 lnauth 400(백엔드 도달) / `/feed` 301 유지 / 신 도메인 health 200
+- [x] Phase 4 — `134 → 70` 병합 완료. 이관 7건(게시물1·영상1·조회3·알림2), 중복 조회 1건 삭제
+      70 번이 게시물 56 · 영상 56 으로, 8/30 글 `숲산책, 걷기1시간.`(id 698) 포함
+      134 는 삭제하지 않고 `oauth_sub=NULL`·`is_banned`·이름 뒤 `(병합됨→70)` 로 표시
+      롤백 SQL: `.deploy/db-backups/merge-134-to-70-202608301107.sql`
 
 ## Phase 4 근거 — `134 데이이` = `70 데이` 추정
 
@@ -42,6 +46,14 @@ LUD-04 는 linkingKey 를 `HMAC-SHA256(hashingKey, FQDN)` 으로 파생한다. F
 - 끊긴 지점: 70 의 마지막 글 8/29 09:08 `숲계단오르내리기.` → 134 의 첫 글
   8/30 09:13 `숲산책, 걷기1시간.` 로 **다음 날 아침 같은 시간대에 이어진다**
 - 134 는 프로필 사진·라이트닝 주소가 비어 있는 초기 상태 (70 은 둘 다 설정돼 있다)
+
+## 남은 관찰 포인트
+
+- `133`/`135`/`136` 은 게시물이 없고 `needs_username` 도 안 끝난 상태라 그대로 뒀다.
+  기존 사용자였다면 이제 원래 계정으로 로그인된다. 반대로 **신 도메인에서 처음 가입한
+  사람이었다면** 이번 고정으로 키가 또 바뀌어 계정이 새로 하나 더 생긴다 — 어느 쪽이든
+  잃을 데이터가 없어서 그대로 두는 편이 낫다고 판단했다.
+- 실지갑 로그인이 원래 계정으로 붙는지는 사용자 문의 재발 여부로 확인한다.
 
 ## 결정 사항
 
