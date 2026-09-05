@@ -147,9 +147,23 @@ def test_upload_multi_unknown_filter_rejected(client: TestClient) -> None:
 
 
 @pytest.mark.parametrize("video_filter", ["heat", "cartoon_heat", "footsteps"])
-@patch("app.routes.videos.reserve_job_id", return_value="multi-heat-1")
+def test_upload_multi_retired_filter_rejected(client: TestClient, video_filter: str) -> None:
+    """운동열(heat)·발자국(footsteps) 필터는 제거됐다 — UI 에서 빠진 지 오래고 렌더러도
+    지웠으므로, 옛 클라이언트가 보내면 조용히 통과시키지 말고 400 으로 막는다."""
+    token = _register_and_token(client, f"mf4-{video_filter}@x.com", f"mfuser4{video_filter}")
+    res = client.post(
+        "/api/v1/videos/upload-multi",
+        data={"items_meta": json.dumps([{"kind": "video"}]), "video_filter": video_filter},
+        files=[("files", _vid("a.mp4"))],
+        headers=_auth(token),
+    )
+    assert res.status_code == 400
+
+
+@pytest.mark.parametrize("video_filter", ["cartoon"])
+@patch("app.routes.videos.reserve_job_id", return_value="multi-filter-1")
 @patch("app.routes.videos._r2_upload_and_enqueue_multi")
-def test_upload_multi_heat_filter_accepted(mock_bg, mock_reserve, client: TestClient, video_filter: str) -> None:
+def test_upload_multi_filter_accepted(mock_bg, mock_reserve, client: TestClient, video_filter: str) -> None:
     token = _register_and_token(client, f"mf3-{video_filter}@x.com", f"mfuser3{video_filter}")
     res = client.post(
         "/api/v1/videos/upload-multi",
@@ -190,26 +204,17 @@ class TestFilterPreview:
         assert out.shape == img.shape  # 1280px 이하는 해상도 유지
 
     @pytest.mark.parametrize("video_filter", ["heat", "cartoon_heat", "footsteps"])
-    def test_returns_heat_jpeg(self, client: TestClient, video_filter: str) -> None:
-        import cv2
-        import numpy as np
-
+    def test_retired_filter_rejected(self, client: TestClient, video_filter: str) -> None:
+        """제거된 필터는 미리보기에서도 400 이어야 한다 — 여기서만 통과시키면 사용자가
+        미리보기를 보고 고른 효과가 업로드 단계에서 거절된다."""
         token = _register_and_token(client, f"fp4-{video_filter}@x.com", f"fpuser4{video_filter}")
-        rng = np.random.default_rng(3)
-        img = rng.integers(40, 220, (120, 160, 3), dtype=np.uint8)
-        ok, buf = cv2.imencode(".jpg", img)
-        assert ok
         res = client.post(
             "/api/v1/videos/filter-preview",
             data={"video_filter": video_filter},
-            files={"frame": ("f.jpg", buf.tobytes(), "image/jpeg")},
+            files={"frame": ("f.jpg", b"data", "image/jpeg")},
             headers=_auth(token),
         )
-        assert res.status_code == 200, res.text
-        assert res.headers["content-type"] == "image/jpeg"
-        out = cv2.imdecode(np.frombuffer(res.content, np.uint8), cv2.IMREAD_COLOR)
-        assert out is not None
-        assert out.shape == img.shape
+        assert res.status_code == 400
 
     def test_unknown_filter_rejected(self, client: TestClient) -> None:
         token = _register_and_token(client, "fp5@x.com", "fpuser5")

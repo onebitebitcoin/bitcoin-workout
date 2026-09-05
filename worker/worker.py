@@ -71,8 +71,8 @@ _RENDER_STEPS = frozenset({"filter", "compress"})
 def _refresh_active_jobs(r) -> None:
     """현재 활성 잡 수를 FFMPEG_ACTIVE_JOBS env로 내려 렌더 프로세스 풀 크기를 정하게 한다.
 
-    cartoon.py/muscle_heat.py의 `_worker_pool_size()`가 이 값을 읽는다 — 두 모듈은
-    cv2/numpy/mediapipe 외 의존성을 두지 않는 계약이라 redis를 직접 못 보므로 여기서 건넨다.
+    cartoon.py의 `_worker_pool_size()`가 이 값을 읽는다 — 이 모듈은
+    cv2/numpy 외 의존성을 두지 않는 계약이라 redis를 직접 못 보므로 여기서 건넨다.
 
     슬롯 획득 직후 한 번, 그리고 실제 렌더 단계(_RENDER_STEPS) 진입 때 다시 읽는다.
     획득 시점 스냅샷만 쓰면 그 사이의 compose·audio_merge·R2 다운로드(수십 초~수 분)

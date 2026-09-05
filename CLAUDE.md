@@ -116,7 +116,7 @@ sudo nginx -s reload
 **실제 운영 워커**: `measly` 유저 systemd `--user` 템플릿 유닛 `stack-health-worker@1`, `stack-health-worker@2` (`~/.config/systemd/user/stack-health-worker@.service`, repo에는 없음 — 다른 `stack-health-app-*` 유닛들과 동일하게 호스트 전용 파일). `WorkingDirectory=/home/measly/stack-health/worker`에서 repo 코드를 직접 실행한다.
 
 - 인스턴스 개수는 `worker/.env`의 `WORKER_INSTANCES`로 정하고, `scripts/deploy.sh`가 이 값을 읽어 `stack-health-worker@1..N`을 전부 재시작한다 (push 배포 시 자동).
-- `backend/app/services/cartoon.py`, `muscle_heat.py`의 `_worker_pool_size()`는 **`FFMPEG_ACTIVE_JOBS`**(worker.py가 렌더 시작 직전 `ffmpeg:slots` 리스 점유 수로 매 잡마다 주입하는 실시간 활성 잡 수)로 코어 예산을 나눠 프로세스 풀 크기를 정한다 — 잡이 1개뿐이면 코어 예산을 다 쓰고, 여러 잡이 겹치면 나눠 쓴다. `WORKER_INSTANCES`는 `FFMPEG_ACTIVE_JOBS`가 없을 때(단독 실행·테스트)만 쓰는 폴백이라 **정적 상한이 아니다** — 기본 8코어 기준 프로세스 풀은 잡 1개면 `(8-2)/1=6`, 잡 2개가 겹치면 `(8-2)/2=3`으로 실시간으로 바뀐다. 두 값(`FFMPEG_ACTIVE_JOBS` 키 이름)이 `worker/worker.py`(설정)와 두 backend 모듈(사용) 양쪽에 문자열로 하드코딩돼 있어, 한쪽만 고치면 조용히 `WORKER_INSTANCES` 폴백으로 흡수되고 에러 없이 성능만 저하된다 — 변경 시 둘 다 확인.
+- `backend/app/services/cartoon.py`의 `_worker_pool_size()`는 **`FFMPEG_ACTIVE_JOBS`**(worker.py가 렌더 시작 직전 `ffmpeg:slots` 리스 점유 수로 매 잡마다 주입하는 실시간 활성 잡 수)로 코어 예산을 나눠 프로세스 풀 크기를 정한다 — 잡이 1개뿐이면 코어 예산을 다 쓰고, 여러 잡이 겹치면 나눠 쓴다. `WORKER_INSTANCES`는 `FFMPEG_ACTIVE_JOBS`가 없을 때(단독 실행·테스트)만 쓰는 폴백이라 **정적 상한이 아니다** — 기본 8코어 기준 프로세스 풀은 잡 1개면 `(8-2)/1=6`, 잡 2개가 겹치면 `(8-2)/2=3`으로 실시간으로 바뀐다. 두 값(`FFMPEG_ACTIVE_JOBS` 키 이름)이 `worker/worker.py`(설정)와 `backend/app/services/cartoon.py`(사용) 양쪽에 문자열로 하드코딩돼 있어, 한쪽만 고치면 조용히 `WORKER_INSTANCES` 폴백으로 흡수되고 에러 없이 성능만 저하된다 — 변경 시 둘 다 확인.
 - 워커 전용 배포 스크립트는 **없다**. push 배포 하나로 앱과 함께 나간다. (`/opt/stackhealth-worker` 단일 전용서버 배포용 문서·스크립트가 예전에 `worker/`에 있었는데, 실행되지 않는 경로라 `archive-meta/worker-opt/`로 옮겼다.)
 
 ### 장애 이력 (2026-05-31)

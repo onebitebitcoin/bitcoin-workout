@@ -1109,14 +1109,13 @@ def _r2_upload_and_enqueue_multi(
 
 MAX_PREVIEW_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB — canvas 캡처 프레임 1장
 PREVIEW_MAX_WIDTH = 1280
-ALLOWED_VIDEO_FILTERS = {"cartoon", "heat", "cartoon_heat", "footsteps"}
+ALLOWED_VIDEO_FILTERS = {"cartoon"}
 
 
 def _render_filter_preview(raw: bytes, video_filter: str) -> bytes:
     """프레임 1장 → 필터 적용 JPEG 바이트. 순수 CPU 바운드 — 반드시 threadpool에서 호출한다.
 
-    "heat"는 MediaPipe 포즈 검출까지 도는 무거운 경로(실측 0.7~0.9초/호출)라, 이벤트
-    루프에서 직접 돌리면 그동안 API 전체가 멈춘다.
+    렌더러가 이벤트 루프를 붙잡으면 그동안 API 전체가 멈춘다.
     """
     import cv2
     import numpy as np
@@ -1131,18 +1130,9 @@ def _render_filter_preview(raw: bytes, video_filter: str) -> bytes:
             img, (PREVIEW_MAX_WIDTH, int(h * PREVIEW_MAX_WIDTH / w)), interpolation=cv2.INTER_AREA
         )
 
-    if video_filter == "cartoon":
-        from app.services.cartoon import adaptive_gamma, cartoon_frame
+    from app.services.cartoon import adaptive_gamma, cartoon_frame
 
-        out = cartoon_frame(img, adaptive_gamma(img))
-    elif video_filter == "footsteps":
-        from app.services.motion_fx import footsteps_preview_frame
-
-        out = footsteps_preview_frame(img)
-    else:
-        from app.services.muscle_heat import heat_preview_frame
-
-        out = heat_preview_frame(img, weak_cartoon=video_filter == "cartoon_heat")
+    out = cartoon_frame(img, adaptive_gamma(img))
 
     ok, buf = cv2.imencode(".jpg", out, [cv2.IMWRITE_JPEG_QUALITY, 88])
     if not ok:
@@ -1158,10 +1148,8 @@ async def filter_preview(
 ):
     """업로드 미리보기: 프레임 1장에 영상 필터를 적용해 JPEG로 반환한다.
 
-    워커 파이프라인과 동일한 렌더러(`app.services.cartoon`, `app.services.muscle_heat`)를
-    사용하므로 미리보기 룩과 최종 결과물이 일치한다. "heat"/"cartoon_heat"는 프레임 1장만
-    받으므로 움직임 신호가 없어 정적 부하(오버헤드 지지·깊은 무릎 굽힘)만 반영된다 — 실제
-    영상에서는 동작에 따라 열이 더 진해진다.
+    워커 파이프라인과 동일한 렌더러(`app.services.cartoon`)를 사용하므로 미리보기 룩과
+    최종 결과물이 일치한다.
     """
     from fastapi.responses import Response
     from starlette.concurrency import run_in_threadpool
@@ -1204,8 +1192,7 @@ async def upload_multi(
     """다중 미디어(영상 ≤1 + 이미지 ≤5)를 순서대로 받아 합성 파이프라인에 등록한다.
 
     items_meta: JSON 배열 `[{"kind": "image"|"video"}, ...]` — files 순서와 1:1 대응.
-    video_filter: 합성본 전체에 적용할 영상 필터. "cartoon"(카툰) / "heat"(신체 열감 강조) /
-        "cartoon_heat"(약한 카툰 위에 신체 열감 강조) 중 하나.
+    video_filter: 합성본 전체에 적용할 영상 필터. "cartoon"(카툰)만 지원한다.
     파일 수신 즉시 job_id 반환, R2 업로드 + 처리는 백그라운드.
     """
     if video_filter is not None and video_filter not in ALLOWED_VIDEO_FILTERS:

@@ -20,11 +20,3 @@ email-validator==2.3.0
 ruff>=0.15.0
 opencv-python-headless==4.10.0.84
 numpy>=1.26
-# mediapipe(운동열 필터, app/services/muscle_heat.py)의 실제 의존성.
-# mediapipe 패키지 자체는 여기 넣지 않는다 — 정상 설치 시 opencv-contrib-python(GUI 포함)을
-# 끌어와 opencv-python-headless의 cv2를 덮어써 버전이 꼬인다. `pip install --no-deps mediapipe`로
-# 별도 설치한다(scripts/install.sh, Dockerfile 참고).
-absl-py
-flatbuffers
-matplotlib
-sounddevice

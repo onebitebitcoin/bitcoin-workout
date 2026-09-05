@@ -18,7 +18,7 @@ QUEUE_NAME: str = f"queue:merge-jobs:{ENVIRONMENT}"
 JOB_TTL: int = 86400  # 24시간
 MAX_FFMPEG_CONCURRENT: int = int(os.environ.get("MAX_FFMPEG_CONCURRENT", "2"))
 MAX_JOB_RETRIES: int = int(os.environ.get("MAX_JOB_RETRIES", "2"))
-# 동시에 띄우는 worker.py 인스턴스 수 — cartoon.py/muscle_heat.py의 _worker_pool_size()가
+# 동시에 띄우는 worker.py 인스턴스 수 — cartoon.py의 _worker_pool_size()가
 # job당 내부 프로세스 풀 크기를 정할 때 쓰는 값이다. 단, 실시간 활성 잡 수(worker.py가
 # ffmpeg:slots 리스 점유 직후 FFMPEG_ACTIVE_JOBS env로 주입)가 있으면 그쪽이 우선이고,
 # 이 값은 그게 없을 때(단독 실행·테스트)만 쓰는 폴백이다 — 정적 상한이 아니다.

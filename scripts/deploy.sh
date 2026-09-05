@@ -68,12 +68,9 @@ git pull --rebase origin main
 # ── Step 2: 의존성 설치 ───────────────────────────────────────────────
 echo "[2/8] 백엔드 의존성 설치..."
 backend/.venv/bin/pip install --quiet -r backend/requirements.txt
-# opencv-contrib-python(GUI 포함) 충돌 방지 — backend/requirements.txt 주석 참고
-backend/.venv/bin/pip install --quiet --no-deps mediapipe==0.10.35
 
 echo "      워커 의존성 설치..."
 worker/.venv/bin/pip install --quiet -r worker/requirements.txt
-worker/.venv/bin/pip install --quiet --no-deps mediapipe==0.10.35
 
 # ── Step 3: 프론트엔드 빌드 ───────────────────────────────────────────
 echo "[3/8] 프론트엔드 빌드..."

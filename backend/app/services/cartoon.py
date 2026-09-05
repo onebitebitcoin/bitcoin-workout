@@ -385,7 +385,7 @@ def _cartoonize_frame_parallel(
     assert proc.stdin is not None
 
     # stderr를 계속 읽어 비워두지 않으면 ffmpeg 로그로 파이프 버퍼가 차서 ffmpeg가 멈추고,
-    # 그러면 아래 stdin.write()도 함께 블로킹되어 영구 교착 상태에 빠진다(motion_fx.py와 동일 버그).
+    # 그러면 아래 stdin.write()도 함께 블로킹되어 영구 교착 상태에 빠진다.
     stderr_chunks: list[bytes] = []
 
     def _drain_stderr() -> None:

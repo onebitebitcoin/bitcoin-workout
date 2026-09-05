@@ -68,10 +68,10 @@ def _should_compress(filter_status: str) -> bool:
 
 
 def _apply_video_filter(r2, video_key: str, video_filter: str) -> tuple[str, int, int, dict] | None:
-    """합성 영상에 필터(카툰/운동열 강조)를 적용해 (filtered_key, pre_bytes, post_bytes,
+    """합성 영상에 카툰 필터를 적용해 (filtered_key, pre_bytes, post_bytes,
     video_meta)를 반환. 실패 시 None (원본 유지).
 
-    backend와 동일한 렌더러(`app.services.cartoon`, `app.services.muscle_heat`)를 사용해
+    backend와 동일한 렌더러(`app.services.cartoon`)를 사용해
     미리보기 룩과 최종 결과물을 일치시킨다. 인코더가 compress와 동일 crf(28)로 직접
     인코딩하므로 호출부(`run_multi_pipeline`)는 이 경우 별도 compress를 건너뛴다
     (이중 인코딩 + R2 왕복 제거).
@@ -92,26 +92,9 @@ def _apply_video_filter(r2, video_key: str, video_filter: str) -> tuple[str, int
             f.write(resp["Body"].read())
         pre_bytes = os.path.getsize(tmp_input)
 
-        if video_filter == "cartoon":
-            from app.services.cartoon import cartoonize_video
+        from app.services.cartoon import cartoonize_video
 
-            cartoonize_video(tmp_input, tmp_output)
-        elif video_filter == "footsteps":
-            from app.services.motion_fx import render_footsteps_video
-
-            render_footsteps_video(tmp_input, tmp_output)
-        else:
-            from app.services.exercise_classify import classify_exercise
-            from app.services.muscle_heat import render_heat_video
-
-            # 운동 종목을 판별해 근육군 프리셋을 적용 — 부위 오귀속(스쿼트 팔 오발화 등) 억제.
-            # 실패/키없음이면 None → 프리셋 없이 진행(기존 동작).
-            exercise = classify_exercise(tmp_input)
-            render_heat_video(
-                tmp_input, tmp_output,
-                weak_cartoon=video_filter == "cartoon_heat",
-                exercise=exercise,
-            )
+        cartoonize_video(tmp_input, tmp_output)
 
         post_bytes = os.path.getsize(tmp_output)
         video_meta = _probe_video_meta(tmp_output)
@@ -182,7 +165,7 @@ def run_multi_pipeline(job: dict, status_callback=None) -> dict:
             audio_merge_failed = True
             logger.warning("[multi-pipeline] job=%s 오디오 머지 실패 — 오디오 없이 진행", job_id)
 
-    # 4) video filter — 카툰/운동열 강조 등. 필터 인코더가 compress와 동일 crf(28)로 직접
+    # 4) video filter — 카툰. 필터 인코더가 compress와 동일 crf(28)로 직접
     #    인코딩하므로 성공하면 아래 5) compress를 건너뛴다(이중 인코딩 + R2 왕복 제거).
     #    실패해도 원본으로 계속 진행하되, 압축 없는 원본이 나가지 않도록 compress로 대체한다.
     pre_size_bytes = 0
@@ -192,7 +175,9 @@ def run_multi_pipeline(job: dict, status_callback=None) -> dict:
     filtered_key: str | None = None
     filter_status = "skipped"
     video_filter = job.get("video_filter")
-    if video_filter in ("cartoon", "heat", "cartoon_heat", "footsteps"):
+    # 지원이 끝난 값(heat/cartoon_heat/footsteps)이 오래된 잡에 남아 있어도 필터를 건너뛰고
+    # 원본 그대로 진행한다 — 여기서 실패시키면 큐에 남은 잡이 통째로 죽는다.
+    if video_filter == "cartoon":
         if status_callback:
             status_callback("filter")
         pre_filter_key = current_key
