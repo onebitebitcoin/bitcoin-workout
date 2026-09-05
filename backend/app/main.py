@@ -138,12 +138,20 @@ def health() -> dict:
     return {"status": "ok", "version": version}
 
 
+# 스크랩 봇만 매칭한다. 인앱 브라우저 UA 를 여기에 넣으면 아래 OG 페이지가
+# 자기 자신으로 리다이렉트하면서 무한 루프가 되어 링크가 영영 열리지 않는다.
+# (카카오톡 인앱 브라우저 UA 에는 "KAKAOTALK" 이 들어 있고, 스크랩 봇은
+#  "kakaotalk-scrap" 이다 — 봇 쪽만 잡는다.)
 _CRAWLER_RE = re.compile(
     r"(Twitterbot|facebookexternalhit|LinkedInBot|TelegramBot|Slackbot|"
-    r"WhatsApp|kakaotalk-scrap|KakaoTalk|Discordbot|Googlebot|bingbot|"
+    r"WhatsApp|kakaotalk-scrap|Discordbot|Googlebot|bingbot|"
     r"ia_archiver|Applebot|vk\.com/dev/Share)",
     re.IGNORECASE,
 )
+
+# OG 페이지에서 사람에게 되돌려 보낼 때 붙이는 표식. 이 값이 있으면 UA 와
+# 무관하게 SPA 를 그대로 준다 (리다이렉트 루프 차단).
+_OG_BYPASS_PARAM = "nog"
 
 _SHORTS_RE = re.compile(r"^shorts/([A-Za-z0-9_-]+)$")
 
@@ -191,11 +199,14 @@ def _build_og_meta(post: "Post") -> tuple[str, str]:  # type: ignore[name-define
     return title, description
 
 
-def _og_html(title: str, description: str, image: str, url: str, video_url: str | None) -> str:
+def _og_html(
+    title: str, description: str, image: str, url: str, video_url: str | None, redirect_url: str
+) -> str:
     t = html.escape(title)
     d = html.escape(description)
     i = html.escape(image)
     u = html.escape(url)
+    r = html.escape(redirect_url)
     video_tags = (
         f'<meta property="og:video" content="{html.escape(video_url)}" />'
         f'<meta property="og:video:type" content="video/mp4" />'
@@ -221,7 +232,7 @@ def _og_html(title: str, description: str, image: str, url: str, video_url: str 
 <meta name="twitter:description" content="{d}" />
 <meta name="twitter:image" content="{i}" />
 </head>
-<body><script>window.location.href="{u}";</script></body>
+<body><p><a href="{r}">{t}</a></p><script>window.location.replace("{r}");</script></body>
 </html>"""
 
 
@@ -253,7 +264,7 @@ if _static_dir.exists():
 
         # OG tag injection for share pages (crawler only) — DB session opened only here
         m = _SHORTS_RE.match(full_path)
-        if m and _is_crawler(request):
+        if m and _OG_BYPASS_PARAM not in request.query_params and _is_crawler(request):
             share_token = m.group(1)
             from sqlalchemy.orm import selectinload as _sil
             from app.database import SessionLocal
@@ -273,7 +284,14 @@ if _static_dir.exists():
                     page_url = f"{base}/shorts/{share_token}"
                     og_title, og_desc = _build_og_meta(post)
                     return HTMLResponse(
-                        content=_og_html(og_title, og_desc, image, page_url, video_url),
+                        content=_og_html(
+                            og_title,
+                            og_desc,
+                            image,
+                            page_url,
+                            video_url,
+                            f"{page_url}?{_OG_BYPASS_PARAM}=1",
+                        ),
                         headers={"Cache-Control": "public, max-age=3600"},
                     )
             finally:
